@@ -168,25 +168,42 @@ def get_yandex_token(client_id: str, client_secret: str) -> tuple[str | None, st
     if cached and time.time() - cached["time"] < 3500:
         return cached["token"], None
 
-    url = f"{YANDEX_BASE}/security/oauth/token"
+    primary_url = f"{YANDEX_BASE}/partner/auth"
+    oauth_url = f"{YANDEX_BASE}/security/oauth/token"
     data = {"grant_type": "client_credentials"}
     try:
         resp = requests.post(
-            url,
-            data=data,
-            auth=HTTPBasicAuth(client_id, client_secret),
-            timeout=(10, 40),
+            primary_url,
+            json={"clientId": client_id, "clientSecret": client_secret},
+            timeout=(20, 60),
         )
         if resp.status_code == 200:
-            token = resp.json().get("access_token")
+            token = resp.json().get("access_token") or resp.json().get("token")
             if token:
                 YANDEX_TOKENS[key] = {"token": token, "time": time.time()}
                 return token, None
-            logger.error(f"Yandex token response without token: {resp.text}")
+        elif resp.status_code in (401, 403):
+            return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
+
+        # fallback на OAuth, если основной маршрут недоступен
+        resp_oauth = requests.post(
+            oauth_url,
+            data=data,
+            auth=HTTPBasicAuth(client_id, client_secret),
+            timeout=(20, 60),
+        )
+        if resp_oauth.status_code == 200:
+            token = resp_oauth.json().get("access_token")
+            if token:
+                YANDEX_TOKENS[key] = {"token": token, "time": time.time()}
+                return token, None
+            logger.error(f"Yandex token response without token: {resp_oauth.text}")
             return None, "Ответ без access_token"
 
-        logger.error(f"Yandex token failed {resp.status_code}: {resp.text}")
-        return None, f"Ошибка OAuth {resp.status_code}: {resp.text}"
+        logger.error(
+            f"Yandex token failed primary={resp.status_code}, oauth={resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
+        )
+        return None, f"Ошибка OAuth {resp_oauth.status_code}: {resp_oauth.text}"
     except requests.exceptions.RequestException as e:
         logger.error(f"Yandex token error: {e}")
         return None, f"Ошибка подключения к Yandex: {e}"
@@ -242,6 +259,25 @@ def image_proxy():
             abort(404)
     return send_file(local_path)
 
+# ==================== YANDEX ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+def yandex_request(client_id: str, client_secret: str, path: str, *, method: str = "GET",
+                   params: dict | None = None, payload: dict | None = None,
+                   timeout: tuple[int, int] = (20, 60)):
+    token, err = get_yandex_token(client_id, client_secret)
+    if not token:
+        status = 502 if err and "подключ" in err.lower() else 401
+        return None, (status, err or "no token")
+
+    url = f"{YANDEX_BASE}{path}"
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        resp = requests.request(method, url, params=params, json=payload, headers=headers, timeout=timeout)
+        if resp.ok:
+            return resp.json(), None
+        return None, (resp.status_code, resp.text)
+    except requests.exceptions.RequestException as e:
+        return None, (502, f"Ошибка запроса: {e}")
+
 # ==================== YANDEX РОУТЫ ====================
 @app.route("/api/yandex/token", methods=["POST"])
 @require_auth
@@ -258,17 +294,11 @@ def yandex_token():
 def yandex_cities():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    token, err = get_yandex_token(client_id, client_secret)
-    if not token:
-        status = 502 if err and "подключ" in err.lower() else 401
-        return jsonify({"error": err or "no token"}), status
-    url = f"{YANDEX_BASE}/v2/cities"
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        resp = requests.get(url, headers=headers, timeout=30)
-        return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Ошибка запроса городов: {e}"}), 502
+    data, err = yandex_request(client_id, client_secret, "/v2/cities", timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
 
 @app.route("/api/yandex/places", methods=["GET"])
 @require_auth
@@ -276,18 +306,12 @@ def yandex_places():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
     city_id = request.args.get("city_id")
-    token, err = get_yandex_token(client_id, client_secret)
-    if not token:
-        status = 502 if err and "подключ" in err.lower() else 401
-        return jsonify({"error": err or "no token"}), status
-    url = f"{YANDEX_BASE}/v2/places"
-    params = {"city_id": city_id} if city_id else {}
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        resp = requests.get(url, params=params, headers=headers, timeout=30)
-        return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Ошибка запроса точек: {e}"}), 502
+    params = {"city_id": city_id} if city_id else None
+    data, err = yandex_request(client_id, client_secret, "/v2/places", params=params, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
 
 @app.route("/api/yandex/menu", methods=["GET"])
 @require_auth
@@ -297,18 +321,126 @@ def yandex_menu():
     place_id = request.args.get("place_id")
     if not place_id:
         return jsonify({"error": "place_id required"}), 400
-    token, err = get_yandex_token(client_id, client_secret)
-    if not token:
-        status = 502 if err and "подключ" in err.lower() else 401
-        return jsonify({"error": err or "no token"}), status
-    url = f"{YANDEX_BASE}/v2/menus"
-    params = {"place_id": place_id}
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        resp = requests.get(url, params=params, headers=headers, timeout=40)
-        return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Ошибка запроса меню: {e}"}), 502
+    data, err = yandex_request(client_id, client_secret, "/partner/menu", params={"place_id": place_id}, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/availability", methods=["GET"])
+@require_auth
+def yandex_availability():
+    client_id = request.args.get("client_id")
+    client_secret = request.args.get("client_secret")
+    place_id = request.args.get("place_id")
+    if not place_id:
+        return jsonify({"error": "place_id required"}), 400
+    data, err = yandex_request(client_id, client_secret, "/partner/availability", params={"place_id": place_id}, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/promos", methods=["GET"])
+@require_auth
+def yandex_promos():
+    client_id = request.args.get("client_id")
+    client_secret = request.args.get("client_secret")
+    place_id = request.args.get("place_id")
+    if not place_id:
+        return jsonify({"error": "place_id required"}), 400
+    data, err = yandex_request(client_id, client_secret, "/partner/promos", params={"place_id": place_id}, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/restaurants", methods=["GET"])
+@require_auth
+def yandex_restaurants():
+    client_id = request.args.get("client_id")
+    client_secret = request.args.get("client_secret")
+    data, err = yandex_request(client_id, client_secret, "/partner/places", timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/delivery_zones", methods=["GET"])
+@require_auth
+def yandex_delivery_zones():
+    client_id = request.args.get("client_id")
+    client_secret = request.args.get("client_secret")
+    place_id = request.args.get("place_id")
+    if not place_id:
+        return jsonify({"error": "place_id required"}), 400
+    data, err = yandex_request(client_id, client_secret, "/partner/delivery/zones", params={"place_id": place_id}, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/schedule", methods=["GET"])
+@require_auth
+def yandex_schedule():
+    client_id = request.args.get("client_id")
+    client_secret = request.args.get("client_secret")
+    place_id = request.args.get("place_id")
+    if not place_id:
+        return jsonify({"error": "place_id required"}), 400
+    data, err = yandex_request(client_id, client_secret, "/partner/schedule", params={"place_id": place_id}, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/orders", methods=["GET"])
+@require_auth
+def yandex_orders():
+    client_id = request.args.get("client_id")
+    client_secret = request.args.get("client_secret")
+    params = {"status": request.args.get("status")} if request.args.get("status") else None
+    data, err = yandex_request(client_id, client_secret, "/partner/orders", params=params, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/orders/history", methods=["POST"])
+@require_auth
+def yandex_orders_history():
+    client_id = request.json.get("client_id") if request.is_json else request.form.get("client_id")
+    client_secret = request.json.get("client_secret") if request.is_json else request.form.get("client_secret")
+    payload = request.get_json() or {}
+    for key in ("client_id", "client_secret"):
+        payload.pop(key, None)
+    data, err = yandex_request(client_id, client_secret, "/partner/orders/history", method="POST", payload=payload, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
+
+
+@app.route("/api/yandex/orders/details", methods=["POST"])
+@require_auth
+def yandex_orders_details():
+    client_id = request.json.get("client_id") if request.is_json else request.form.get("client_id")
+    client_secret = request.json.get("client_secret") if request.is_json else request.form.get("client_secret")
+    payload = request.get_json() or {}
+    for key in ("client_id", "client_secret"):
+        payload.pop(key, None)
+    data, err = yandex_request(client_id, client_secret, "/partner/integration/v1/orders/details", method="POST", payload=payload, timeout=(20, 60))
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(data)
 
 # ==================== ВЕБХУКИ ====================
 @app.route("/api/webhooks", methods=["GET"])

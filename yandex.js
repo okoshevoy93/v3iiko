@@ -23,6 +23,19 @@ const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
 const currentCity = document.getElementById('currentCity');
 const currentPlace = document.getElementById('currentPlace');
+const placeIdManual = document.getElementById('placeIdManual');
+const extraResult = document.getElementById('extraResult');
+const orderStatusInput = document.getElementById('orderStatus');
+const ordersHistoryPayloadInput = document.getElementById('ordersHistoryPayload');
+
+const btnAvailability = document.getElementById('btnAvailability');
+const btnPromos = document.getElementById('btnPromos');
+const btnZones = document.getElementById('btnZones');
+const btnSchedule = document.getElementById('btnSchedule');
+const btnOrders = document.getElementById('btnOrders');
+const btnOrdersHistory = document.getElementById('btnOrdersHistory');
+const btnOrderDetails = document.getElementById('btnOrderDetails');
+const btnLoadRestaurants = document.getElementById('btnLoadRestaurants');
 
 let cachedCities = [];
 let cachedPlaces = [];
@@ -64,6 +77,13 @@ function getWebhookUrl() {
   return webhookUrlInput.value.trim();
 }
 
+function getActivePlaceId() {
+  const selected = placeSelect?.value?.trim();
+  if (selected) return selected;
+  const manual = placeIdManual?.value?.trim();
+  return manual || '';
+}
+
 async function apiFetch(url, options = {}) {
   const resp = await fetch(url, options);
   const data = await resp.json().catch(() => ({}));
@@ -71,6 +91,28 @@ async function apiFetch(url, options = {}) {
     throw new Error(data.error || `Ошибка запроса (${resp.status})`);
   }
   return data;
+}
+
+async function callYandex(path, { method = 'GET', params = {}, body = null } = {}) {
+  const creds = getCreds();
+  if (!creds) return null;
+  const url = new URL(path, window.location.origin);
+  Object.entries(params || {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
+  });
+  const options = { method, headers: { 'Content-Type': 'application/json' } };
+  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, ...body });
+  if (method === 'GET') {
+    url.searchParams.set('client_id', creds.client_id);
+    url.searchParams.set('client_secret', creds.client_secret);
+  }
+  return apiFetch(url.toString(), options);
+}
+
+function renderExtraResult(title, data) {
+  if (!extraResult) return;
+  const pretty = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  extraResult.textContent = `${title}\n${pretty}`;
 }
 
 async function verifyAccess() {
@@ -409,6 +451,122 @@ async function deleteIntegration() {
   }
 }
 
+async function runAvailability() {
+  const placeId = getActivePlaceId();
+  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  try {
+    const data = await callYandex('/api/yandex/availability', { params: { place_id: placeId } });
+    renderExtraResult('Недоступные позиции', data);
+    setStatus('Получены данные о недоступных позициях.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить availability', 'err');
+  }
+}
+
+async function runPromos() {
+  const placeId = getActivePlaceId();
+  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  try {
+    const data = await callYandex('/api/yandex/promos', { params: { place_id: placeId } });
+    renderExtraResult('Акционные позиции', data);
+    setStatus('Акции получены.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить акции', 'err');
+  }
+}
+
+async function runZones() {
+  const placeId = getActivePlaceId();
+  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  try {
+    const data = await callYandex('/api/yandex/delivery_zones', { params: { place_id: placeId } });
+    renderExtraResult('Зоны доставки', data);
+    setStatus('Зоны доставки получены.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить зоны доставки', 'err');
+  }
+}
+
+async function runSchedule() {
+  const placeId = getActivePlaceId();
+  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  try {
+    const data = await callYandex('/api/yandex/schedule', { params: { place_id: placeId } });
+    renderExtraResult('График работы', data);
+    setStatus('График получен.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить график', 'err');
+  }
+}
+
+async function runOrders() {
+  const status = orderStatusInput?.value?.trim();
+  try {
+    const data = await callYandex('/api/yandex/orders', { params: status ? { status } : {} });
+    renderExtraResult('Текущие заказы', data);
+    setStatus('Заказы получены.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить заказы', 'err');
+  }
+}
+
+function parseHistoryPayload() {
+  const raw = ordersHistoryPayloadInput?.value?.trim();
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    setStatus('Неверный JSON для истории заказов.', 'err');
+    throw e;
+  }
+}
+
+async function runOrdersHistory() {
+  let body;
+  try {
+    body = parseHistoryPayload();
+  } catch {
+    return;
+  }
+  try {
+    const data = await callYandex('/api/yandex/orders/history', { method: 'POST', body });
+    renderExtraResult('История заказов', data);
+    setStatus('История заказов получена.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить историю заказов', 'err');
+  }
+}
+
+async function runOrderDetails() {
+  let body;
+  try {
+    body = parseHistoryPayload();
+  } catch {
+    return;
+  }
+  if (!body.orderIds && !body.order_ids) {
+    setStatus('Для детализации укажите orderIds в теле запроса.', 'err');
+    return;
+  }
+  try {
+    const data = await callYandex('/api/yandex/orders/details', { method: 'POST', body });
+    renderExtraResult('Детали заказов', data);
+    setStatus('Детали заказов получены.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить детали заказов', 'err');
+  }
+}
+
+async function runRestaurants() {
+  try {
+    const data = await callYandex('/api/yandex/restaurants');
+    renderExtraResult('Список ресторанов', data);
+    setStatus('Рестораны получены.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить рестораны', 'err');
+  }
+}
+
 connectBtn.addEventListener('click', verifyAccess);
 loadCitiesBtn.addEventListener('click', loadCities);
 loadMenuBtn.addEventListener('click', loadMenu);
@@ -426,6 +584,14 @@ integrationSelect.addEventListener('change', () => {
     applyIntegration(integrationSelect.value);
   }
 });
+btnAvailability?.addEventListener('click', runAvailability);
+btnPromos?.addEventListener('click', runPromos);
+btnZones?.addEventListener('click', runZones);
+btnSchedule?.addEventListener('click', runSchedule);
+btnOrders?.addEventListener('click', runOrders);
+btnOrdersHistory?.addEventListener('click', runOrdersHistory);
+btnOrderDetails?.addEventListener('click', runOrderDetails);
+btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
 

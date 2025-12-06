@@ -2932,12 +2932,15 @@ if (menuTbodyEl) {
     }
 
     const catRow = e.target.closest('tr.group-category-row');
-    if (catRow && catRow.dataset.catKey) {
+    if (catRow) {
       e.preventDefault();
-      const catKey = catRow.dataset.catKey;
-      if (collapsedCategories.has(catKey)) collapsedCategories.delete(catKey);
-      else collapsedCategories.add(catKey);
-      renderTable();
+      const catKey = catRow.dataset.catKey || catRow.dataset.category;
+      if (catKey) {
+        if (collapsedCategories.has(catKey)) collapsedCategories.delete(catKey);
+        else collapsedCategories.add(catKey);
+        renderTable();
+        return;
+      }
     }
   });
 
