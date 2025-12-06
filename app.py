@@ -224,7 +224,12 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
 
     bases: list[str] = []
     if base_override:
-        bases.append(base_override.rstrip("/"))
+        base_override = base_override.rstrip("/")
+        resolvable, err = _is_host_resolvable(base_override)
+        if not resolvable:
+            logger.error(f"Yandex host not resolved {base_override}: {err}")
+            return None, f"Хост {base_override} не разрешается через DNS: {err}"
+        bases.append(base_override)
     for b in get_known_yandex_bases():
         if b not in bases:
             bases.append(b)
@@ -235,7 +240,7 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
         if not resolvable:
             last_error = f"DNS {dns_error}"
             logger.error(f"Yandex host not resolved {base}: {dns_error}")
-            # продолжаем попытку, но фиксируем ошибку в ответе
+            continue
 
         primary_url = f"{base}/partner/auth"
         oauth_url = f"{base}/security/oauth/token"
@@ -251,6 +256,19 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
                 if token:
                     YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
                     return token, None
+            elif resp.status_code == 405:
+                # пробуем альтернативную форму (x-www-form-urlencoded)
+                resp = requests.post(
+                    primary_url,
+                    data={"clientId": client_id, "clientSecret": client_secret},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=(45, 75),
+                )
+                if resp.status_code == 200:
+                    token = resp.json().get("access_token") or resp.json().get("token")
+                    if token:
+                        YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                        return token, None
             elif resp.status_code in (401, 403):
                 return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
 
@@ -276,6 +294,8 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
             last_error = str(e)
             logger.error(f"Yandex token error for base {base}: {e}")
 
+    if last_error and last_error.startswith("DNS"):
+        return None, f"DNS не отвечает для указанных хостов: {last_error}"
     return None, f"Ошибка подключения к Yandex ({bases[0]}): {last_error or 'нет ответа'}"
 
 

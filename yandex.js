@@ -52,6 +52,22 @@ let lastMenuPayload = null;
 let integrations = [];
 let cachedSchedule = new Map();
 let hostOptions = new Set();
+let storedIikoKey = '';
+
+try {
+  storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
+} catch (e) {
+  console.warn('localStorage unavailable', e);
+}
+
+function syncStoredIikoKey(value) {
+  storedIikoKey = value || storedIikoKey || '';
+  try {
+    if (storedIikoKey) localStorage.setItem('iikoApiLogin', storedIikoKey);
+  } catch (e) {
+    console.warn('localStorage unavailable', e);
+  }
+}
 
 function setStatus(message, tone = 'info') {
   statusEl.textContent = message;
@@ -433,7 +449,9 @@ function applyIntegration(name) {
   clientIdInput.value = found.client_id || '';
   clientSecretInput.value = found.client_secret || '';
   integrationNameInput.value = found.name;
-  if (iikoKeyInput) iikoKeyInput.value = found.iiko_key || '';
+  const iikoKey = found.iiko_key || storedIikoKey || '';
+  if (iikoKeyInput) iikoKeyInput.value = iikoKey;
+  syncStoredIikoKey(iikoKey);
   if (baseInput) {
     const host = found.base_url || getBase();
     addHostToList(host);
@@ -539,7 +557,9 @@ async function loadScheduleForPlace(placeId) {
 async function loadCities() {
   const creds = getCreds();
   if (!creds) return;
-  const iikoKey = iikoKeyInput?.value?.trim();
+  const iikoKey = (iikoKeyInput?.value?.trim()) || storedIikoKey;
+  if (iikoKeyInput && !iikoKeyInput.value) iikoKeyInput.value = iikoKey;
+  if (iikoKey) syncStoredIikoKey(iikoKey);
   if (!iikoKey) {
     setStatus('Укажите API-ключ iiko, чтобы загрузить города и точки.', 'err');
     return;
@@ -644,6 +664,8 @@ async function saveIntegration() {
   }
   buttonLoading(saveIntegrationBtn, true, 'Сохраняем...');
   try {
+    const iikoKey = iikoKeyInput?.value?.trim() || storedIikoKey;
+    syncStoredIikoKey(iikoKey);
     await apiFetch('/api/webhooks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -654,7 +676,7 @@ async function saveIntegration() {
         client_secret: creds.client_secret,
         base_url: getBase(),
         provider: 'yandex',
-        iiko_key: iikoKeyInput?.value?.trim() || '',
+        iiko_key: iikoKey,
       }),
     });
     setStatus(`Интеграция «${name}» сохранена. Для подключения нажмите «Проверить доступ».`, 'info');
@@ -836,6 +858,7 @@ btnZones?.addEventListener('click', runZones);
 btnSchedule?.addEventListener('click', runSchedule);
 btnOrders?.addEventListener('click', runOrders);
 btnOrdersHistory?.addEventListener('click', runOrdersHistory);
+iikoKeyInput?.addEventListener('change', (e) => syncStoredIikoKey(e.target.value.trim()));
 btnOrderDetails?.addEventListener('click', runOrderDetails);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
@@ -847,11 +870,15 @@ addHostBtn?.addEventListener('click', (e) => {
 
 baseSelect?.addEventListener('change', () => {
   const selected = baseSelect.value;
-  if (selected && baseInput && !baseInput.value) baseInput.value = selected;
+  if (selected && baseInput) baseInput.value = selected;
 });
 
 if (baseInput && !baseInput.value) {
   baseInput.value = 'https://eda-api.yandex.ru';
+}
+
+if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
+  iikoKeyInput.value = storedIikoKey;
 }
 
 setStatus('Введите client_id и client_secret для подключения.');
