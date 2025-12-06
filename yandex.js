@@ -26,10 +26,15 @@ const currentCity = document.getElementById('currentCity');
 const currentPlace = document.getElementById('currentPlace');
 const placeCard = document.getElementById('placeCard');
 const placeIdManual = document.getElementById('placeIdManual');
+const manualBaseInput = document.getElementById('manualBase');
+const manualTokenPathInput = document.getElementById('manualTokenPath');
 const extraResult = document.getElementById('extraResult');
 const orderStatusInput = document.getElementById('orderStatus');
 const ordersHistoryPayloadInput = document.getElementById('ordersHistoryPayload');
 const historyView = document.getElementById('historyView');
+const orderPayloadInput = document.getElementById('orderPayload');
+const orderIdInput = document.getElementById('orderIdInput');
+const restaurantIdInput = document.getElementById('restaurantIdInput');
 
 const btnAvailability = document.getElementById('btnAvailability');
 const btnPromos = document.getElementById('btnPromos');
@@ -39,6 +44,11 @@ const btnOrders = document.getElementById('btnOrders');
 const btnOrdersHistory = document.getElementById('btnOrdersHistory');
 const btnOrderDetails = document.getElementById('btnOrderDetails');
 const btnLoadRestaurants = document.getElementById('btnLoadRestaurants');
+const btnOrderStatus = document.getElementById('btnOrderStatus');
+const btnCreateOrder = document.getElementById('btnCreateOrder');
+const btnUpdateOrder = document.getElementById('btnUpdateOrder');
+const btnCancelOrder = document.getElementById('btnCancelOrder');
+const btnMenuFull = document.getElementById('btnMenuFull');
 
 let cachedCities = [];
 let cachedPlaces = [];
@@ -104,6 +114,12 @@ function getWebhookUrl() {
   return webhookUrlInput.value.trim();
 }
 
+function getOverrides() {
+  const manual_base = manualBaseInput?.value?.trim();
+  const manual_token_path = manualTokenPathInput?.value?.trim();
+  return { manual_base, manual_token_path };
+}
+
 function getActivePlaceId() {
   const option = placeSelect?.options?.[placeSelect.selectedIndex];
   const selected = option?.dataset?.placeId;
@@ -112,6 +128,12 @@ function getActivePlaceId() {
   if (manual) return manual;
   const fallback = option?.value?.trim();
   return fallback || '';
+}
+
+function getRestaurantId() {
+  const manual = restaurantIdInput?.value?.trim();
+  if (manual) return manual;
+  return getActivePlaceId();
 }
 
 async function apiFetch(url, options = {}) {
@@ -126,19 +148,22 @@ async function apiFetch(url, options = {}) {
 async function callYandex(path, { method = 'GET', params = {}, body = null } = {}) {
   const creds = getCreds();
   if (!creds) return null;
+  const overrides = getOverrides();
   const url = new URL(path, window.location.origin);
   Object.entries(params || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   });
   const options = { method, headers: { 'Content-Type': 'application/json' } };
-  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, ...body });
+  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, ...overrides, ...body });
   if (method === 'GET') {
     url.searchParams.set('client_id', creds.client_id);
     url.searchParams.set('client_secret', creds.client_secret);
     url.searchParams.set('webhook_url', creds.webhook_url);
+    if (overrides.manual_base) url.searchParams.set('manual_base', overrides.manual_base);
+    if (overrides.manual_token_path) url.searchParams.set('manual_token_path', overrides.manual_token_path);
   }
   if (method !== 'GET' && !options.body) {
-    options.body = JSON.stringify({ ...creds, ...(body || {}) });
+    options.body = JSON.stringify({ ...creds, ...overrides, ...(body || {}) });
   }
   return apiFetch(url.toString(), options);
 }
@@ -202,7 +227,14 @@ async function verifyAccess() {
       setStatus('Не удалось получить токен. Проверьте данные.', 'err');
     }
   } catch (e) {
-    setStatus(e.message || 'Ошибка запроса к Yandex Еде', 'err');
+    const msg = e.message || 'Ошибка запроса к Yandex Еде';
+    if (msg.toLowerCase().includes('connection refused')) {
+      setStatus('Host недоступен. Проверьте URL, firewall или VPN. Из PDF: разблокируйте логины в транспорте iiko.', 'err');
+    } else if (msg.toLowerCase().includes('заблокированы')) {
+      setStatus('API логины заблокированы. Разблокируйте их в iiko транспорт и повторите.', 'err');
+    } else {
+      setStatus(msg, 'err');
+    }
   } finally {
     buttonLoading(connectBtn, false);
   }
@@ -567,8 +599,7 @@ async function loadMenu() {
   }
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
   try {
-    const params = new URLSearchParams({ ...creds, restaurant_id: placeId }).toString();
-    const data = await apiFetch(`/api/yandex/menu?${params}`);
+    const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: placeId } });
     renderMenu(data);
     setStatus('Меню загружено.', 'ok');
   } catch (e) {
@@ -647,7 +678,7 @@ async function deleteIntegration() {
 }
 
 async function runAvailability() {
-  const placeId = getActivePlaceId();
+  const placeId = getRestaurantId();
   if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
     const data = await callYandex('/api/yandex/availability', { params: { restaurant_id: placeId } });
@@ -659,7 +690,7 @@ async function runAvailability() {
 }
 
 async function runPromos() {
-  const placeId = getActivePlaceId();
+  const placeId = getRestaurantId();
   if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
     const data = await callYandex('/api/yandex/promos', { params: { restaurant_id: placeId } });
@@ -671,7 +702,7 @@ async function runPromos() {
 }
 
 async function runZones() {
-  const placeId = getActivePlaceId();
+  const placeId = getRestaurantId();
   if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
     const data = await callYandex('/api/yandex/delivery_zones', { params: { restaurant_id: placeId } });
@@ -683,7 +714,7 @@ async function runZones() {
 }
 
 async function runSchedule() {
-  const placeId = getActivePlaceId();
+  const placeId = getRestaurantId();
   if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
     const data = await callYandex('/api/yandex/schedule', { params: { restaurant_id: placeId } });
@@ -691,6 +722,19 @@ async function runSchedule() {
     setStatus('График получен.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить график', 'err');
+  }
+}
+
+async function runMenuComposition() {
+  const placeId = getRestaurantId();
+  if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
+  try {
+    const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: placeId } });
+    renderMenu(data);
+    renderExtraResult('Меню (composition)', data);
+    setStatus('Меню (composition) получено.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить меню', 'err');
   }
 }
 
@@ -702,6 +746,66 @@ async function runOrders() {
     setStatus('Заказы получены.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить заказы', 'err');
+  }
+}
+
+async function runOrderStatus() {
+  const orderId = orderIdInput?.value?.trim();
+  if (!orderId) return setStatus('Укажите order_id для статуса.', 'err');
+  try {
+    const data = await callYandex('/api/yandex/order/status', { params: { order_id: orderId } });
+    renderExtraResult('Статус заказа', data);
+    setStatus('Статус заказа получен.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось получить статус', 'err');
+  }
+}
+
+function parseOrderPayload() {
+  const raw = orderPayloadInput?.value?.trim();
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    setStatus('Неверный JSON payload для заказа.', 'err');
+    throw e;
+  }
+}
+
+async function runCreateOrder() {
+  try {
+    const payload = parseOrderPayload();
+    const data = await callYandex('/api/yandex/order', { method: 'POST', body: payload });
+    renderExtraResult('Создание заказа', data);
+    setStatus('Заказ создан.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось создать заказ', 'err');
+  }
+}
+
+async function runUpdateOrder() {
+  const orderId = orderIdInput?.value?.trim();
+  if (!orderId) return setStatus('Укажите order_id для обновления.', 'err');
+  try {
+    const payload = parseOrderPayload();
+    const data = await callYandex('/api/yandex/order/update', { method: 'PUT', body: { ...payload, order_id: orderId } });
+    renderExtraResult('Обновление заказа', data);
+    setStatus('Заказ обновлён.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось обновить заказ', 'err');
+  }
+}
+
+async function runCancelOrder() {
+  const orderId = orderIdInput?.value?.trim();
+  if (!orderId) return setStatus('Укажите order_id для отмены.', 'err');
+  try {
+    const payload = parseOrderPayload();
+    const data = await callYandex('/api/yandex/order/cancel', { method: 'DELETE', body: { ...payload, order_id: orderId } });
+    renderExtraResult('Отмена заказа', data);
+    setStatus('Заказ отменён.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Не удалось отменить заказ', 'err');
   }
 }
 
@@ -794,10 +898,15 @@ btnAvailability?.addEventListener('click', runAvailability);
 btnPromos?.addEventListener('click', runPromos);
 btnZones?.addEventListener('click', runZones);
 btnSchedule?.addEventListener('click', runSchedule);
+btnMenuFull?.addEventListener('click', runMenuComposition);
 btnOrders?.addEventListener('click', runOrders);
 btnOrdersHistory?.addEventListener('click', runOrdersHistory);
 iikoKeyInput?.addEventListener('change', (e) => syncStoredIikoKey(e.target.value.trim()));
 btnOrderDetails?.addEventListener('click', runOrderDetails);
+btnOrderStatus?.addEventListener('click', runOrderStatus);
+btnCreateOrder?.addEventListener('click', runCreateOrder);
+btnUpdateOrder?.addEventListener('click', runUpdateOrder);
+btnCancelOrder?.addEventListener('click', runCancelOrder);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);

@@ -153,6 +153,14 @@
           <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
           <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
         </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="manualBase">Override base URL (опционально)</label>
+          <input id="manualBase" type="url" placeholder="https://example.com" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="manualTokenPath">Override token path (опционально)</label>
+          <input id="manualTokenPath" type="text" placeholder="/oauth2/token,/security/oauth/token" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
         <div class="grid grid-cols-2 gap-2">
           <div class="flex flex-col gap-1">
             <label class="text-xs text-slate-500" for="clientId">Client ID</label>
@@ -266,6 +274,17 @@
             <button id="btnPromos" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Акции</button>
             <button id="btnZones" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Зоны доставки</button>
             <button id="btnSchedule" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">График работы</button>
+            <button id="btnMenuFull" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Меню (composition)</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-slate-500" for="restaurantIdInput">restaurant_id (override)</label>
+              <input id="restaurantIdInput" type="text" placeholder="UUID ресторана" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-slate-500" for="orderIdInput">order_id</label>
+              <input id="orderIdInput" type="text" placeholder="ID заказа" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+            </div>
           </div>
         </div>
 
@@ -283,8 +302,18 @@
             <div class="flex flex-wrap gap-2">
               <button id="btnOrdersHistory" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">История заказов</button>
               <button id="btnOrderDetails" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Детализация по ID</button>
+              <button id="btnOrderStatus" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Статус заказа</button>
             </div>
             <p class="text-xs text-slate-500">Для детализации укажите поле <code>orderIds</code> как массив идентификаторов.</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-xs text-slate-500" for="orderPayload">Payload заказа (create/update/cancel)</label>
+            <textarea id="orderPayload" rows="4" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" placeholder='{"order": {}}'></textarea>
+            <div class="flex flex-wrap gap-2">
+              <button id="btnCreateOrder" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Создать заказ</button>
+              <button id="btnUpdateOrder" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Обновить заказ</button>
+              <button id="btnCancelOrder" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Отменить заказ</button>
+            </div>
           </div>
         </div>
       </div>
