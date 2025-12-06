@@ -1,0 +1,3605 @@
+{
+	"info": {
+		"_postman_id": "6cb97690-3db9-4fec-b45e-4116a8f0e3c2",
+		"name": "API для интеграции сервиса Яндекс.Еда",
+		"description": "Описание API для работы с сервисом Яндекс.Еда по моделям Yandex и Marketplace. Все методы описанные ниже должны быть реализованы на стороне партнера в процессе интеграции. Т.е. сервис Яндекс.Еда выступает в роли клиента, а Вам необходимо реализовать серверную часть. Общение происходит на основании pull-модели, т.е. сервис Яндекс.Еда как клиент запрашивает информацию о ресурсе либо может создавать/обновлять ресурсы если это необходимо.\n\n# Authentication\n\n<!-- ReDoc-Inject: <security-definitions> -->",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "16043381"
+	},
+	"item": [
+		{
+			"name": "menu/{restaurant Id}",
+			"item": [
+				{
+					"name": "Выдача актуального на текущий момент меню ресторана",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "timeout",
+								"value": "60",
+								"type": "default",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/menu/:restaurantId/composition",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"menu",
+								":restaurantId",
+								"composition"
+							],
+							"variable": [
+								{
+									"key": "restaurantId",
+									"value": "{{restaurantId}}",
+									"description": "(Required) Идентификатор ресторана в системе партнера"
+								}
+							]
+						},
+						"description": "Позиции, содержащие схематические или логические несоответствия (слишком длинная строка, цена равная 0.00) могут быть проигнорированы. Актуальная версия модели ответа - application/vnd.eats.menu.composition.v2+json"
+					},
+					"response": [
+						{
+							"name": "OK, возвращается актуальное на данный момент меню для указанного ресторана",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/composition",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"composition"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/vnd.eats.menu.composition.v2+json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"categories\": [\n  {\n   \"id\": \"5af86d5a-d92d-4e07-9271-aea0f7ef95a6\",\n   \"name\": \"Супы\",\n   \"parentId\": \"5af86d5a-d92d-4e07-9271-aea0f7ef95a6\",\n   \"sortOrder\": 0,\n   \"images\": [\n    {\n     \"url\": \"http://eBgfKTSXVEpsLfpKa.kydaqNHiBVoLsE\",\n     \"updatedAt\": \"1937-01-01T12:00:27.870000+00:20\"\n    },\n    {\n     \"url\": \"http://xYiysgRhriTksEXlAZhy.reqDl5IvM1TnvYY2sW8ddntV\",\n     \"updatedAt\": \"1937-01-01T12:00:27.870000+00:20\"\n    }\n   ]\n  },\n  {\n   \"id\": \"5af86d5a-d92d-4e07-9271-aea0f7ef95a6\",\n   \"name\": \"Супы\",\n   \"parentId\": \"5af86d5a-d92d-4e07-9271-aea0f7ef95a6\",\n   \"sortOrder\": 0,\n   \"images\": [\n    {\n     \"url\": \"https://AdNFjjAiDkcqAoRcz.dussoCgHb.QdNj5sRUI1Gxz14JL1Q,jb.2CJxndFly82Sl.oinIBMXfd1Ov2A1\",\n     \"updatedAt\": \"1937-01-01T12:00:27.870000+00:20\"\n    },\n    {\n     \"url\": \"http://cIxpKuqAOdT.yoaxoiuFPbNzG6\",\n     \"updatedAt\": \"1937-01-01T12:00:27.870000+00:20\"\n    }\n   ]\n  }\n ],\n \"lastChange\": \"1937-01-01T12:00:27.870000+00:20\",\n \"items\": [\n  {\n   \"categoryId\": \"fa494dc1-2578-4adb-a8fa-e270de8c3d28\",\n   \"id\": \"e6709e9a-d3ab-4d1e-aa69-7ce30073cbc9\",\n   \"measureUnit\": \"г\",\n   \"name\": \"Вареники с творогом и вишней\",\n   \"price\": 1000,\n   \"measure\": 666,\n   \"description\": \"Мука, вода, яичный порошок, вишня замороженная, творог 5%\",\n   \"vat\": 20,\n   \"isCatchweight\": false,\n   \"weightQuantum\": 0.1,\n   \"sortOrder\": 0,\n   \"modifierGroups\": [\n    {\n     \"id\": \"9987c815-3069-46ad-9626-74799fb22210\",\n     \"name\": \"Выбор приборов\",\n     \"minSelectedModifiers\": 0,\n     \"maxSelectedModifiers\": 10,\n     \"modifiers\": [\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      },\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      }\n     ],\n     \"sortOrder\": 0\n    },\n    {\n     \"id\": \"9987c815-3069-46ad-9626-74799fb22210\",\n     \"name\": \"Выбор приборов\",\n     \"minSelectedModifiers\": 0,\n     \"maxSelectedModifiers\": 10,\n     \"modifiers\": [\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      },\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      }\n     ],\n     \"sortOrder\": 0\n    }\n   ],\n   \"images\": [\n    {\n     \"hash\": \"dolore\",\n     \"url\": \"http://TqvprSgTZsRqr.bwuX8Dniihnj,yAEoUIvcgWEhSwbyS7WeWkNJqTKiVjfwMHuo47D0tQ6AvMMaLB3vYHTLtzjcW\"\n    },\n    {\n     \"hash\": \"do enim aute consectetur\",\n     \"url\": \"http://SMzQgyDhuTyAJDnnYvL.sjvlEjDaerb9oWyo,+GnG2S\"\n    }\n   ]\n  },\n  {\n   \"categoryId\": \"fa494dc1-2578-4adb-a8fa-e270de8c3d28\",\n   \"id\": \"e6709e9a-d3ab-4d1e-aa69-7ce30073cbc9\",\n   \"measureUnit\": \"г\",\n   \"name\": \"Вареники с творогом и вишней\",\n   \"price\": 1000,\n   \"measure\": 666,\n   \"description\": \"Мука, вода, яичный порошок, вишня замороженная, творог 5%\",\n   \"vat\": 20,\n   \"isCatchweight\": false,\n   \"weightQuantum\": 0.1,\n   \"sortOrder\": 0,\n   \"modifierGroups\": [\n    {\n     \"id\": \"9987c815-3069-46ad-9626-74799fb22210\",\n     \"name\": \"Выбор приборов\",\n     \"minSelectedModifiers\": 0,\n     \"maxSelectedModifiers\": 10,\n     \"modifiers\": [\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      },\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      }\n     ],\n     \"sortOrder\": 0\n    },\n    {\n     \"id\": \"9987c815-3069-46ad-9626-74799fb22210\",\n     \"name\": \"Выбор приборов\",\n     \"minSelectedModifiers\": 0,\n     \"maxSelectedModifiers\": 10,\n     \"modifiers\": [\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      },\n      {\n       \"id\": \"916cfc99-acb4-4a96-9a42-b29159e88189\",\n       \"maxAmount\": 10,\n       \"minAmount\": 0,\n       \"name\": \"Европейские приборы\",\n       \"price\": 150,\n       \"vat\": 20\n      }\n     ],\n     \"sortOrder\": 0\n    }\n   ],\n   \"images\": [\n    {\n     \"hash\": \"dolore adipisicing Ut minim\",\n     \"url\": \"http://qUWVHEwJKaIpFIBnHdR.cnfYMCmZg6jG5x2Rd+PY7PPSdFAcausd+\"\n    },\n    {\n     \"hash\": \"id laboris\",\n     \"url\": \"https://pGnIgiwFBhkeaqUSEiDMBAx.qnfyGFYoLri72-XstJaE-l.0A,tAhztPI5Ok8z-ldre3nLXU2pUscmsoiTRKEzqo9HNEzNaT\"\n    }\n   ]\n  }\n ]\n}"
+						},
+						{
+							"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/composition",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"composition"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						},
+						{
+							"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/composition",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"composition"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+						},
+						{
+							"name": "Не найден ресторан",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/composition",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"composition"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						},
+						{
+							"name": "Внутренние ошибки сервера",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/composition",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"composition"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Выдача позиций меню недоступных для заказа на текущий момент",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/menu/:restaurantId/availability",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"menu",
+								":restaurantId",
+								"availability"
+							],
+							"variable": [
+								{
+									"key": "restaurantId",
+									"value": "{{restaurantId}}",
+									"description": "(Required) Идентификатор ресторана в системе партнёра"
+								}
+							]
+						},
+						"description": "Позиции, содержащие схематические или логические несоответствия (слишком длинная строка, остаток равен -10.00) могут быть проигнорированы. Актуальная версия модели ответа - application/vnd.eats.menu.availability.v2+json"
+					},
+					"response": [
+						{
+							"name": "Возвращает список позиций меню недоступных на текущий момент в данном ресторане",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/availability",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"availability"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/vnd.eats.menu.availability.v2+json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"items\": [\n  {\n   \"itemId\": \"eff0cec0-058c-4d53-b524-1c04ac24fb51\",\n   \"stock\": 0\n  },\n  {\n   \"itemId\": \"eff0cec0-058c-4d53-b524-1c04ac24fb51\",\n   \"stock\": 0\n  }\n ],\n \"modifiers\": [\n  {\n   \"modifierId\": \"eff0cec0-058c-4d53-b524-1c04ac24fb51\",\n   \"stock\": 10\n  },\n  {\n   \"modifierId\": \"eff0cec0-058c-4d53-b524-1c04ac24fb51\",\n   \"stock\": 10\n  }\n ]\n}"
+						},
+						{
+							"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/availability",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"availability"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+						},
+						{
+							"name": "Не найден ресторан",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/availability",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"availability"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						},
+						{
+							"name": "Внутренние ошибки сервера",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/availability",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"availability"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Выдача акционных блюд в связке с меню",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/menu/:restaurantId/promos",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"menu",
+								":restaurantId",
+								"promos"
+							],
+							"variable": [
+								{
+									"key": "restaurantId",
+									"value": "{{restaurantId}}",
+									"description": "(Required) Идентификатор ресторана в системе партнёра"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Возвращает список позиций акционных блюд меню связаных с основным меню",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/promos",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"promos"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"promoItems\": [\n  {\n   \"id\": \"string\",\n   \"promoId\": \"string\"\n  },\n  {\n   \"id\": \"string\",\n   \"promoId\": \"string\"\n  }\n ]\n}"
+						},
+						{
+							"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/promos",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"promos"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+						},
+						{
+							"name": "Не найден ресторан",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/promos",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"promos"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						},
+						{
+							"name": "Внутренние ошибки сервера",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/menu/:restaurantId/promos",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"menu",
+										":restaurantId",
+										"promos"
+									],
+									"variable": [
+										{
+											"key": "restaurantId"
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "order",
+			"item": [
+				{
+					"name": "{order Id}",
+					"item": [
+						{
+							"name": "Выдача актуальной информации о заказе в системе ресторана",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/order/:id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id",
+											"value": "{{orderId}}"
+										}
+									]
+								},
+								"description": "Актуальная версия модели ответа - application/vnd.eats.order.v2+json"
+							},
+							"response": [
+								{
+									"name": "Информация о заказе успешно выдана",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/vnd.eats.order.v2+json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"discriminator\": \"marketplace\",\n \"comment\": \"Дополнительная информация о заказе: ...\",\n \"eatsId\": \"190330-123456\",\n \"items\": [\n  {\n   \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n   \"modifications\": [\n    {\n     \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n     \"price\": 100,\n     \"quantity\": 3,\n     \"name\": \"Европейские приборы\"\n    },\n    {\n     \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n     \"price\": 100,\n     \"quantity\": 3,\n     \"name\": \"Европейские приборы\"\n    }\n   ],\n   \"price\": 100,\n   \"quantity\": 3.5,\n   \"promos\": [\n    {\n     \"type\": \"FIXED\",\n     \"discount\": 100\n    },\n    {\n     \"type\": \"FIXED\",\n     \"discount\": 100\n    }\n   ],\n   \"name\": \"Пицца Пепперони\"\n  },\n  {\n   \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n   \"modifications\": [\n    {\n     \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n     \"price\": 100,\n     \"quantity\": 3,\n     \"name\": \"Европейские приборы\"\n    },\n    {\n     \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n     \"price\": 100,\n     \"quantity\": 3,\n     \"name\": \"Европейские приборы\"\n    }\n   ],\n   \"price\": 100,\n   \"quantity\": 3.5,\n   \"promos\": [\n    {\n     \"type\": \"FIXED\",\n     \"discount\": 100\n    },\n    {\n     \"type\": \"FIXED\",\n     \"discount\": 100\n    }\n   ],\n   \"name\": \"Пицца Пепперони\"\n  }\n ],\n \"promos\": [\n  {\n   \"type\": \"FIXED\",\n   \"discount\": 100\n  },\n  {\n   \"type\": \"FIXED\",\n   \"discount\": 100\n  }\n ],\n \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n \"deliveryInfo\": {\n  \"clientName\": \"Иванов Иван Иванович\",\n  \"deliveryAddress\": {\n   \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n   \"latitude\": \"55.756994\",\n   \"longitude\": \"37.614006\"\n  },\n  \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n  \"phoneNumber\": \"+79031111111 доб. 4432\",\n  \"in48c\": \"minim non\"\n },\n \"paymentInfo\": {\n  \"change\": 500,\n  \"deliveryFee\": 100,\n  \"itemsCost\": 100,\n  \"paymentType\": \"CASH\",\n  \"total\": 200\n },\n \"persons\": 2\n}"
+								},
+								{
+									"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+								},
+								{
+									"name": "Заказ не найден в системе",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Внутренние ошибки сервера",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								}
+							]
+						},
+						{
+							"name": "Отмена заказа в системе ресторана",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"eatsId\": \"190330-123456\",\n    \"comment\": \"Отказ клиента\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order/:orderId",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order",
+										":orderId"
+									],
+									"variable": [
+										{
+											"key": "orderId",
+											"value": "{{orderId}}",
+											"description": "(Required) Идентификатор заказа в системе партнера"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Заказ успешно отменен в ресторане",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"eatsId\": \"190330-123456\",\n    \"comment\": \"Отказ клиента\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "text/plain"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"eatsId\": \"190330-123456\",\n    \"comment\": \"Отказ клиента\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"eatsId\": \"190330-123456\",\n    \"comment\": \"Отказ клиента\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+								},
+								{
+									"name": "Заказ не найден в системе",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"eatsId\": \"190330-123456\",\n    \"comment\": \"Отказ клиента\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Внутренние ошибки сервера",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"eatsId\": \"190330-123456\",\n    \"comment\": \"Отказ клиента\"\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								}
+							]
+						},
+						{
+							"name": "Обновление заказа в системе ресторана",
+							"request": {
+								"auth": {
+									"type": "oauth2"
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order/:orderId",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order",
+										":orderId"
+									],
+									"variable": [
+										{
+											"key": "orderId",
+											"value": "{{orderId}}",
+											"description": "(Required) Идентификатор заказа в системе партнера"
+										}
+									]
+								},
+								"description": "Передаётся объект заказа целиком. Актуальная версия модели запроса - application/vnd.eats.order.v2+json"
+							},
+							"response": [
+								{
+									"name": "Обновление заказа успешно обработано внутренней системой ресторана",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"result\": \"OK\"\n}"
+								},
+								{
+									"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+								},
+								{
+									"name": "Заказ не найден в системе",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Заказ не может быть обновлен",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Внутренние ошибки сервера",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+										},
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								}
+							]
+						},
+						{
+							"name": "Выдача актуального статуса заказа в системе ресторана",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Timeout",
+										"value": "2",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/order/:orderId/status",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order",
+										":orderId",
+										"status"
+									],
+									"query": [
+										{
+											"key": "",
+											"value": "",
+											"disabled": true
+										}
+									],
+									"variable": [
+										{
+											"key": "orderId",
+											"value": "{{orderId}}"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Статус заказа успешно выдан",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId/status",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId",
+												"status"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"status\": \"READY\",\n \"comment\": \"sit non ad\",\n \"updatedAt\": \"1937-01-01T12:00:27.870000+00:20\"\n}"
+								},
+								{
+									"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId/status",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId",
+												"status"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId/status",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId",
+												"status"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+								},
+								{
+									"name": "Заказ не найден в системе",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId/status",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId",
+												"status"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								},
+								{
+									"name": "Внутренние ошибки сервера",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"description": "Added as a part of security scheme: oauth2",
+												"key": "Authorization",
+												"value": "<token>"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/order/:orderId/status",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"order",
+												":orderId",
+												"status"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Cache-Control",
+											"value": "private, max-age=0, no-cache, no-store",
+											"description": ""
+										},
+										{
+											"key": "Expires",
+											"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+											"description": ""
+										},
+										{
+											"key": "ETag",
+											"value": "random string for every response",
+											"description": ""
+										},
+										{
+											"key": "Vary",
+											"value": "User-Agent",
+											"description": ""
+										},
+										{
+											"key": "Pragma",
+											"value": "no-cache",
+											"description": ""
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Создание заказа в системе ресторана",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"orderId\", pm.response.json().orderId);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.eats.order.v2+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"eatsId\": \"221222-2335\",\n    \"restaurantId\": \"59818\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Yandex.Eda\",\n        \"phoneNumber\": \"88006001210\",\n        \"deliveryDate\": \"2022-12-22T23:35:45.000000+03:00\",\n        \"deliveryAddress\": {\n            \"full\": \"Саратов, Вольская улица, 61, под. 1, этаж 9, кв./офис 912\",\n            \"latitude\": \"51.529259\",\n            \"longitude\": \"46.022381\"\n        }\n    },\n    \"paymentInfo\": {\n        \"paymentType\": \"CARD\",\n    \"itemsCost\": 350,\n    \"deliveryFee\": 0,\n    \"change\": 0,\n    \"total\": 350\n    },\n    \"items\": [\n        {\n            \"id\": \"00004\",\n            \"name\": \"Салат Греческий\",\n            \"quantity\": 1,\n            \"price\": 350,\n            \"modifications\": [],\n            \"promos\": []\n        }\n    ],\n    \"persons\": 0,\n    \"comment\": \"ULTIMA. IDDQD. Тестовый заказ. НЕ ГОТОВИТЬ!!!\",\n    \"promos\": []\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/order",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order"
+							]
+						},
+						"description": "MarketplaceOrder - схема заказа при доставке силами партнера. YandexOrder - схема заказа при доставке силами Яндекс.Еда. Актуальная версия модели запроса - application/vnd.eats.order.v2+json"
+					},
+					"response": [
+						{
+							"name": "Заказ успешно обработан внутренней системой ресторана",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"result\": \"OK\",\n \"orderId\": \"03d3b69b-331c-4f84-b2c4-888b30320e63\"\n}"
+						},
+						{
+							"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						},
+						{
+							"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+						},
+						{
+							"name": "Внутренние ошибки сервера",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Создание заказа - Самовывоз",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"orderId\", pm.response.json().orderId);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.eats.order.v2+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"discriminator\": \"yandex\",\n    \"eatsId\": \"221222-6338\",\n    \"restaurantId\": \"59818\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Yandex.Eda\",\n        \"phoneNumber\": \"88006001210\",\n        \"courierArrivementDate\": \"2023-05-01T23:30:00.000000+03:00\"\n    },\n    \"paymentInfo\": {\n        \"paymentType\": \"CARD\",\n    \"itemsCost\": 350,\n    \"deliveryFee\": 0,\n    \"change\": 0,\n    \"total\": 350\n    },\n    \"items\": [\n        {\n            \"id\": \"00144\",\n            \"name\": \"Салат Греческий\",\n            \"quantity\": 1,\n            \"price\": 350,\n            \"modifications\": [],\n            \"promos\": []\n        }\n    ],\n    \"persons\": 0,\n    \"comment\": \"ULTIMA. IDDQD. Тестовый заказ. НЕ ГОТОВИТЬ!!!\",\n    \"promos\": []\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/order",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order"
+							]
+						},
+						"description": "MarketplaceOrder - схема заказа при доставке силами партнера. YandexOrder - схема заказа при доставке силами Яндекс.Еда. Актуальная версия модели запроса - application/vnd.eats.order.v2+json"
+					},
+					"response": [
+						{
+							"name": "Заказ успешно обработан внутренней системой ресторана",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"result\": \"OK\",\n \"orderId\": \"03d3b69b-331c-4f84-b2c4-888b30320e63\"\n}"
+						},
+						{
+							"name": "Bad request. Ошибка в параметрах, в ответе список ошибок валидации",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						},
+						{
+							"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+						},
+						{
+							"name": "Внутренние ошибки сервера",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"description": "Added as a part of security scheme: oauth2",
+										"key": "Authorization",
+										"value": "<token>"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"comment\": \"Дополнительная информация о заказе: ...\",\n    \"eatsId\": \"190330-123456\",\n    \"items\": [\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        },\n        {\n            \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n            \"modifications\": [\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                },\n                {\n                    \"id\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n                    \"price\": 100,\n                    \"quantity\": 3,\n                    \"name\": \"Европейские приборы\"\n                }\n            ],\n            \"price\": 100,\n            \"quantity\": 3,\n            \"promos\": [\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                },\n                {\n                    \"type\": \"FIXED\",\n                    \"discount\": 100\n                }\n            ],\n            \"name\": \"Пицца Пепперони\"\n        }\n    ],\n    \"promos\": [\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        },\n        {\n            \"type\": \"FIXED\",\n            \"discount\": 100\n        }\n    ],\n    \"restaurantId\": \"937c57f6-4508-4858-be7f-20691a16fbb0\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Иванов Иван Иванович\",\n        \"deliveryAddress\": {\n            \"full\": \"Москва, улица Тверская, дом 1 строение 4, подъезд 2. 4-й этаж, код домофона: 123 К 4567\",\n            \"latitude\": \"55.756994\",\n            \"longitude\": \"37.614006\"\n        },\n        \"deliveryDate\": \"1937-01-01T12:00:27.870000+00:20\",\n        \"phoneNumber\": \"+79031111111 доб. 4432\",\n        \"dolore7\": false\n    },\n    \"paymentInfo\": {\n        \"change\": 500,\n        \"deliveryFee\": 100,\n        \"itemsCost\": 100,\n        \"paymentType\": \"CARD\",\n        \"total\": 200\n    },\n    \"persons\": 2\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/order",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"order"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Cache-Control",
+									"value": "private, max-age=0, no-cache, no-store",
+									"description": ""
+								},
+								{
+									"key": "Expires",
+									"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+									"description": ""
+								},
+								{
+									"key": "ETag",
+									"value": "random string for every response",
+									"description": ""
+								},
+								{
+									"key": "Vary",
+									"value": "User-Agent",
+									"description": ""
+								},
+								{
+									"key": "Pragma",
+									"value": "no-cache",
+									"description": ""
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+						}
+					]
+				},
+				{
+					"name": "Создание заказа в системе ресторана Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.environment.set(\"orderId\", pm.response.json().orderId);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.eats.order.v2+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"discriminator\": \"marketplace\",\n    \"eatsId\": \"221222-2335\",\n    \"restaurantId\": \"59818\",\n    \"deliveryInfo\": {\n        \"clientName\": \"Yandex.Eda\",\n        \"phoneNumber\": \"88006001210\",\n        \"deliveryDate\": \"2022-12-22T23:35:45.000000+03:00\",\n        \"deliveryAddress\": {\n            \"full\": \"Саратов, Вольская улица, 61, под. 1, этаж 9, кв./офис 912\",\n            \"latitude\": \"51.529259\",\n            \"longitude\": \"46.022381\"\n        }\n    },\n    \"paymentInfo\": {\n        \"paymentType\": \"CARD\",\n    \"itemsCost\": 350,\n    \"deliveryFee\": 0,\n    \"change\": 0,\n    \"total\": 350\n    },\n    \"items\": [\n        {\n            \"id\": \"00004\",\n            \"name\": \"Салат Греческий\",\n            \"quantity\": 1,\n            \"price\": 350,\n            \"modifications\": [],\n            \"promos\": []\n        }\n    ],\n    \"persons\": 0,\n    \"comment\": \"ULTIMA. IDDQD. Тестовый заказ. НЕ ГОТОВИТЬ!!!\",\n    \"promos\": []\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/order",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order"
+							]
+						},
+						"description": "MarketplaceOrder - схема заказа при доставке силами партнера. YandexOrder - схема заказа при доставке силами Яндекс.Еда. Актуальная версия модели запроса - application/vnd.eats.order.v2+json"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Аутентификация в системе",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"token\", pm.response.json().access_token);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "client_id",
+							"value": "{{client_id}}",
+							"description": "(Required) "
+						},
+						{
+							"key": "client_secret",
+							"value": "{{client_secret}}",
+							"description": "(Required) "
+						},
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"description": "(Required) "
+						},
+						{
+							"key": "scope",
+							"value": "read",
+							"description": "(Required) "
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/security/oauth/token",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"security",
+						"oauth",
+						"token"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Успешная аутентификация",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"description": "Added as a part of security scheme: oauth2",
+								"key": "Authorization",
+								"value": "<token>"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "123123123",
+									"description": "(Required) "
+								},
+								{
+									"key": "client_secret",
+									"value": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+									"description": "(Required) "
+								},
+								{
+									"key": "grant_type",
+									"value": "client_credentials",
+									"description": "(Required) "
+								},
+								{
+									"key": "scope",
+									"value": "read write",
+									"description": "(Required) "
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/security/oauth/token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"security",
+								"oauth",
+								"token"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "text",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/x-www-form-urlencoded"
+						}
+					],
+					"cookie": [],
+					"body": ""
+				},
+				{
+					"name": "Ошибка в параметрах, в ответе список ошибок валидации",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"description": "Added as a part of security scheme: oauth2",
+								"key": "Authorization",
+								"value": "<token>"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "123123123",
+									"description": "(Required) "
+								},
+								{
+									"key": "client_secret",
+									"value": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+									"description": "(Required) "
+								},
+								{
+									"key": "grant_type",
+									"value": "client_credentials",
+									"description": "(Required) "
+								},
+								{
+									"key": "scope",
+									"value": "read write",
+									"description": "(Required) "
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/security/oauth/token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"security",
+								"oauth",
+								"token"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "private, max-age=0, no-cache, no-store",
+							"description": ""
+						},
+						{
+							"key": "Expires",
+							"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+							"description": ""
+						},
+						{
+							"key": "ETag",
+							"value": "random string for every response",
+							"description": ""
+						},
+						{
+							"key": "Vary",
+							"value": "User-Agent",
+							"description": ""
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache",
+							"description": ""
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+				},
+				{
+					"name": "Внутренние ошибки сервера",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"description": "Added as a part of security scheme: oauth2",
+								"key": "Authorization",
+								"value": "<token>"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "client_id",
+									"value": "123123123",
+									"description": "(Required) "
+								},
+								{
+									"key": "client_secret",
+									"value": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+									"description": "(Required) "
+								},
+								{
+									"key": "grant_type",
+									"value": "client_credentials",
+									"description": "(Required) "
+								},
+								{
+									"key": "scope",
+									"value": "read write",
+									"description": "(Required) "
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/security/oauth/token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"security",
+								"oauth",
+								"token"
+							]
+						}
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "private, max-age=0, no-cache, no-store",
+							"description": ""
+						},
+						{
+							"key": "Expires",
+							"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+							"description": ""
+						},
+						{
+							"key": "ETag",
+							"value": "random string for every response",
+							"description": ""
+						},
+						{
+							"key": "Vary",
+							"value": "User-Agent",
+							"description": ""
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache",
+							"description": ""
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+				}
+			]
+		},
+		{
+			"name": "Выдача списка заведений партнера",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"restaurantId\", pm.response.json().places[0].id);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/restaurants",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"restaurants"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Возвращает список ресторанов партнера",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"description": "Added as a part of security scheme: oauth2",
+								"key": "Authorization",
+								"value": "<token>"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/restaurants",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"restaurants"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "private, max-age=0, no-cache, no-store",
+							"description": ""
+						},
+						{
+							"key": "Expires",
+							"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+							"description": ""
+						},
+						{
+							"key": "ETag",
+							"value": "random string for every response",
+							"description": ""
+						},
+						{
+							"key": "Vary",
+							"value": "User-Agent",
+							"description": ""
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache",
+							"description": ""
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n \"places\": [\n  {\n   \"id\": \"ullamco\",\n   \"title\": \"Test place\",\n   \"address\": \"City, str. Street, 1\"\n  },\n  {\n   \"id\": \"irure amet incididunt qu\",\n   \"title\": \"Test place\",\n   \"address\": \"City, str. Street, 1\"\n  }\n ]\n}"
+				},
+				{
+					"name": "Не пройдена авторизация - истек токен, либо не был передан в запросе",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"description": "Added as a part of security scheme: oauth2",
+								"key": "Authorization",
+								"value": "<token>"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/restaurants",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"restaurants"
+							]
+						}
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "private, max-age=0, no-cache, no-store",
+							"description": ""
+						},
+						{
+							"key": "Expires",
+							"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+							"description": ""
+						},
+						{
+							"key": "ETag",
+							"value": "random string for every response",
+							"description": ""
+						},
+						{
+							"key": "Vary",
+							"value": "User-Agent",
+							"description": ""
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache",
+							"description": ""
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n \"reason\": \"Access token has been expired. You should request a new one\"\n}"
+				},
+				{
+					"name": "Внутренние ошибки сервера",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"description": "Added as a part of security scheme: oauth2",
+								"key": "Authorization",
+								"value": "<token>"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/restaurants",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"restaurants"
+							]
+						}
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Cache-Control",
+							"value": "private, max-age=0, no-cache, no-store",
+							"description": ""
+						},
+						{
+							"key": "Expires",
+							"value": "Wed, 21 Oct 2015 07:28:00 GMT",
+							"description": ""
+						},
+						{
+							"key": "ETag",
+							"value": "random string for every response",
+							"description": ""
+						},
+						{
+							"key": "Vary",
+							"value": "User-Agent",
+							"description": ""
+						},
+						{
+							"key": "Pragma",
+							"value": "no-cache",
+							"description": ""
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "[\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n },\n {\n  \"code\": 100,\n  \"description\": \"Description of error\"\n }\n]"
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "oauth2"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": ""
+		}
+	]
+}
