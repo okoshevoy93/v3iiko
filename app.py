@@ -31,11 +31,93 @@ WEBHOOKS_FILE = BASE_DIR / "webhooks.json"
 
 IIKO_V1 = "https://api-ru.iiko.services/api/1"
 IIKO_V2 = "https://api-ru.iiko.services/api/2"
-YANDEX_BASE = "https://eda-api.yandex.ru"
+# Основные хосты Яндекс.Еды: оба используются как запасные в случае DNS/сетевых проблем.
+YANDEX_BASES = [
+    "https://eda-api.yandex.ru",
+    "https://api.eda.yandex.ru",
+]
+YANDEX_BASE = YANDEX_BASES[0]
 
 TOKENS = {}
 YANDEX_TOKENS = {}  # {f"{client_id}:{secret}": {"token": ..., "time": ...}}
 YANDEX_COLLECTION_FILE = BASE_DIR / "API_для_интеграции_сервиса_Яндекс_Еда_для_статьи_БЗ_postman_collection.json"
+YANDEX_COLLECTION_DEFAULT = [
+    {
+        "name": "Получить токен",
+        "method": "POST",
+        "path_template": "/oauth2/token",
+        "body_raw": '{"grant_type":"client_credentials","client_id":"{{client_id}}","client_secret":"{{client_secret}}"}',
+        "description": "Официальный запрос на выдачу OAuth2 token для интеграции Яндекс.Еды.",
+    },
+    {
+        "name": "Список ресторанов",
+        "method": "GET",
+        "path_template": "/restaurants",
+        "description": "Получить все доступные рестораны/заведения партнера.",
+    },
+    {
+        "name": "Меню ресторана",
+        "method": "GET",
+        "path_template": "/menu/{{restaurant_id}}",
+        "description": "Получить актуальное меню выбранного ресторана.",
+    },
+    {
+        "name": "Стоп-лист",
+        "method": "GET",
+        "path_template": "/menu/{{restaurant_id}}/availability",
+        "description": "Получить позиции, недоступные к заказу (стоп-лист).",
+    },
+    {
+        "name": "Промо",
+        "method": "GET",
+        "path_template": "/partner/promos",
+        "description": "Промоакции ресторана (передавайте place_id как restaurant_id).",
+    },
+    {
+        "name": "Зоны доставки",
+        "method": "GET",
+        "path_template": "/partner/delivery/zones",
+        "description": "Зоны доставки ресторана (place_id=restaurant_id).",
+    },
+    {
+        "name": "График работы",
+        "method": "GET",
+        "path_template": "/partner/schedule",
+        "description": "График работы точки (place_id=restaurant_id).",
+    },
+    {
+        "name": "Заказы",
+        "method": "GET",
+        "path_template": "/partner/orders",
+        "description": "Получить список заказов, можно передать статус.",
+    },
+    {
+        "name": "История заказов",
+        "method": "POST",
+        "path_template": "/partner/orders/history",
+        "body_raw": '{"from":"{{from}}","to":"{{to}}","limit":{{limit}}}',
+        "description": "История заказов за период.",
+    },
+    {
+        "name": "Детали заказов",
+        "method": "POST",
+        "path_template": "/partner/integration/v1/orders/details",
+        "body_raw": '{"orders": ["{{order_id}}"]}',
+        "description": "Детализация списка заказов по ID.",
+    },
+    {
+        "name": "Список городов",
+        "method": "GET",
+        "path_template": "/v2/cities",
+        "description": "Города, где доступны рестораны.",
+    },
+    {
+        "name": "Точки города",
+        "method": "GET",
+        "path_template": "/v2/places",
+        "description": "Список точек (place_id) по выбранному городу.",
+    },
+]
 YANDEX_COLLECTION = {}
 
 for d in (IMAGE_CACHE_DIR, EXPORTS_DIR):
@@ -98,50 +180,66 @@ load_webhooks()
 
 
 def load_yandex_collection():
-    """Загрузить Postman-коллекцию Yandex Еда, если файл присутствует рядом со скриптом."""
+    """Загрузить Postman-коллекцию Yandex Еда, встроенную или из файла."""
     global YANDEX_COLLECTION
     try:
-        if not YANDEX_COLLECTION_FILE.exists():
-            YANDEX_COLLECTION = {}
-            return
-        with open(YANDEX_COLLECTION_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        items = data.get("item", [])
-        parsed = {}
+        parsed: dict[str, dict] = {}
 
-        def normalize_url(raw_url: str) -> str:
-            """Очистить url в коллекции до относительного пути без {{baseUrl}}."""
-            cleaned = raw_url or ""
-            cleaned = cleaned.replace("{{baseUrl}}", "").strip()
-            # Если передан абсолютный URL, оставить только путь
-            try:
-                parsed_url = urllib.parse.urlparse(cleaned)
-                if parsed_url.scheme and parsed_url.netloc:
-                    cleaned = parsed_url.path or "/"
-            except Exception:
-                pass
-            if not cleaned.startswith("/"):
-                cleaned = "/" + cleaned
-            return cleaned
+        def add_items(items):
+            for item in items:
+                name = item.get("name", "").strip()
+                if not name:
+                    continue
+                parsed[name.lower()] = {
+                    "name": name,
+                    "method": (item.get("method") or "GET").upper(),
+                    "path_template": item.get("path_template") or "/",
+                    "body_raw": item.get("body_raw"),
+                    "description": item.get("description", ""),
+                }
 
-        for item in items:
-            name = item.get("name", "").strip()
-            request_data = item.get("request", {})
-            method = (request_data.get("method") or "GET").upper()
-            url_info = request_data.get("url", {})
-            raw_url = url_info if isinstance(url_info, str) else url_info.get("raw") or ""
-            path_template = normalize_url(raw_url)
-            body_raw = None
-            if isinstance(request_data.get("body"), dict):
-                if request_data["body"].get("mode") == "raw":
-                    body_raw = request_data["body"].get("raw") or None
-            parsed[name.lower()] = {
-                "name": name,
-                "method": method,
-                "path_template": path_template,
-                "body_raw": body_raw,
-                "description": request_data.get("description", "").strip(),
-            }
+        # Добавляем встроенный список, чтобы коллекция работала даже без файла
+        add_items(YANDEX_COLLECTION_DEFAULT)
+
+        # Если файл присутствует, дополняем/перекрываем его значениями
+        if YANDEX_COLLECTION_FILE.exists():
+            with open(YANDEX_COLLECTION_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            items = data.get("item", [])
+
+            def normalize_url(raw_url: str) -> str:
+                """Очистить url в коллекции до относительного пути без {{baseUrl}}."""
+                cleaned = raw_url or ""
+                cleaned = cleaned.replace("{{baseUrl}}", "").strip()
+                # Если передан абсолютный URL, оставить только путь
+                try:
+                    parsed_url = urllib.parse.urlparse(cleaned)
+                    if parsed_url.scheme and parsed_url.netloc:
+                        cleaned = parsed_url.path or "/"
+                except Exception:
+                    pass
+                if not cleaned.startswith("/"):
+                    cleaned = "/" + cleaned
+                return cleaned
+
+            for item in items:
+                name = item.get("name", "").strip()
+                request_data = item.get("request", {})
+                method = (request_data.get("method") or "GET").upper()
+                url_info = request_data.get("url", {})
+                raw_url = url_info if isinstance(url_info, str) else url_info.get("raw") or ""
+                path_template = normalize_url(raw_url)
+                body_raw = None
+                if isinstance(request_data.get("body"), dict):
+                    if request_data["body"].get("mode") == "raw":
+                        body_raw = request_data["body"].get("raw") or None
+                parsed[name.lower()] = {
+                    "name": name,
+                    "method": method,
+                    "path_template": path_template,
+                    "body_raw": body_raw,
+                    "description": request_data.get("description", "").strip(),
+                }
         YANDEX_COLLECTION = parsed
     except Exception as e:
         logger.error(f"Не удалось загрузить Postman-коллекцию Yandex: {e}")
@@ -219,48 +317,49 @@ def iiko_request(api_key: str, endpoint: str, payload: dict | None = None, versi
 
 # ==================== YANDEX EDA ЛОГИКА ====================
 def get_yandex_token(client_id: str, client_secret: str) -> tuple[str | None, str | None]:
-    """Получить и кешировать токен Яндекс.Еды через /oauth2/token."""
+    """Получить и кешировать токен Яндекс.Еды через /oauth2/token с fallback по хостам."""
     key = f"{client_id}:{client_secret}"
     cached = YANDEX_TOKENS.get(key)
     if cached and time.time() - cached["time"] < 3500:
         return cached["token"], None
 
-    oauth_url = f"{YANDEX_BASE}/oauth2/token"
-    try:
-        # Основной путь: form-url-encoded client_credentials
-        resp_oauth = requests.post(
-            oauth_url,
-            data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
-            timeout=(30, 60),
-        )
-        if resp_oauth.status_code == 200:
-            token = resp_oauth.json().get("access_token") or resp_oauth.json().get("token")
-            if token:
-                YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": YANDEX_BASE}
-                return token, None
+    errors = []
+    for base in YANDEX_BASES:
+        oauth_url = f"{base}/oauth2/token"
+        try:
+            resp_oauth = requests.post(
+                oauth_url,
+                data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
+                timeout=(30, 60),
+            )
+            if resp_oauth.status_code == 200:
+                token = resp_oauth.json().get("access_token") or resp_oauth.json().get("token")
+                if token:
+                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                    return token, None
 
-        # Дополнительная попытка с HTTP Basic (некоторые стенды поддерживают basic)
-        resp_basic = requests.post(
-            oauth_url,
-            data={"grant_type": "client_credentials"},
-            auth=HTTPBasicAuth(client_id, client_secret),
-            timeout=(30, 60),
-        )
-        if resp_basic.status_code == 200:
-            token = resp_basic.json().get("access_token") or resp_basic.json().get("token")
-            if token:
-                YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": YANDEX_BASE}
-                return token, None
+            resp_basic = requests.post(
+                oauth_url,
+                data={"grant_type": "client_credentials"},
+                auth=HTTPBasicAuth(client_id, client_secret),
+                timeout=(30, 60),
+            )
+            if resp_basic.status_code == 200:
+                token = resp_basic.json().get("access_token") or resp_basic.json().get("token")
+                if token:
+                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                    return token, None
 
-        if resp_oauth.status_code in (401, 403):
-            return None, f"Ошибка авторизации {resp_oauth.status_code}: {resp_oauth.text}"
+            if resp_oauth.status_code in (401, 403):
+                return None, f"Ошибка авторизации {resp_oauth.status_code}: {resp_oauth.text}"
 
-        last_error = f"oauth={resp_oauth.status_code}: {resp_oauth.text}" if resp_oauth else "unknown"
-        logger.error(f"Yandex token failed: {last_error}")
-        return None, f"Не удалось получить токен Yandex: {last_error}"
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Yandex token error: {e}")
-        return None, f"Ошибка подключения к Yandex ({YANDEX_BASE}): {e}"
+            errors.append(f"{base}: oauth={resp_oauth.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Yandex token error for {base}: {e}")
+            errors.append(f"{base}: {e}")
+
+    err_text = "; ".join(errors) or "unknown"
+    return None, f"Не удалось получить токен Yandex ({err_text})"
 
 
 
