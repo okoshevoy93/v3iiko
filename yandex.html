@@ -107,15 +107,15 @@
 
     <div class="card panel-bg p-4 space-y-4">
       <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
-          <div class="flex gap-2">
-            <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
-              <option value="">Ручной ввод</option>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
+            <div class="flex gap-2">
+              <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+              <option value="">— Не выбрано —</option>
             </select>
-            <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition">✕</button>
-          </div>
-          <p class="text-xs text-slate-500">Выберите сохранённый вебхук, чтобы подставить URL и ключи.</p>
+              <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition">✕</button>
+            </div>
+            <p class="text-xs text-slate-500">Выберите сохранённый вебхук, чтобы подставить URL и ключи.</p>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>

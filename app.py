@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_file, abort, Response, render_template, redirect
 from flask_cors import CORS
 import requests
+from requests.auth import HTTPBasicAuth
 import logging
 from datetime import datetime
 import openpyxl
@@ -73,9 +74,11 @@ WEBHOOKS_DB: dict[str, dict] = {}
 def load_webhooks():
     global WEBHOOKS_DB
     try:
-        if WEBHOOKS_FILE.exists():
-            with open(WEBHOOKS_FILE, "r", encoding="utf-8") as f:
-                WEBHOOKS_DB = json.load(f)
+        if not WEBHOOKS_FILE.exists():
+            WEBHOOKS_FILE.write_text("{}", encoding="utf-8")
+        with open(WEBHOOKS_FILE, "r", encoding="utf-8") as f:
+            content = f.read().strip() or "{}"
+            WEBHOOKS_DB = json.loads(content)
     except Exception as e:
         logger.error(f"Ошибка загрузки webhooks.json: {e}")
 
@@ -164,18 +167,23 @@ def get_yandex_token(client_id: str, client_secret: str) -> str | None:
         return cached["token"]
     url = f"{YANDEX_BASE}/security/oauth/token"
     data = {
-        "client_id": client_id,
-        "client_secret": client_secret,
         "grant_type": "client_credentials",
-        "scope": "read"
     }
     try:
-        resp = requests.post(url, data=data, timeout=15)
+        resp = requests.post(
+            url,
+            data=data,
+            auth=HTTPBasicAuth(client_id, client_secret),
+            timeout=15,
+        )
         if resp.status_code == 200:
             token = resp.json().get("access_token")
             if token:
                 YANDEX_TOKENS[key] = {"token": token, "time": time.time()}
                 return token
+            logger.error(f"Yandex token response without token: {resp.text}")
+        else:
+            logger.error(f"Yandex token failed {resp.status_code}: {resp.text}")
     except Exception as e:
         logger.error(f"Yandex token error: {e}")
     return None

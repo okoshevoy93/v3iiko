@@ -217,7 +217,7 @@ function collectMenus(payload) {
 
 function renderIntegrations(list) {
   integrations = list || [];
-  integrationSelect.innerHTML = '<option value="">Ручной ввод</option>';
+  integrationSelect.innerHTML = '<option value="">— Не выбрано —</option>';
   integrations.forEach(item => {
     const option = document.createElement('option');
     option.value = item.name;
