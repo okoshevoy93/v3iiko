@@ -14,6 +14,7 @@ import shutil
 from functools import wraps
 import bcrypt
 import json
+import urllib.parse
 
 app = Flask(__name__)
 CORS(app)
@@ -28,6 +29,8 @@ YANDEX_BASE = "https://eda-api.yandex.ru"
 
 TOKENS = {}
 YANDEX_TOKENS = {}  # {f"{client_id}:{secret}": {"token": ..., "time": ...}}
+YANDEX_COLLECTION_FILE = BASE_DIR / "API_для_интеграции_сервиса_Яндекс_Еда_для_статьи_БЗ_postman_collection.json"
+YANDEX_COLLECTION = {}
 
 BASE_DIR = Path(__file__).resolve().parent
 IMAGE_CACHE_DIR = BASE_DIR / "image_cache"
@@ -92,6 +95,60 @@ def save_webhooks():
 
 
 load_webhooks()
+
+
+def load_yandex_collection():
+    """Загрузить Postman-коллекцию Yandex Еда, если файл присутствует рядом со скриптом."""
+    global YANDEX_COLLECTION
+    try:
+        if not YANDEX_COLLECTION_FILE.exists():
+            YANDEX_COLLECTION = {}
+            return
+        with open(YANDEX_COLLECTION_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        items = data.get("item", [])
+        parsed = {}
+
+        def normalize_url(raw_url: str) -> str:
+            """Очистить url в коллекции до относительного пути без {{baseUrl}}."""
+            cleaned = raw_url or ""
+            cleaned = cleaned.replace("{{baseUrl}}", "").strip()
+            # Если передан абсолютный URL, оставить только путь
+            try:
+                parsed_url = urllib.parse.urlparse(cleaned)
+                if parsed_url.scheme and parsed_url.netloc:
+                    cleaned = parsed_url.path or "/"
+            except Exception:
+                pass
+            if not cleaned.startswith("/"):
+                cleaned = "/" + cleaned
+            return cleaned
+
+        for item in items:
+            name = item.get("name", "").strip()
+            request_data = item.get("request", {})
+            method = (request_data.get("method") or "GET").upper()
+            url_info = request_data.get("url", {})
+            raw_url = url_info if isinstance(url_info, str) else url_info.get("raw") or ""
+            path_template = normalize_url(raw_url)
+            body_raw = None
+            if isinstance(request_data.get("body"), dict):
+                if request_data["body"].get("mode") == "raw":
+                    body_raw = request_data["body"].get("raw") or None
+            parsed[name.lower()] = {
+                "name": name,
+                "method": method,
+                "path_template": path_template,
+                "body_raw": body_raw,
+                "description": request_data.get("description", "").strip(),
+            }
+        YANDEX_COLLECTION = parsed
+    except Exception as e:
+        logger.error(f"Не удалось загрузить Postman-коллекцию Yandex: {e}")
+        YANDEX_COLLECTION = {}
+
+
+load_yandex_collection()
 
 
 def check_auth(username, password):
@@ -291,6 +348,14 @@ def yandex_request(client_id: str, client_secret: str, path: str, *, method: str
     except requests.exceptions.RequestException as e:
         return None, (502, f"Ошибка запроса: {e}")
 
+
+def render_template_string(template: str, variables: dict[str, str]) -> str:
+    """Простая подстановка {{var}} в строке."""
+    result = template
+    for key, val in variables.items():
+        result = result.replace(f"{{{{{key}}}}}", val)
+    return result
+
 # ==================== YANDEX РОУТЫ ====================
 @app.route("/api/yandex/token", methods=["POST"])
 @require_auth
@@ -302,6 +367,84 @@ def yandex_token():
         return jsonify({"error": err or "invalid"}), status
     cache = YANDEX_TOKENS.get(f"{data.get('client_id')}:{data.get('client_secret')}") or {}
     return jsonify({"token": token, "base": cache.get("base")})
+
+
+@app.route("/api/yandex/collection", methods=["GET"])
+@require_auth
+def yandex_collection():
+    load_yandex_collection()
+    items = [
+        {
+            "name": item["name"],
+            "method": item["method"],
+            "path": item["path_template"],
+            "description": item.get("description", ""),
+        }
+        for item in YANDEX_COLLECTION.values()
+    ]
+    items.sort(key=lambda x: x["name"].lower())
+    return jsonify({"items": items})
+
+
+def build_collection_payload(op: dict, variables: dict) -> dict | None:
+    """Сформировать тело запроса, если оно определено в Postman-коллекции."""
+    body_raw = op.get("body_raw")
+    if not body_raw:
+        return None
+    try:
+        rendered = render_template_string(body_raw, variables)
+        return json.loads(rendered)
+    except Exception:
+        return None
+
+
+@app.route("/api/yandex/collection/execute", methods=["POST"])
+@require_auth
+def yandex_collection_execute():
+    load_yandex_collection()
+    data = request.get_json() or {}
+    op_key = (data.get("operation") or data.get("name") or "").lower().strip()
+    op = YANDEX_COLLECTION.get(op_key)
+    if not op:
+        return jsonify({"error": "operation not found"}), 404
+
+    client_id = data.get("client_id") or ""
+    client_secret = data.get("client_secret") or ""
+    vars_payload = {k: str(v) for k, v in (data.get("vars") or {}).items()}
+    vars_payload.update({"client_id": client_id, "client_secret": client_secret})
+
+    path = render_template_string(op.get("path_template", ""), vars_payload)
+    if not path.startswith("/"):
+        path = "/" + path
+
+    body_override = data.get("payload") if isinstance(data.get("payload"), dict) else None
+    payload = body_override or build_collection_payload(op, vars_payload)
+    params = data.get("params") if isinstance(data.get("params"), dict) else None
+
+    # Особый случай: токен из коллекции
+    if path.startswith("/oauth2/token"):
+        resp = requests.post(
+            f"{YANDEX_BASE}{path}",
+            data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
+            timeout=(30, 60),
+        )
+        if resp.ok:
+            return jsonify(resp.json())
+        return jsonify({"error": resp.text}), resp.status_code
+
+    result, err = yandex_request(
+        client_id,
+        client_secret,
+        path,
+        method=op.get("method", "GET"),
+        params=params,
+        payload=payload,
+        timeout=(20, 60),
+    )
+    if err:
+        status, msg = err
+        return jsonify({"error": msg}), status
+    return jsonify(result)
 
 
 @app.route("/api/yandex/cities", methods=["GET"])
