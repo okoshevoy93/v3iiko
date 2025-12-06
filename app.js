@@ -2951,6 +2951,10 @@ if (menuTbodyEl) {
     if (toggleHandler(e)) return;
   }, true);
 
+  menuTbodyEl.addEventListener('mousedown', (e) => {
+    if (toggleHandler(e)) return;
+  }, true);
+
   menuTbodyEl.addEventListener('click', (e) => {
     toggleHandler(e);
   });

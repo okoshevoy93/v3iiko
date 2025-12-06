@@ -106,7 +106,7 @@
     </div>
 
     <div class="card panel-bg p-4 space-y-4">
-      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="flex flex-col gap-1">
             <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
             <div class="flex gap-2">
@@ -129,6 +129,16 @@
             <button id="saveIntegrationBtn" class="px-4 h-10 text-sm font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-white transition">Сохранить</button>
           </div>
           <p class="text-xs text-slate-500">Запомнить текущий вебхук и ключи под своим именем.</p>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="baseInput">Хост API Yandex</label>
+          <input id="baseInput" list="baseList" type="text" placeholder="https://api.eda.yandex.ru" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+          <datalist id="baseList">
+            <option value="https://api.eda.yandex.ru"></option>
+            <option value="https://api.eda.yandex.net"></option>
+            <option value="https://api.partner.yandex.ru"></option>
+          </datalist>
+          <p class="text-xs text-slate-500">Если основной хост недоступен, укажите запасной.</p>
         </div>
       </div>
       <div class="flex flex-wrap gap-3 items-center">

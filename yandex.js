@@ -10,6 +10,7 @@ const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
 const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
 const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
+const baseInput = document.getElementById('baseInput');
 const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
@@ -73,6 +74,11 @@ function getCreds() {
   return { client_id, client_secret };
 }
 
+function getBase() {
+  const base = baseInput?.value?.trim();
+  return base || 'https://api.eda.yandex.ru';
+}
+
 function getWebhookUrl() {
   return webhookUrlInput.value.trim();
 }
@@ -100,8 +106,9 @@ async function callYandex(path, { method = 'GET', params = {}, body = null } = {
   Object.entries(params || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   });
+  url.searchParams.set('base', getBase());
   const options = { method, headers: { 'Content-Type': 'application/json' } };
-  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, ...body });
+  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, base: getBase(), ...body });
   if (method === 'GET') {
     url.searchParams.set('client_id', creds.client_id);
     url.searchParams.set('client_secret', creds.client_secret);
@@ -123,7 +130,7 @@ async function verifyAccess() {
     const data = await apiFetch('/api/yandex/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(creds),
+      body: JSON.stringify({ ...creds, base: getBase() }),
     });
     if (data.token) {
       const base = data.base ? ` (хост: ${data.base.replace('https://', '')})` : '';
@@ -276,7 +283,8 @@ function applyIntegration(name) {
   clientIdInput.value = found.client_id || '';
   clientSecretInput.value = found.client_secret || '';
   integrationNameInput.value = found.name;
-  setStatus(`Интеграция «${found.name}» подставлена.`, 'ok');
+  if (baseInput) baseInput.value = found.base_url || getBase();
+  setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ».`, 'info');
   verifyAccess();
 }
 
@@ -337,7 +345,7 @@ async function loadCities() {
   if (!creds) return;
   buttonLoading(loadCitiesBtn, true, 'Загружаем города...');
   try {
-    const query = new URLSearchParams(creds).toString();
+    const query = new URLSearchParams({ ...creds, base: getBase() }).toString();
     const data = await apiFetch(`/api/yandex/cities?${query}`);
     const cities = normalizeCities(data);
     renderCities(cities);
@@ -355,7 +363,7 @@ async function loadPlaces() {
   const cityId = citySelect.value;
   buttonLoading(placeSelect, true, '');
   try {
-    const params = new URLSearchParams({ ...creds, city_id: cityId || '' }).toString();
+    const params = new URLSearchParams({ ...creds, city_id: cityId || '', base: getBase() }).toString();
     const data = await apiFetch(`/api/yandex/places?${params}`);
     const places = normalizePlaces(data);
     renderPlaces(places);
@@ -377,7 +385,7 @@ async function loadMenu() {
   }
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
   try {
-    const params = new URLSearchParams({ ...creds, place_id: placeId }).toString();
+    const params = new URLSearchParams({ ...creds, place_id: placeId, base: getBase() }).toString();
     const data = await apiFetch(`/api/yandex/menu?${params}`);
     renderMenu(data);
     setStatus('Меню загружено.', 'ok');
@@ -421,9 +429,10 @@ async function saveIntegration() {
         webhook_url: webhook,
         client_id: creds.client_id,
         client_secret: creds.client_secret,
+        base_url: getBase(),
       }),
     });
-    setStatus(`Интеграция «${name}» сохранена.`, 'ok');
+    setStatus(`Интеграция «${name}» сохранена. Для подключения нажмите «Проверить доступ».`, 'info');
     await loadIntegrationsList();
     integrationSelect.value = name;
   } catch (e) {
@@ -442,7 +451,7 @@ async function deleteIntegration() {
   buttonLoading(deleteIntegrationBtn, true, '...');
   try {
     await apiFetch(`/api/webhooks/${encodeURIComponent(name)}`, { method: 'DELETE' });
-    setStatus(`Интеграция «${name}» удалена.`, 'ok');
+    setStatus(`Интеграция «${name}» удалена из списка.`, 'info');
     await loadIntegrationsList();
     integrationSelect.value = '';
   } catch (e) {
@@ -595,6 +604,10 @@ btnOrderDetails?.addEventListener('click', runOrderDetails);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
+
+if (baseInput && !baseInput.value) {
+  baseInput.value = 'https://api.eda.yandex.ru';
+}
 
 setStatus('Введите client_id и client_secret для подключения.');
 loadIntegrationsList();
