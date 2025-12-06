@@ -107,20 +107,15 @@
 
     <div class="card panel-bg p-4 space-y-4">
       <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <div class="flex flex-col gap-1">
-            <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
-            <div class="flex gap-2">
-              <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
-              <option value="">— Не выбрано —</option>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
+          <div class="flex gap-2">
+            <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+            <option value="">— Не выбрано —</option>
             </select>
               <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition">✕</button>
             </div>
             <p class="text-xs text-slate-500">Выберите сохранённый вебхук, чтобы подставить URL и ключи.</p>
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
-          <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-          <p class="text-xs text-slate-500">Используется для подписки интеграции.</p>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="integrationName">Название для сохранения</label>
@@ -131,65 +126,82 @@
           <p class="text-xs text-slate-500">Запомнить текущий вебхук и ключи под своим именем.</p>
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="baseInput">Хост API Yandex</label>
-          <input id="baseInput" list="baseList" type="text" placeholder="https://api.eda.yandex.ru" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+          <label class="text-xs text-slate-500" for="baseInput">Хост API</label>
+          <div class="flex gap-2">
+            <input id="baseInput" list="baseList" type="text" placeholder="https://api.eda.yandex.ru" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+            <button id="addHostBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">＋</button>
+          </div>
           <datalist id="baseList">
             <option value="https://api.eda.yandex.ru"></option>
             <option value="https://api.eda.yandex.net"></option>
             <option value="https://api.partner.yandex.ru"></option>
           </datalist>
-          <p class="text-xs text-slate-500">Если основной хост недоступен, укажите запасной.</p>
+          <p class="text-xs text-slate-500">Можно редактировать и добавлять новые адреса, сохраняются вместе с интеграцией.</p>
         </div>
-      </div>
-      <div class="flex flex-wrap gap-3 items-center">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="clientId">Client ID</label>
-          <input id="clientId" type="text" placeholder="Введите Client ID" class="w-72 px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="clientSecret">Client Secret</label>
-          <input id="clientSecret" type="password" placeholder="Введите Client Secret" class="w-72 px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-        </div>
-        <div class="flex flex-wrap gap-2 items-end">
+        <div class="flex flex-wrap gap-2 items-end justify-end md:justify-start xl:justify-end">
           <button id="connectBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition">Проверить доступ</button>
           <button id="loadCitiesBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Обновить города</button>
           <button id="loadMenuBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-white transition">Загрузить меню</button>
         </div>
       </div>
+      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
+          <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+          <p class="text-xs text-slate-500">Используется для подписки интеграции.</p>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="clientId">Client ID</label>
+          <input id="clientId" type="text" placeholder="Введите Client ID" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="clientSecret">Client Secret</label>
+          <input id="clientSecret" type="password" placeholder="Введите Client Secret" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
+      </div>
       <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
         Введите client_id и client_secret для доступа к данным Yandex Еды.
       </div>
-      <div class="grid md:grid-cols-3 gap-3">
-        <div class="card card-bg p-3 space-y-2">
+      <div class="grid md:grid-cols-4 gap-3">
+        <div class="card card-bg p-3 space-y-2 md:col-span-2 lg:col-span-1">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Город</span>
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Город (по названию в iiko)</span>
             <span class="badge" id="cityCount">0</span>
           </div>
           <select id="citySelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
             <option value="">Выберите город</option>
           </select>
-          <p class="text-xs muted">Список городов доступен после проверки доступа. Отбор мест зависит от выбранного города.</p>
+          <p class="text-xs muted">Выпадающий список по названиям. После выбора будут показаны точки.</p>
         </div>
-        <div class="card card-bg p-3 space-y-2">
+        <div class="card card-bg p-3 space-y-2 md:col-span-2 lg:col-span-1">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Точки (place)</span>
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Точки (организации)</span>
             <span class="badge" id="placeCount">0</span>
           </div>
           <select id="placeSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
             <option value="">Выберите точку</option>
           </select>
-          <p class="text-xs muted">После выбора города загрузите список мест и выберите нужную точку.</p>
+          <p class="text-xs muted">Список свернут до названий организаций. Выбор покажет карточку ресторана.</p>
         </div>
-        <div class="card card-bg p-3 space-y-3">
+        <div class="card card-bg p-3 space-y-3 md:col-span-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Результат</span>
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Карточка ресторана</span>
             <span class="badge" id="menuCount">0</span>
           </div>
           <div class="space-y-1 text-sm">
             <div id="currentCity" class="flex items-center gap-2"><span class="pill blue">Город не выбран</span></div>
             <div id="currentPlace" class="flex items-center gap-2"><span class="pill red">Точка не выбрана</span></div>
           </div>
-          <div class="text-xs muted">Ниже будет таблица с меню: блюда, модификаторы, цены и количество по выбранной организации.</div>
+          <div id="placeCard" class="text-xs muted border border-dashed border-slate-200 rounded-lg p-3 bg-white">
+            Выберите точку, чтобы увидеть название ресторана, город, адрес и график.
+          </div>
+        </div>
+        <div class="card card-bg p-3 space-y-2 md:col-span-2 lg:col-span-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Диагностика хоста</span>
+          </div>
+          <div id="hostDiag" class="text-xs text-slate-600 leading-relaxed">Проверяем DNS...</div>
+          <p class="text-xs muted">Если DNS не отвечает, укажите IP или другой хост и сохраните его.</p>
         </div>
       </div>
     </div>
@@ -280,6 +292,7 @@
           </div>
           <button id="btnLoadRestaurants" class="px-4 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Все рестораны</button>
         </div>
+        <div id="historyView" class="text-xs text-slate-800 bg-white border border-slate-200 rounded-lg p-3 space-y-2 hidden"></div>
         <pre id="extraResult" class="overflow-auto max-h-80 text-xs bg-slate-900 text-slate-50 rounded-lg p-3"></pre>
       </div>
     </div>

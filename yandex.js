@@ -11,6 +11,7 @@ const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
 const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
 const baseInput = document.getElementById('baseInput');
+const addHostBtn = document.getElementById('addHostBtn');
 const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
@@ -24,10 +25,13 @@ const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
 const currentCity = document.getElementById('currentCity');
 const currentPlace = document.getElementById('currentPlace');
+const placeCard = document.getElementById('placeCard');
 const placeIdManual = document.getElementById('placeIdManual');
 const extraResult = document.getElementById('extraResult');
 const orderStatusInput = document.getElementById('orderStatus');
 const ordersHistoryPayloadInput = document.getElementById('ordersHistoryPayload');
+const hostDiag = document.getElementById('hostDiag');
+const historyView = document.getElementById('historyView');
 
 const btnAvailability = document.getElementById('btnAvailability');
 const btnPromos = document.getElementById('btnPromos');
@@ -42,6 +46,8 @@ let cachedCities = [];
 let cachedPlaces = [];
 let lastMenuPayload = null;
 let integrations = [];
+let cachedSchedule = new Map();
+let hostOptions = new Set();
 
 function setStatus(message, tone = 'info') {
   statusEl.textContent = message;
@@ -77,6 +83,45 @@ function getCreds() {
 function getBase() {
   const base = baseInput?.value?.trim();
   return base || 'https://api.eda.yandex.ru';
+}
+
+function addHostToList(value) {
+  if (!value) return;
+  const host = value.trim().replace(/\/$/, '');
+  if (!host) return;
+  if (!hostOptions.has(host)) {
+    hostOptions.add(host);
+    const option = document.createElement('option');
+    option.value = host;
+    document.getElementById('baseList')?.appendChild(option);
+  }
+}
+
+function renderHostDiagnostics(details = []) {
+  if (!hostDiag) return;
+  if (!details.length) {
+    hostDiag.textContent = 'Диагностика недоступна. Укажите хост вручную.';
+    return;
+  }
+  const rows = details.map(d => {
+    const status = d.resolvable ? '✅ DNS ок' : `⚠️ ${d.error || 'Не удалось разрешить'}`;
+    return `<div class="flex items-start justify-between gap-2"><span class="font-semibold">${d.base}</span><span class="text-right">${status}</span></div>`;
+  });
+  hostDiag.innerHTML = rows.join('');
+}
+
+async function loadHostList() {
+  try {
+    const data = await apiFetch('/api/yandex/hosts');
+    (data.hosts || []).forEach(addHostToList);
+    renderHostDiagnostics(data.diagnostics || []);
+    if (!baseInput.value && data.hosts && data.hosts.length) {
+      baseInput.value = data.hosts[0];
+    }
+  } catch (e) {
+    renderHostDiagnostics();
+    console.error('hosts', e);
+  }
 }
 
 function getWebhookUrl() {
@@ -116,10 +161,42 @@ async function callYandex(path, { method = 'GET', params = {}, body = null } = {
   return apiFetch(url.toString(), options);
 }
 
-function renderExtraResult(title, data) {
+function renderExtraResult(title, data, { preserveHistory = false } = {}) {
   if (!extraResult) return;
+  if (!preserveHistory && historyView) historyView.classList.add('hidden');
   const pretty = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
   extraResult.textContent = `${title}\n${pretty}`;
+}
+
+function renderHistory(data, title = 'История') {
+  if (!historyView) return renderExtraResult(title, data);
+  const orders = Array.isArray(data?.orders) ? data.orders : Array.isArray(data?.items) ? data.items : data?.result?.orders || [];
+  if (!orders.length) {
+    historyView.classList.add('hidden');
+    return renderExtraResult(title, data);
+  }
+  historyView.innerHTML = '';
+  orders.forEach(order => {
+    const number = order.number || order.id || order.order_id || '—';
+    const created = order.created_at || order.createdAt || order.created || order.date || '';
+    const cooking = order.cooking_started_at || order.cookingStart || order.cooking_start || '';
+    const ready = order.ready_at || order.readyTime || order.ready_time || '';
+    const items = Array.isArray(order.items) ? order.items.map(i => `${i.name || i.title || 'Позиция'} — ${i.quantity || i.qty || 1} шт. × ${(i.price || i.cost || '')}`).join('<br>') : '—';
+    const total = order.total_price || order.totalPrice || order.summary || order.amount || '';
+    const block = document.createElement('div');
+    block.className = 'border border-slate-200 rounded-lg p-2 bg-white';
+    block.innerHTML = `
+      <div class="text-sm font-semibold">Заказ ${number}</div>
+      <div class="text-xs text-slate-600">Создан: ${created || '—'}</div>
+      <div class="text-xs text-slate-600">Готовка: ${cooking || '—'}</div>
+      <div class="text-xs text-slate-600">Готов: ${ready || '—'}</div>
+      <div class="text-xs text-slate-600">Состав:<br>${items}</div>
+      <div class="text-xs text-slate-700 font-semibold mt-1">Сумма: ${total || '—'}</div>
+    `;
+    historyView.appendChild(block);
+  });
+  historyView.classList.remove('hidden');
+  renderExtraResult(title, data, { preserveHistory: true });
 }
 
 async function verifyAccess() {
@@ -187,9 +264,10 @@ function renderPlaces(places) {
     const option = document.createElement('option');
     option.value = place.id || place.place_id || place.slug || '';
     const name = place.name || place.title || place.slug || 'Без названия';
-    const address = place.address || place.full_address || place.location || '';
-    option.textContent = address ? `${name} — ${address}` : name;
+    option.textContent = name;
     option.dataset.cityId = place.city_id || place.cityId || '';
+    option.dataset.address = place.address || place.full_address || place.location || '';
+    option.dataset.schedule = JSON.stringify(place.schedule || place.work_time || {});
     placeSelect.appendChild(option);
   });
   placeCount.textContent = places.length;
@@ -244,6 +322,7 @@ function normalizeMenuItems(menuName, menuData) {
       price: parsePrice(item),
       quantity: parseQuantity(item),
       available: item.available ?? item.is_available ?? item.in_stock ?? true,
+      stopList: item.available === false || item.is_available === false || item.in_stock === false,
       modifiers,
       modifierCount,
     };
@@ -269,6 +348,7 @@ function renderIntegrations(list) {
   integrations = list || [];
   integrationSelect.innerHTML = '<option value="">— Не выбрано —</option>';
   integrations.forEach(item => {
+    if (item.base_url) addHostToList(item.base_url);
     const option = document.createElement('option');
     option.value = item.name;
     option.textContent = item.name;
@@ -283,7 +363,11 @@ function applyIntegration(name) {
   clientIdInput.value = found.client_id || '';
   clientSecretInput.value = found.client_secret || '';
   integrationNameInput.value = found.name;
-  if (baseInput) baseInput.value = found.base_url || getBase();
+  if (baseInput) {
+    const host = found.base_url || getBase();
+    addHostToList(host);
+    baseInput.value = host;
+  }
   setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ».`, 'info');
   verifyAccess();
 }
@@ -304,7 +388,7 @@ function renderMenu(payload) {
       categorySet.add(row.category);
       totalModifiers += row.modifiers.length;
       const tr = document.createElement('tr');
-      tr.className = 'hover:bg-slate-50';
+      tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''}`;
       tr.innerHTML = `
         <td class="px-3 py-2 text-slate-800 font-semibold">${row.menu}</td>
         <td class="px-3 py-2">${row.category}</td>
@@ -313,7 +397,7 @@ function renderMenu(payload) {
         <td class="px-3 py-2 text-xs text-slate-600">${row.modifiers.join(', ') || '—'}</td>
         <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
         <td class="px-3 py-2">${row.quantity === '' ? '—' : row.quantity}</td>
-        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Нет в наличии</span>'}</td>
+        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Стоп-лист</span>'}</td>
       `;
       menuTableBody.appendChild(tr);
     });
@@ -338,6 +422,42 @@ function updateCurrentInfo() {
   currentPlace.innerHTML = placeSelect.value
     ? `<span class="pill green">${placeName}</span>`
     : '<span class="pill red">Точка не выбрана</span>';
+
+  renderPlaceCard(placeOption);
+}
+
+function renderPlaceCard(placeOption) {
+  if (!placeCard) return;
+  if (!placeOption || !placeOption.value) {
+    placeCard.innerHTML = 'Выберите точку, чтобы увидеть название ресторана, город, адрес и график.';
+    return;
+  }
+  const cityOption = citySelect.options[citySelect.selectedIndex];
+  const cityName = cityOption ? (cityOption.textContent || '') : '';
+  const address = placeOption.dataset.address || 'Адрес не указан';
+  const scheduleRaw = cachedSchedule.get(placeOption.value) || JSON.parse(placeOption.dataset.schedule || '{}');
+  const schedule = Array.isArray(scheduleRaw?.days) ? scheduleRaw.days.map(d => `${d.day || ''}: ${d.from || d.start || ''} — ${d.to || d.end || ''}`).join('<br>') : 'График не указан';
+  placeCard.innerHTML = `
+    <div class="space-y-1">
+      <div class="text-sm font-semibold text-slate-800">${placeOption.textContent || 'Без названия'}</div>
+      <div class="text-xs text-slate-600">Город: ${cityName || '—'}</div>
+      <div class="text-xs text-slate-600">Адрес: ${address}</div>
+      <div class="text-xs text-slate-600">График: <br>${schedule}</div>
+    </div>
+  `;
+}
+
+async function loadScheduleForPlace(placeId) {
+  if (!placeId) return;
+  try {
+    const data = await callYandex('/api/yandex/schedule', { params: { place_id: placeId } });
+    const schedule = data?.schedule || data?.items || data;
+    cachedSchedule.set(placeId, schedule);
+    const option = placeSelect.options[placeSelect.selectedIndex];
+    renderPlaceCard(option);
+  } catch (e) {
+    console.warn('schedule', e.message || e);
+  }
 }
 
 async function loadCities() {
@@ -430,6 +550,7 @@ async function saveIntegration() {
         client_id: creds.client_id,
         client_secret: creds.client_secret,
         base_url: getBase(),
+        provider: 'yandex',
       }),
     });
     setStatus(`Интеграция «${name}» сохранена. Для подключения нажмите «Проверить доступ».`, 'info');
@@ -540,7 +661,7 @@ async function runOrdersHistory() {
   }
   try {
     const data = await callYandex('/api/yandex/orders/history', { method: 'POST', body });
-    renderExtraResult('История заказов', data);
+    renderHistory(data, 'История заказов');
     setStatus('История заказов получена.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить историю заказов', 'err');
@@ -560,7 +681,7 @@ async function runOrderDetails() {
   }
   try {
     const data = await callYandex('/api/yandex/orders/details', { method: 'POST', body });
-    renderExtraResult('Детали заказов', data);
+    renderHistory(data, 'Детали заказов');
     setStatus('Детали заказов получены.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить детали заказов', 'err');
@@ -588,7 +709,11 @@ citySelect.addEventListener('change', () => {
     renderPlaces([]);
   }
 });
-placeSelect.addEventListener('change', updateCurrentInfo);
+placeSelect.addEventListener('change', () => {
+  updateCurrentInfo();
+  const placeId = placeSelect.value;
+  if (placeId) loadScheduleForPlace(placeId);
+});
 integrationSelect.addEventListener('change', () => {
   if (integrationSelect.value) {
     applyIntegration(integrationSelect.value);
@@ -604,6 +729,7 @@ btnOrderDetails?.addEventListener('click', runOrderDetails);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
+addHostBtn?.addEventListener('click', () => addHostToList(getBase()));
 
 if (baseInput && !baseInput.value) {
   baseInput.value = 'https://api.eda.yandex.ru';
@@ -611,3 +737,4 @@ if (baseInput && !baseInput.value) {
 
 setStatus('Введите client_id и client_secret для подключения.');
 loadIntegrationsList();
+loadHostList();

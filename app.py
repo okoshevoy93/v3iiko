@@ -196,7 +196,7 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
         if not resolvable:
             last_error = f"DNS {dns_error}"
             logger.error(f"Yandex host not resolved {base}: {dns_error}")
-            continue
+            # продолжаем попытку, но фиксируем ошибку в ответе
 
         primary_url = f"{base}/partner/auth"
         oauth_url = f"{base}/security/oauth/token"
@@ -335,6 +335,23 @@ def yandex_token():
         return jsonify({"error": err or "invalid"}), status
     cache = YANDEX_TOKENS.get(f"{data.get('client_id')}:{data.get('client_secret')}") or {}
     return jsonify({"token": token, "base": cache.get("base")})
+
+
+@app.route("/api/yandex/hosts", methods=["GET"])
+@require_auth
+def yandex_hosts():
+    """Вернуть список доступных хостов и диагностику DNS."""
+    bases = list(dict.fromkeys([b.rstrip("/") for b in YANDEX_BASES]))
+    for item in WEBHOOKS_DB.values():
+        base_url = (item.get("base_url") or "").strip().rstrip("/")
+        if base_url and base_url not in bases:
+            bases.append(base_url)
+
+    details = []
+    for base in bases:
+        ok, err = _is_host_resolvable(base)
+        details.append({"base": base, "resolvable": ok, "error": err})
+    return jsonify({"hosts": bases, "diagnostics": details})
 
 @app.route("/api/yandex/cities", methods=["GET"])
 @require_auth
@@ -510,6 +527,7 @@ def webhooks_list():
         "client_id": data.get("client_id", ""),
         "client_secret": data.get("client_secret", ""),
         "base_url": data.get("base_url", ""),
+        "provider": data.get("provider", "yandex"),
     } for name, data in WEBHOOKS_DB.items()), key=lambda x: x["name"].lower())
     return jsonify({"items": items})
 
@@ -523,6 +541,7 @@ def webhooks_save():
     client_id = (data.get("client_id") or "").strip()
     client_secret = (data.get("client_secret") or "").strip()
     base_url = (data.get("base_url") or "").strip()
+    provider = (data.get("provider") or "yandex").strip() or "yandex"
     if not name or not webhook_url:
         return jsonify({"error": "name and webhook_url required"}), 400
     WEBHOOKS_DB[name] = {
@@ -531,6 +550,7 @@ def webhooks_save():
         "client_id": client_id,
         "client_secret": client_secret,
         "base_url": base_url,
+        "provider": provider,
     }
     save_webhooks()
     return jsonify({"ok": True, "item": WEBHOOKS_DB[name]})
