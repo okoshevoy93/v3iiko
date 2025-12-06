@@ -10,9 +10,6 @@ const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
 const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
 const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
-const baseSelect = document.getElementById('baseSelect');
-const baseInput = document.getElementById('baseInput');
-const addHostBtn = document.getElementById('addHostBtn');
 const iikoKeyInput = document.getElementById('iikoKey');
 const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
@@ -32,7 +29,6 @@ const placeIdManual = document.getElementById('placeIdManual');
 const extraResult = document.getElementById('extraResult');
 const orderStatusInput = document.getElementById('orderStatus');
 const ordersHistoryPayloadInput = document.getElementById('ordersHistoryPayload');
-const hostDiag = document.getElementById('hostDiag');
 const historyView = document.getElementById('historyView');
 
 const btnAvailability = document.getElementById('btnAvailability');
@@ -51,16 +47,7 @@ let yandexPlaces = [];
 let lastMenuPayload = null;
 let integrations = [];
 let cachedSchedule = new Map();
-let hostOptions = new Set();
 let storedIikoKey = '';
-const defaultHosts = [
-  'https://eda-api.yandex.ru',
-  'https://api.eda.yandex.ru',
-  'https://eda-api.yandex.net',
-  'https://api.eda.yandex.net',
-  'https://api.partner.yandex.ru',
-  'https://apimenu.ru/yandex',
-];
 
 try {
   storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
@@ -108,96 +95,6 @@ function getCreds() {
   return { client_id, client_secret };
 }
 
-function deriveBaseFromWebhook() {
-  const url = getWebhookUrl();
-  if (!url) return '';
-  try {
-    const u = new URL(url);
-    return `${u.protocol}//${u.host}`;
-  } catch (e) {
-    return '';
-  }
-}
-
-function getBase(preferInput = false) {
-  const inputVal = baseInput?.value?.trim() || '';
-  const selectVal = baseSelect?.value?.trim() || '';
-  let base = preferInput && inputVal ? inputVal : inputVal || selectVal;
-  if (!base) base = deriveBaseFromWebhook();
-  return base || 'https://api.eda.yandex.ru';
-}
-
-function addHostToList(value, { selectOnly = false } = {}) {
-  if (!value) return;
-  const host = value.trim().replace(/\/$/, '');
-  if (!host) return;
-  if (!hostOptions.has(host)) {
-    hostOptions.add(host);
-    if (baseSelect) {
-      const option = document.createElement('option');
-      option.value = host;
-      option.textContent = host.replace(/^https?:\/\//, '');
-      baseSelect.appendChild(option);
-    }
-  }
-  if (!selectOnly) {
-    if (baseInput) baseInput.value = host;
-    if (baseSelect) baseSelect.value = host;
-  }
-}
-
-function renderHostDiagnostics(details = []) {
-  if (!hostDiag) return;
-  if (!details.length) {
-    hostDiag.textContent = 'Диагностика недоступна. Укажите хост вручную.';
-    return;
-  }
-  const rows = details.map(d => {
-    const status = d.resolvable ? '✅ DNS ок' : `⚠️ ${d.error || 'Не удалось разрешить'}`;
-    return `<div class="flex items-start justify-between gap-2"><span class="font-semibold">${d.base}</span><span class="text-right">${status}</span></div>`;
-  });
-  hostDiag.innerHTML = rows.join('');
-}
-
-async function loadHostList() {
-  if (baseSelect) {
-    Array.from(baseSelect.options || []).forEach(opt => {
-      const v = opt.value?.trim();
-      if (v) hostOptions.add(v);
-    });
-  }
-  defaultHosts.forEach(host => addHostToList(host, { selectOnly: true }));
-  try {
-    const data = await apiFetch('/api/yandex/hosts');
-    (data.hosts || []).forEach(host => addHostToList(host, { selectOnly: true }));
-    renderHostDiagnostics(data.diagnostics || []);
-    if (baseSelect && !baseSelect.value && data.hosts?.length) baseSelect.value = data.hosts[0];
-    if (!baseInput.value && (baseSelect?.value || data.hosts?.length || defaultHosts.length)) {
-      baseInput.value = baseSelect?.value || data.hosts?.[0] || defaultHosts[0];
-    }
-  } catch (e) {
-    renderHostDiagnostics();
-    console.error('hosts', e);
-  }
-}
-
-async function persistHost(host) {
-  const value = host?.trim();
-  if (!value) return setStatus('Введите хост для сохранения.', 'err');
-  addHostToList(value);
-  try {
-    await apiFetch('/api/yandex/hosts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ host: value }),
-    });
-    setStatus(`Хост ${value} сохранён.`, 'info');
-    loadHostList();
-  } catch (e) {
-    setStatus(e.message || 'Не удалось сохранить хост', 'err');
-  }
-}
-
 function getWebhookUrl() {
   return webhookUrlInput.value.trim();
 }
@@ -229,10 +126,9 @@ async function callYandex(path, { method = 'GET', params = {}, body = null } = {
   Object.entries(params || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   });
-  url.searchParams.set('base', getBase());
   if (webhook) url.searchParams.set('webhook_url', webhook);
   const options = { method, headers: { 'Content-Type': 'application/json' } };
-  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, base: getBase(), webhook_url: webhook, ...body });
+  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, webhook_url: webhook, ...body });
   if (method === 'GET') {
     url.searchParams.set('client_id', creds.client_id);
     url.searchParams.set('client_secret', creds.client_secret);
@@ -291,11 +187,10 @@ async function verifyAccess() {
     const data = await apiFetch('/api/yandex/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...creds, base: getBase(), webhook_url: getWebhookUrl() }),
+      body: JSON.stringify({ ...creds, webhook_url: getWebhookUrl() }),
     });
     if (data.token) {
-      const base = data.base ? ` (хост: ${data.base.replace('https://', '')})` : '';
-      setStatus(`Доступ подтверждён${base}. Теперь можно обновить города и загрузить меню.`, 'ok');
+      setStatus('Доступ подтверждён. Теперь можно обновить города и загрузить меню.', 'ok');
     } else {
       setStatus('Не удалось получить токен. Проверьте данные.', 'err');
     }
@@ -463,7 +358,6 @@ function renderIntegrations(list) {
   integrations = list || [];
   integrationSelect.innerHTML = '<option value="">— Не выбрано —</option>';
   integrations.forEach(item => {
-    if (item.base_url) addHostToList(item.base_url);
     const option = document.createElement('option');
     option.value = item.name;
     option.textContent = item.name;
@@ -481,11 +375,6 @@ function applyIntegration(name) {
   const iikoKey = found.iiko_key || storedIikoKey || '';
   if (iikoKeyInput) iikoKeyInput.value = iikoKey;
   syncStoredIikoKey(iikoKey);
-  if (baseInput) {
-    const host = found.base_url || getBase();
-    addHostToList(host);
-    baseInput.value = host;
-  }
   setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ» и обновите города.`, 'info');
   loadCities({ skipYandex: true });
 }
@@ -671,7 +560,7 @@ async function loadMenu() {
   }
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
   try {
-    const params = new URLSearchParams({ ...creds, place_id: placeId, base: getBase() }).toString();
+    const params = new URLSearchParams({ ...creds, place_id: placeId, webhook_url: getWebhookUrl() }).toString();
     const data = await apiFetch(`/api/yandex/menu?${params}`);
     renderMenu(data);
     setStatus('Меню загружено.', 'ok');
@@ -717,7 +606,6 @@ async function saveIntegration() {
         webhook_url: webhook,
         client_id: creds.client_id,
         client_secret: creds.client_secret,
-        base_url: getBase(),
         provider: 'yandex',
         iiko_key: iikoKey,
       }),
@@ -906,24 +794,6 @@ btnOrderDetails?.addEventListener('click', runOrderDetails);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
-addHostBtn?.addEventListener('click', (e) => {
-  e.preventDefault();
-  persistHost(getBase(true));
-});
-
-webhookUrlInput?.addEventListener('change', () => {
-  const derived = deriveBaseFromWebhook();
-  if (derived) addHostToList(derived);
-});
-
-baseSelect?.addEventListener('change', () => {
-  const selected = baseSelect.value;
-  if (selected && baseInput) baseInput.value = selected;
-});
-
-if (baseInput && !baseInput.value) {
-  baseInput.value = 'https://eda-api.yandex.ru';
-}
 
 if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
   iikoKeyInput.value = storedIikoKey;
@@ -931,4 +801,3 @@ if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
 
 setStatus('Введите client_id и client_secret для подключения.');
 loadIntegrationsList();
-loadHostList();
