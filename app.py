@@ -388,15 +388,34 @@ def yandex_request(client_id: str, client_secret: str, path: str, *, method: str
         return None, (502, f"Ошибка запроса: {e}")
 
 
+def _base_from_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
 def _read_yandex_base() -> str | None:
     base = (request.args.get("base") if request.args else None) or None
+    webhook_url = (request.args.get("webhook_url") if request.args else None) or None
+    payload = {}
     if request.is_json:
         payload = request.get_json(silent=True) or {}
         base = payload.get("base") or base
+        webhook_url = payload.get("webhook_url") or webhook_url
     else:
         base = request.form.get("base") or base
+        webhook_url = request.form.get("webhook_url") or webhook_url
     if base:
         return base.strip().rstrip("/")
+    derived = _base_from_url(webhook_url)
+    if derived:
+        return derived
     return None
 
 # ==================== YANDEX РОУТЫ ====================

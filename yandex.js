@@ -53,6 +53,14 @@ let integrations = [];
 let cachedSchedule = new Map();
 let hostOptions = new Set();
 let storedIikoKey = '';
+const defaultHosts = [
+  'https://eda-api.yandex.ru',
+  'https://api.eda.yandex.ru',
+  'https://eda-api.yandex.net',
+  'https://api.eda.yandex.net',
+  'https://api.partner.yandex.ru',
+  'https://apimenu.ru/yandex',
+];
 
 try {
   storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
@@ -100,10 +108,22 @@ function getCreds() {
   return { client_id, client_secret };
 }
 
+function deriveBaseFromWebhook() {
+  const url = getWebhookUrl();
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host}`;
+  } catch (e) {
+    return '';
+  }
+}
+
 function getBase(preferInput = false) {
   const inputVal = baseInput?.value?.trim() || '';
   const selectVal = baseSelect?.value?.trim() || '';
-  const base = preferInput && inputVal ? inputVal : inputVal || selectVal;
+  let base = preferInput && inputVal ? inputVal : inputVal || selectVal;
+  if (!base) base = deriveBaseFromWebhook();
   return base || 'https://api.eda.yandex.ru';
 }
 
@@ -140,13 +160,20 @@ function renderHostDiagnostics(details = []) {
 }
 
 async function loadHostList() {
+  if (baseSelect) {
+    Array.from(baseSelect.options || []).forEach(opt => {
+      const v = opt.value?.trim();
+      if (v) hostOptions.add(v);
+    });
+  }
+  defaultHosts.forEach(host => addHostToList(host, { selectOnly: true }));
   try {
     const data = await apiFetch('/api/yandex/hosts');
     (data.hosts || []).forEach(host => addHostToList(host, { selectOnly: true }));
     renderHostDiagnostics(data.diagnostics || []);
     if (baseSelect && !baseSelect.value && data.hosts?.length) baseSelect.value = data.hosts[0];
-    if (!baseInput.value && (baseSelect?.value || data.hosts?.length)) {
-      baseInput.value = baseSelect?.value || data.hosts[0];
+    if (!baseInput.value && (baseSelect?.value || data.hosts?.length || defaultHosts.length)) {
+      baseInput.value = baseSelect?.value || data.hosts?.[0] || defaultHosts[0];
     }
   } catch (e) {
     renderHostDiagnostics();
@@ -198,15 +225,18 @@ async function callYandex(path, { method = 'GET', params = {}, body = null } = {
   const creds = getCreds();
   if (!creds) return null;
   const url = new URL(path, window.location.origin);
+  const webhook = getWebhookUrl();
   Object.entries(params || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   });
   url.searchParams.set('base', getBase());
+  if (webhook) url.searchParams.set('webhook_url', webhook);
   const options = { method, headers: { 'Content-Type': 'application/json' } };
-  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, base: getBase(), ...body });
+  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, base: getBase(), webhook_url: webhook, ...body });
   if (method === 'GET') {
     url.searchParams.set('client_id', creds.client_id);
     url.searchParams.set('client_secret', creds.client_secret);
+    if (webhook) url.searchParams.set('webhook_url', webhook);
   }
   return apiFetch(url.toString(), options);
 }
@@ -261,7 +291,7 @@ async function verifyAccess() {
     const data = await apiFetch('/api/yandex/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...creds, base: getBase() }),
+      body: JSON.stringify({ ...creds, base: getBase(), webhook_url: getWebhookUrl() }),
     });
     if (data.token) {
       const base = data.base ? ` (хост: ${data.base.replace('https://', '')})` : '';
@@ -879,6 +909,11 @@ deleteIntegrationBtn.addEventListener('click', deleteIntegration);
 addHostBtn?.addEventListener('click', (e) => {
   e.preventDefault();
   persistHost(getBase(true));
+});
+
+webhookUrlInput?.addEventListener('change', () => {
+  const derived = deriveBaseFromWebhook();
+  if (derived) addHostToList(derived);
 });
 
 baseSelect?.addEventListener('change', () => {

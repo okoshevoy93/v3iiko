@@ -99,7 +99,7 @@
   </a>
 
   <div class="max-w-7xl mx-auto px-4 py-6 space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-center gap-2">
         <a href="/" class="tab-link">
           <span>iiko</span>
@@ -108,9 +108,25 @@
           <span>Yandex Еда</span>
         </a>
       </div>
-      <div class="status-pill" id="statusPill">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">Не подключено</span>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2 text-sm text-slate-600">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText" class="text-slate-500">Не подключено</span>
+        </div>
+        <input
+          id="iikoKey"
+          type="password"
+          placeholder="apiLogin (ключ iiko)"
+          class="w-64 px-3 py-1.5 rounded-md bg-white border border-slate-700 text-sm focus:outline-none focus:ring focus:ring-blue-500"
+        />
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
+        <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить города</span></button>
+        <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
+      </div>
+      <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+        Введите client_id, client_secret, хост и вебхук для доступа к данным Yandex Еды. Город загружается из iiko.
       </div>
     </div>
 
@@ -137,6 +153,12 @@
           <label class="text-xs text-slate-500" for="baseSelect">Хост API</label>
           <select id="baseSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
             <option value="">Выберите хост</option>
+            <option value="https://eda-api.yandex.ru">eda-api.yandex.ru</option>
+            <option value="https://api.eda.yandex.ru">api.eda.yandex.ru</option>
+            <option value="https://eda-api.yandex.net">eda-api.yandex.net</option>
+            <option value="https://api.eda.yandex.net">api.eda.yandex.net</option>
+            <option value="https://api.partner.yandex.ru">api.partner.yandex.ru</option>
+            <option value="https://apimenu.ru/yandex">apimenu.ru/yandex</option>
           </select>
           <div class="flex gap-2">
             <input id="baseInput" type="text" placeholder="https://eda-api.yandex.ru" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
@@ -158,10 +180,6 @@
             <input id="clientSecret" type="password" placeholder="Client Secret" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
           </div>
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="iikoKey">apiLogin (ключ iiko)</label>
-          <input id="iikoKey" type="text" placeholder="apiLogin (ключ iiko)" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-        </div>
         <button id="saveIntegrationBtn" class="w-full py-2.5 text-sm font-semibold rounded-md bg-slate-800 text-white hover:bg-slate-700 transition">Сохранить</button>
         <div class="border border-dashed border-slate-200 rounded-lg p-3 bg-slate-50">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Диагностика хоста</p>
@@ -172,19 +190,9 @@
 
       <div class="space-y-4">
         <div class="card panel-bg p-4 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 class="text-lg font-semibold text-slate-800">Работа с API Yandex Еда</h2>
-              <p class="text-sm text-slate-500">Проверьте доступ, загрузите города iiko и меню точки.</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button id="connectBtn" class="btn-big btn-green"><span>Проверить доступ</span></button>
-              <button id="loadCitiesBtn" class="btn-big btn-amber"><span>Обновить города</span></button>
-              <button id="loadMenuBtn" class="btn-big btn-red"><span>Загрузить меню</span></button>
-            </div>
-          </div>
-          <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-            Введите client_id, client_secret и хост для доступа к данным Yandex Еды.
+          <div>
+            <h2 class="text-lg font-semibold text-slate-800">Работа с API Yandex Еда</h2>
+            <p class="text-sm text-slate-500">После подключения обновите города и выберите точку, чтобы загрузить меню.</p>
           </div>
           <div class="grid md:grid-cols-3 gap-3">
             <div class="card card-bg p-3 space-y-2">
