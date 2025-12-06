@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>iiko Menu Web</title>
+  <meta name="theme-color" content="#111827" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --app-bg: #f3f4f6;
+      --panel-bg: #ffffff;
+      --card-bg: #f9fafb;
+      --table-shell-bg: #ffffff;
+      --border-soft: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text-primary: #111827;
+      --text-muted: #6b7280;
+    }
+    body {
+      background-color: var(--app-bg);
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .app-bg { background-color: var(--app-bg); }
+    .panel-bg { background-color: var(--panel-bg); }
+    .card-bg { background-color: var(--card-bg); }
+    .table-shell-bg { background-color: var(--table-shell-bg); }
+    .border-slate-800,
+    .border-slate-700,
+    .border-slate-900 {
+      border-color: var(--border-soft) !important;
+    }
+    .bg-slate-950 { background-color: #f9fafb !important; }
+    .bg-slate-900 { background-color: #ffffff !important; }
+    .bg-slate-800 { background-color: #f3f4f6 !important; }
+    .text-slate-400 { color: var(--text-muted) !important; }
+    .text-slate-300 { color: #4b5563 !important; }
+    .text-slate-200 { color: #374151 !important; }
+    #tableScrollContainer {
+      position: relative;
+      overscroll-behavior-x: contain;
+      touch-action: pan-x pan-y;
+      scroll-behavior: smooth;
+      --table-head-offset: 0px;
+    }
+    #menuTable thead,
+    #menuTable thead th {
+      position: static;
+      top: auto;
+      box-shadow: none;
+      z-index: auto;
+    }
+    #menuTable.head-sticky thead {
+      position: sticky;
+      top: var(--table-head-offset);
+      z-index: 70;
+      background: #f9fafb;
+      box-shadow: 0 2px 0 #e5e7eb;
+    }
+    #menuTable.head-sticky thead th {
+      position: sticky;
+      top: var(--table-head-offset);
+      z-index: 75;
+      background: #f9fafb;
+    }
+    .city-item {
+      cursor: pointer;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-soft);
+      background: #ffffff;
+      transition:
+        background-color 0.15s,
+        border-color 0.15s,
+        transform 0.1s,
+        box-shadow 0.1s;
+    }
+    .city-item:hover {
+      background: #eff6ff;
+      border-color: #60a5fa;
+      box-shadow: 0 1px 4px rgba(148, 163, 184, 0.6);
+    }
+    .city-item.selected {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border-color: #2563eb;
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .city-title {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .city-sub {
+      font-size: 11px;
+      color: #6b7280;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-big {
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow 0.12s, transform 0.05s;
+      min-height: 2.25rem;
+      min-width: 210px;
+      white-space: normal;
+      text-align: center;
+      padding: 0.5rem 0.75rem;
+    }
+    .btn-big::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to right,
+        rgba(52,211,153,0.45),
+        rgba(16,185,129,0.98)
+      );
+      transform-origin: left;
+      transform: scaleX(var(--progress, 0));
+      transition: transform 0.12s linear;
+      z-index: 0;
+      opacity: 0.9;
+      pointer-events: none;
+    }
+    #loadMenuBtn.btn-big::before {
+      background: linear-gradient(
+        to right,
+        rgba(248,113,113,0.55),
+        rgba(239,68,68,0.98)
+      );
+    }
+    .btn-big.loading {
+      cursor: wait;
+      opacity: .96;
+      box-shadow: 0 0 0 1px rgba(15,23,42,0.08), 0 6px 12px rgba(15,23,42,0.18);
+      transform: translateY(-0.5px);
+    }
+    .btn-big > span {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      line-height: 1.25;
+      text-align: center;
+    }
+    .btn-label {
+      font-size: clamp(12px, 1.05vw, 14px);
+      font-weight: 600;
+      line-height: 1.25;
+      white-space: normal;
+    }
+    .btn-percent {
+      display: inline-block;
+      min-width: 2.5rem;
+      text-align: right;
+    }
+    .pc-chip {
+      position: relative;
+      overflow: hidden;
+      padding: 6px 10px;
+      min-height: 32px;
+      line-height: 1.2;
+      border-radius: 0.75rem;
+      border: 1px solid #d1d5db;
+      background-color: #ffffff;
+      color: #111827;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s;
+      width: auto;
+      max-width: 220px;
+      white-space: normal;
+      text-align: center;
+      --progress: 0;
+    }
+    .pc-chip span {
+      position: relative;
+      z-index: 1;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pc-chip::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(245,158,11,.18), rgba(245,158,11,.75));
+      transform-origin: left;
+      transform: scaleX(var(--progress));
+      transition: transform .2s ease-out;
+      z-index: 0;
+    }
+    .pc-chip:hover {
+      background-color: #fef3c7;
+      box-shadow: 0 1px 3px rgba(148,163,184,0.5);
+    }
+    .pc-chip-active {
+      --progress: 1;
+      border-color: #f59e0b;
+      color: #92400e;
+    }
+    .mode-btn {
+      background-color: #f9fafb;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      border-radius: 0.5rem;
+      font-size: clamp(11px, 1vw, 13px);
+      font-weight: 500;
+      padding: 4px 8px;
+      text-align: center;
+      transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s;
+      white-space: normal;
+    }
+    .mode-btn:hover:not(.mode-btn-active) {
+      background-color: #e5e7eb;
+      box-shadow: 0 1px 2px rgba(148,163,184,0.5);
+    }
+    .mode-btn-active {
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      border-color: #6366f1;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(129,140,248,0.7);
+    }
+    .table-header-main {
+      background: #e5e7eb;
+    }
+    .table-header-filters {
+      background: #f9fafb;
+    }
+    .table-header-main th,
+    .table-header-filters th {
+      border-bottom: 1px solid var(--border-soft);
+      color: #374151;
+    }
+    #menuTbody tr.group-city-row {
+      background: linear-gradient(90deg, #dcfce7, #ecfdf5) !important;
+      box-shadow:
+        0 1px 0 #e5e7eb,
+        inset 0 -1px 0 #e5e7eb;
+    }
+    #menuTbody tr.group-city-row td,
+    #menuTbody tr.group-city-row th {
+      color: #065f46;
+      font-weight: 600;
+    }
+    #menuTbody tr.group-category-row {
+      background: #fefce8 !important;
+      box-shadow:
+        0 1px 0 #e5e7eb,
+        inset 0 -1px 0 #e5e7eb;
+    }
+    #menuTbody tr.group-category-row td,
+    #menuTbody tr.group-category-row th {
+      color: #111827;
+      font-weight: 600;
+    }
+    #menuTbody tr[class*="category"],
+    #menuTbody tr[class*="Category"] {
+      background: #fefce8 !important;
+    }
+    #menuTbody tr[class*="category"] td,
+    #menuTbody tr[class*="category"] th,
+    #menuTbody tr[class*="Category"] td,
+    #menuTbody tr[class*="Category"] th {
+      color: #111827 !important;
+      font-weight: 600;
+    }
+    #menuTbody tr:has(> th[colspan]):not(.group-city-row) {
+      background: #fefce8 !important;
+    }
+    #menuTbody tr:has(> th[colspan]):not(.group-city-row) th {
+      color: #111827 !important;
+      font-weight: 600;
+    }
+    #menuTbody .menu-data-row:nth-child(odd) {
+      background-color: #ffffff;
+    }
+    #menuTbody .menu-data-row:nth-child(even) {
+      background-color: #f9fafb;
+    }
+    #menuTbody tr {
+      transition: background-color .12s ease-out;
+    }
+    #menuTbody,
+    #menuTbody td,
+    #menuTbody th {
+      user-select: none;
+    }
+    .row-range-selected {
+      background-color: rgba(129,140,248,.2) !important;
+    }
+    .checkbox-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .checkbox-wrap input.row-checkbox {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .checkbox-custom {
+      width: 16px;
+      height: 16px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        background-color .15s,
+        border-color .15s,
+        box-shadow .15s,
+        transform .1s;
+      box-shadow: 0 0 0 1px transparent;
+    }
+    .checkbox-custom::before {
+      content: "";
+      width: 7px;
+      height: 11px;
+      border-right: 2px solid transparent;
+      border-bottom: 2px solid transparent;
+      transform: rotate(40deg) translateY(-1px);
+      transition: border-color .15s;
+    }
+    .checkbox-wrap.checkbox-selected .checkbox-custom {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 1px rgba(129,140,248,.5);
+      background-color: #eef2ff;
+      transform: scale(1.02);
+    }
+    .checkbox-wrap.checkbox-selected .checkbox-custom::before {
+      border-color: #4338ca;
+    }
+    .checkbox-wrap.checkbox-in-selection .checkbox-custom {
+      border-color: #22c55e;
+      background: linear-gradient(135deg, #bbf7d0, #4ade80);
+      box-shadow: 0 0 0 1px rgba(34,197,94,.6);
+      transform: scale(1.03);
+    }
+    .checkbox-wrap.checkbox-in-selection .checkbox-custom::before {
+      border-color: #14532d;
+    }
+    .image-modal-shell { backdrop-filter: blur(4px); }
+    .image-modal-meta { text-align: center; }
+    .image-modal-footer { text-align: center; }
+    .icon-toggle-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      border: 1px solid #d1d5db;
+      background-color: #ffffff;
+      color: #4b5563;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color .15s, border-color .15s, box-shadow .15s;
+    }
+    .icon-toggle-btn:hover {
+      background-color: #e5e7eb;
+      border-color: #9ca3af;
+      box-shadow: 0 1px 2px rgba(148,163,184,0.6);
+    }
+    .selection-search-btn {
+      padding: 6px 14px;
+      border-radius: 9999px;
+      border: 1px solid #22c55e;
+      background: linear-gradient(to right, rgba(34,197,94,.1), rgba(34,197,94,.3));
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      color: #166534;
+      white-space: nowrap;
+      transition: background .15s, box-shadow .15s;
+    }
+    .selection-search-btn:hover {
+      background: linear-gradient(to right, rgba(34,197,94,.2), rgba(34,197,94,.4));
+      box-shadow: 0 1px 3px rgba(74,222,128,0.7);
+    }
+    .selection-search-btn-icon {
+      font-size: 15px;
+      opacity: .9;
+    }
+    #fontSmaller,
+    #fontBigger,
+    #filterAnyPriceBtn,
+    #clearSelectionBtn,
+    #selectAllCities,
+    #clearCities,
+    #toggleDescriptionBtn {
+      background-color: #ffffff;
+      border-color: #d1d5db;
+      color: #374151;
+    }
+    #fontSmaller:hover,
+    #fontBigger:hover,
+    #filterAnyPriceBtn:hover,
+    #clearSelectionBtn:hover,
+    #selectAllCities:hover,
+    #clearCities:hover,
+    #toggleDescriptionBtn:hover {
+      background-color: #e5e7eb;
+    }
+    #dishSearchModal > div {
+      box-shadow: 0 10px 40px rgba(15,23,42,0.25);
+    }
+    #dishSearchResults {
+      color: #111827;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      background-color: #ffffff;
+    }
+    .dish-search-row {
+      width: 100%;
+      text-align: left;
+      background-color: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      transition: background-color .12s ease-out;
+    }
+    .dish-search-row:hover {
+      background-color: #eef2ff;
+    }
+    .dish-search-row-selected {
+      background-color: #ecfdf5;
+    }
+    .dish-search-row:last-child {
+      border-bottom: none;
+    }
+    /* Лэйаут колонок и адаптация */
+    .header { min-height: 140px; height: 20%; overflow-y: auto; }
+    .main-content { height: 80%; display: flex; min-height: 0; }
+    .city-column { width: 15%; min-width: 200px; min-height: 0; }
+    .table-area { width: 85%; min-height: 0; }
+    .table-scroll-shell { overflow: auto; scrollbar-gutter: stable both-edges; touch-action: pan-x pan-y; }
+    .table-action-bar { overflow-x: auto; scrollbar-gutter: stable; }
+    .table-action-bar > button { flex: 1 1 200px; min-width: max-content; }
+    .table-action-bar::-webkit-scrollbar { height: 8px; }
+    .table-action-bar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    .table-scroll-shell.dragging { cursor: grabbing; }
+    .city-list-shell { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+    .city-scroll { flex: 1; overflow-y: auto; }
+    .city-modal-footer {
+      transition: transform .18s ease-out, opacity .18s ease-out, box-shadow .18s ease-out;
+      transform: translateY(14px);
+      opacity: 0;
+    }
+    .city-modal-footer.visible {
+      transform: translateY(0);
+      opacity: 1;
+      box-shadow: 0 -8px 18px rgba(15,23,42,0.08);
+    }
+    .count-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      background: #0ea5e9;
+      color: #fff;
+    }
+    .count-pill.inverse { background: #ffffff; color: #0284c7; box-shadow: 0 1px 3px rgba(2,132,199,0.25); }
+    .count-pill.red { background: #ef4444; }
+    .count-pill.green { background: #22c55e; }
+    .city-toggle-bar { display: none; }
+    @media (max-width: 1440px) {
+      .city-column { display: none; }
+      .table-area { width: 100%; }
+      .city-toggle-bar { display: flex; }
+    }
+    @media (max-width: 1024px) {
+      .header { height: auto; min-height: 100px; }
+      .main-content { flex-direction: column; height: auto; min-height: 0; }
+      .city-column { display: none; }
+      .table-area { width: 100%; }
+    }
+
+    /* КНОПКА ВЫХОДА — КРАСИВАЯ, СПРАВА ВВЕРХУ */
+    .logout-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
+      background: #dc2626;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logout-btn:hover {
+      background: #b91c1c;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5);
+    }
+  </style>
+</head>
+<body class="app-bg font-sans">
+
+  <!-- КНОПКА ВЫХОДА — ВСЕГДА ВИДНА -->
+  <a href="/logout" class="logout-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+    Выйти
+  </a>
+
+  <header class="header">
+    <div class="flex flex-col gap-3 h-full">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <span id="apiStatusDot" class="inline-block w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+          <span id="apiStatusText" class="text-xs text-slate-400">Не подключено</span>
+        </div>
+        <input
+          id="apiKey"
+          type="password"
+          placeholder="apiLogin (ключ iiko)"
+          class="w-64 px-3 py-1.5 rounded-md bg-white border border-slate-700 text-sm focus:outline-none focus:ring focus:ring-blue-500"
+        />
+        <button
+          id="loadOrgsBtn"
+          data-default-label="Подключить iiko API"
+          class="px-4 h-9 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition btn-big flex items-center justify-center"
+        >
+          <span class="flex items-center justify-between gap-1">
+            <span class="btn-label overflow-hidden text-ellipsis text-sm">
+              Подключить iiko API
+            </span>
+            <span class="btn-percent text-[11px] opacity-70 whitespace-nowrap"></span>
+          </span>
+        </button>
+        <button
+          id="logoutBtn"
+          class="px-3 h-9 flex items-center text-sm font-semibold rounded-md bg-white hover:bg-slate-100 border border-slate-700 text-slate-700 transition"
+        >
+          Выйти
+        </button>
+        <button
+          id="resetAllBtn"
+          class="px-3 h-9 flex items-center text-sm font-semibold rounded-md bg-white hover:bg-slate-100 border border-slate-700 text-slate-700 transition"
+        >
+          Сбросить всё
+        </button>
+      </div>
+      <div
+        id="status"
+        class="px-4 py-1.5 text-xs border border-slate-800 rounded-lg bg-slate-950 text-slate-500"
+      >
+        Введите apiLogin и нажмите «Подключить iiko API».
+      </div>
+      <div class="grid xl:grid-cols-[1.1fr_1fr] gap-4 items-start">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="priceCategoryLabel" class="text-xs text-slate-500 whitespace-nowrap">
+              Ценовые категории
+            </span>
+            <select
+              id="priceCategorySingle"
+              class="hidden px-3 py-1.5 rounded-md bg-white border border-slate-700 text-xs focus:outline-none focus:ring focus:ring-blue-500"
+            >
+              <option value="">Выберите ЦК</option>
+            </select>
+            <div id="pcSingleWrapper" class="hidden pr-1">
+              <div id="pcSingleChips" class="flex flex-wrap gap-2"></div>
+            </div>
+            <div id="pcMultiWrapper" class="hidden pr-1">
+              <div id="pcMultiChips" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="w-full flex flex-wrap items-center gap-2 text-[11px] text-slate-600 mt-1">
+        <span id="tableInfo" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 shadow-sm"></span>
+      </div>
+    </div>
+  </header>
+  <main class="main-content px-4 pb-4 pt-2 gap-4">
+    <aside id="cityColumn" class="city-column p-3 flex flex-col overflow-x-hidden panel-bg border border-slate-800 rounded-xl shadow-md min-h-0 city-list-shell">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+          Города
+        </h2>
+        <div class="flex gap-1">
+          <button
+            id="selectAllCities"
+            class="text-[12px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700"
+          >
+            Все
+          </button>
+          <button
+            id="clearCities"
+            class="text-[12px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700"
+          >
+            Сброс
+          </button>
+        </div>
+      </div>
+      <input
+        id="citySearch"
+        type="text"
+        placeholder="Поиск города"
+        class="mb-2 w-full px-3 py-1.5 rounded-md bg-white border border-slate-700 text-xs focus:outline-none focus:ring focus:ring-blue-500"
+      />
+      <div
+        id="orgsList"
+        class="city-scroll space-y-2 text-sm text-slate-800 mt-1 pr-1"
+      ></div>
+    </aside>
+    <section class="table-area flex flex-col gap-2 p-3 overflow-hidden panel-bg border border-slate-800 rounded-xl shadow-md">
+      <div id="cityToggleBar" class="city-toggle-bar w-full hidden">
+        <button
+          id="mobileCityBtn"
+          class="w-full flex items-center justify-between gap-3 px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold shadow"
+          type="button"
+        >
+          <span class="text-sm">Города</span>
+          <span id="mobileCityBadge" class="count-pill inverse">0</span>
+        </button>
+      </div>
+      <div class="flex-1 card-bg border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-inner">
+        <div class="px-3 py-2 border-b border-slate-800 text-xs text-slate-500 flex flex-wrap items-start md:items-center gap-3 table-shell-bg">
+          <div class="flex items-center gap-3 flex-wrap grow min-w-[320px]">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] text-slate-500 whitespace-nowrap">Внешнее меню</span>
+              <select
+                id="menuSelect"
+                class="min-w-[220px] px-3 py-1.5 rounded-md bg-white border border-slate-700 text-xs focus:outline-none focus:ring focus:ring-blue-500"
+              >
+                <option value="">Сначала загрузите организации и меню</option>
+              </select>
+            </div>
+            <div id="priceFilterGroup" class="hidden items-center gap-1 bg-slate-950 px-2 py-1 rounded-md border border-slate-700">
+              <button id="filterAnyPriceBtn"
+                      class="px-2 py-1 text-[12px] rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-700">
+                Только с ценой
+              </button>
+            </div>
+            <div class="flex items-center gap-1 ml-2">
+              <button id="fontSmaller" class="px-2 py-1 text-[12px] rounded bg-slate-900 hover:bg-slate-800 border border-slate-700">
+                A-
+              </button>
+              <button id="fontBigger" class="px-2 py-1 text-[12px] rounded bg-slate-900 hover:bg-slate-800 border border-slate-700">
+                A+
+              </button>
+              <button
+                id="toggleDescriptionBtn"
+                class="px-2 py-1 text-[12px] rounded border border-slate-700"
+              >
+                Описание +
+              </button>
+            </div>
+            <div class="flex items-center gap-1 flex-wrap ml-2">
+              <div class="w-px self-stretch bg-slate-300 hidden md:block"></div>
+              <button id="modeOrgsAllBtn" class="mode-btn mode-btn-active">
+                <span>Цены по городам (все ЦК)</span>
+              </button>
+              <div class="w-px self-stretch bg-slate-300 hidden md:block"></div>
+              <button id="modeOrgsBtn" class="mode-btn">
+                <span>Цены по городам (выбранная ЦК)</span>
+              </button>
+              <div class="w-px self-stretch bg-slate-300 hidden md:block"></div>
+              <button id="modePriceCatsBtn" class="mode-btn">
+                <span>Город (все ЦК)</span>
+              </button>
+              <div class="w-px self-stretch bg-slate-300 hidden md:block"></div>
+              <button id="modeSelectionBtn" class="mode-btn">
+                <span>Таблица сверки цен</span>
+              </button>
+            </div>
+            <div id="selectionToolsGroup" class="hidden items-center gap-2 ml-2">
+              <button id="openSelectionSearchBtn" class="selection-search-btn">
+                <span class="selection-search-btn-icon">Поиск</span>
+                <span>Поиск блюд</span>
+              </button>
+              <button
+                id="clearSelectionBtn"
+                class="px-2 py-1 text-[12px] rounded bg-slate-900 hover:bg-slate-800 border border-slate-700"
+              >
+                Очистить таблицу
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="tableActionBar" class="flex items-center gap-2 flex-wrap justify-start lg:justify-end w-full table-action-bar pb-1">
+          <button
+            id="loadMenuBtn"
+            data-default-label="Загрузить меню и цены"
+            class="btn-big h-8 px-3 text-xs sm:text-sm font-semibold rounded-md bg-rose-500 hover:bg-rose-400 transition text-white"
+          >
+            <span class="flex items-center justify-center gap-2">
+              <span class="btn-label text-xs sm:text-sm">Загрузить меню и цены</span>
+              <span class="btn-percent text-[11px] opacity-70"></span>
+            </span>
+          </button>
+          <button
+            id="loadImagesBtn"
+            data-default-label="Обновить фото"
+            class="btn-big h-8 px-3 text-xs sm:text-sm font-semibold rounded-md bg-amber-400 hover:bg-amber-300 text-slate-900 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled
+          >
+            <span class="flex items-center justify-center gap-2">
+              <span class="btn-label text-xs sm:text-sm">Обновить фото</span>
+              <span class="btn-percent text-[11px] opacity-70"></span>
+            </span>
+          </button>
+          <button
+            id="exportBtn"
+            data-default-label="Экспорт в Excel"
+            class="btn-big h-8 px-3 text-xs sm:text-sm font-semibold rounded-md bg-sky-500 hover:bg-sky-400 transition text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled
+          >
+            <span class="flex items-center justify-center gap-2">
+              <span class="btn-label text-xs sm:text-sm">Экспорт в Excel</span>
+              <span class="btn-percent text-[11px] opacity-70"></span>
+            </span>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 px-3 pb-2 md:hidden">
+          <button id="mobileSelectAllRows" class="mode-btn flex-1">Выделить все</button>
+          <button id="mobileClearRowSelection" class="mode-btn flex-1">Снять выделение</button>
+        </div>
+        <div id="tableScrollContainer" class="flex-1 overflow-auto flex justify-start table-shell-bg table-scroll-shell">
+          <div class="py-3 pl-4">
+            <table class="border-separate border-spacing-0 leading-snug" style="min-width: 860px;" id="menuTable">
+              <thead class="text-[12px] uppercase" id="menuThead"></thead>
+              <tbody id="menuTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div id="imageModal"
+       class="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] hidden">
+    <div class="relative w-full max-w-5xl max-h-[95vh] bg-white/5 rounded-2xl shadow-2xl overflow-hidden flex flex-col image-modal-shell">
+      <button id="closeImageModal"
+              class="absolute top-3 right-3 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg backdrop-blur hover:bg-black/70"
+              aria-label="Закрыть просмотр">
+        ✕
+      </button>
+      <div class="px-5 pt-5 pb-2 text-white text-center space-y-1 bg-gradient-to-b from-black/60 to-transparent image-modal-meta">
+        <div id="imageModalTitle" class="text-base font-semibold leading-tight"></div>
+        <div id="imageModalSku" class="text-sm text-white"></div>
+      </div>
+      <div id="imageModalBody" class="flex-1 flex items-center justify-center cursor-grab active:cursor-grabbing select-none relative">
+        <img id="imageModalImg"
+             class="w-full max-w-[100vw] max-h-[80vh] sm:w-auto sm:max-w-[80vw] sm:max-h-[80vh] object-contain"
+             alt="Фото блюда"/>
+        <div id="imageModalDescription"
+             class="absolute bottom-0 inset-x-0 bg-slate-900/70 backdrop-blur text-white text-xs sm:text-sm text-center px-4 py-3 sm:py-2 flex justify-center">
+          <span class="max-w-4xl"></span>
+        </div>
+      </div>
+      <div class="px-5 pb-5 pt-3 bg-black/45 text-white flex flex-col items-center gap-2 image-modal-footer text-center">
+        <div class="text-xs text-slate-200 opacity-80">Клавиши ← → или нажатия по сторонам для пролистывания</div>
+        <button id="checkImageBtn" class="px-4 py-2 rounded-md bg-emerald-500 hover:bg-emerald-400 text-sm font-semibold shadow min-w-[220px]">
+          Проверить актуальность фото
+        </button>
+        <div id="imageModalStatus" class="text-xs text-center text-white/90"></div>
+      </div>
+    </div>
+  </div>
+  <div id="cityModal" class="fixed inset-0 bg-black/60 z-50 hidden">
+    <div class="absolute inset-0 flex items-center justify-center px-4" id="cityModalBackdrop">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" onclick="event.stopPropagation();">
+        <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-800">Выберите города</h3>
+          <button id="closeCityModal" class="mode-btn">Закрыть</button>
+        </div>
+        <div class="px-4 pt-3 pb-3 border-b border-slate-100 space-y-2">
+          <input
+            id="cityModalSearch"
+            type="text"
+            placeholder="Поиск города"
+            class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500"
+          />
+          <div class="flex items-center gap-2 text-xs">
+            <button id="cityModalSelectAll" class="mode-btn flex-1">Выбрать все</button>
+            <button id="cityModalClear" class="mode-btn flex-1">Сбросить</button>
+          </div>
+        </div>
+        <div class="p-4 pt-3 flex flex-col gap-2 max-h-[60vh] overflow-y-auto" id="cityModalList"></div>
+        <div id="cityModalFooter" class="sticky bottom-0 w-full bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3 city-modal-footer">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-xs text-slate-500" id="cityModalCount"></div>
+            <button id="cityModalApply" class="px-4 py-2 rounded-md bg-sky-500 hover:bg-sky-400 text-white text-sm font-semibold shadow">
+              ОК
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="rowContextMenu"
+       class="fixed z-50 bg-white border border-slate-700 rounded-md shadow-lg text-sm py-1 hidden">
+    <button id="ctxAddToSelectionBtn"
+            class="block w-full text-left px-3 py-1.5 hover:bg-slate-100">
+      Добавить в таблицу сверки цен
+    </button>
+    <button id="ctxCopyValueBtn"
+            class="block w-full text-left px-3 py-1.5 hover:bg-slate-100">
+      Копировать
+    </button>
+  </div>
+  <div id="dishSearchModal"
+       class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden"
+       onclick="document.getElementById('dishSearchModal').classList.add('hidden');">
+    <div class="card-bg border border-slate-200 rounded-xl shadow-2xl w-full max-w-4xl mx-4 p-5"
+         onclick="event.stopPropagation();">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-slate-900">Поиск блюд</h2>
+        <button id="closeDishSearchBtn"
+                class="w-7 h-7 flex items-center justify-center rounded-md bg-slate-900 hover:bg-slate-800 text-slate-200 text-lg leading-none">
+          ×
+        </button>
+      </div>
+      <input id="dishSearchInput" type="text"
+             class="w-full px-3 py-2 rounded-md bg-white border border-slate-700 text-sm focus:outline-none focus:ring focus:ring-blue-500"
+             placeholder="Введите SKU или название блюда"/>
+      <p class="mt-2 text-xs text-slate-500">
+        Совпадения ищутся по артикулу, имени блюда и имени для внешнего меню. Нажимайте на найденные позиции, чтобы добавить или убрать их из таблицы сверки цен.
+      </p>
+      <!-- Шапка таблицы поиска: Фото | Категория | Наименование | SKU -->
+      <div class="mt-3 mb-1">
+        <div class="grid grid-cols-[3rem_1.4fr_1.8fr_1.1fr] items-center gap-2 px-3 py-1.5 bg-slate-50 text-[11px] font-semibold text-slate-500 uppercase rounded-t-xl border border-b-0 border-slate-200">
+          <div class="text-center">Фото</div>
+          <div class="text-center">Категория</div>
+          <div class="text-center">Наименование</div>
+          <div class="text-center">SKU</div>
+        </div>
+      </div>
+      <div id="dishSearchResults"
+           class="max-h-80 overflow-y-auto text-sm rounded-b-xl"></div>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+  <script>
+    (function () {
+      const dishSearchResults = document.getElementById('dishSearchResults');
+      const imageModal = document.getElementById('imageModal');
+      const imageModalImg = document.getElementById('imageModalImg');
+
+      if (dishSearchResults && imageModal && imageModalImg) {
+        dishSearchResults.addEventListener('click', function (e) {
+          const img = e.target.closest('[data-image-url], img');
+          if (!img) return;
+
+          const url = img.getAttribute('data-image-url') || img.getAttribute('src');
+          if (!url) return;
+
+          const name = img.getAttribute('data-name') || '';
+          const sku = img.getAttribute('data-sku') || '';
+          if (window.openImageModalFromUrl) {
+            window.openImageModalFromUrl(url, name, sku);
+          } else {
+            imageModalImg.src = url;
+            imageModal.classList.remove('hidden');
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "iiko": {
+    "hash": "$2b$12$XzpCwFX77qEyTcS8JF5Q5uKDqtyMvcb8ZiFUh6Gb3y7EfkEaAXzW6",
+    "role": "admin"
+  },
+  "admin": {
+    "hash": "$2b$12$aWcU.Z45NEJ.yg0DHQwhoOCMvhva5C62yoYy5.oaLo1wh8uxU12hC",
+    "role": "admin"
+  },
+  "zalupa": {
+    "hash": "$2b$12$r5vFfF7vVQXrFxtUKxGnqeFGWNhVV7J8SRhiyFcHS3PKV1WO7K6Iu",
+    "role": "user"
+  }
+}

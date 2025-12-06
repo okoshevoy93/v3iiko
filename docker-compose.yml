@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  iiko-menu-web:
+    build: .
+    container_name: iiko_menu_v2
+    restart: unless-stopped
+    ports:
+      - "8282:9000"                    # ← снаружи любой свободный, внутри 9000
+    volumes:
+      - /volume1/apps/iiko_menu_v2/app:/app
+    environment:
+      - PORT=9000                      # ← гарантирует, что Flask возьмёт именно 9000
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
