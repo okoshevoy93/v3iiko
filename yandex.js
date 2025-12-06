@@ -126,7 +126,8 @@ async function verifyAccess() {
       body: JSON.stringify(creds),
     });
     if (data.token) {
-      setStatus('Доступ подтверждён. Можете загрузить города и меню.', 'ok');
+      const base = data.base ? ` (хост: ${data.base.replace('https://', '')})` : '';
+      setStatus(`Доступ подтверждён${base}. Можете загрузить города и меню.`, 'ok');
       loadCities();
     } else {
       setStatus('Не удалось получить токен. Проверьте данные.', 'err');

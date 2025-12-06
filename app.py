@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 
 IIKO_V1 = "https://api-ru.iiko.services/api/1"
 IIKO_V2 = "https://api-ru.iiko.services/api/2"
-YANDEX_BASE = "https://api.eda.yandex.ru"
+YANDEX_BASES = [
+    "https://api.eda.yandex.ru",
+    "https://api.eda.yandex.net",
+]
 
 TOKENS = {}
 YANDEX_TOKENS = {}  # {f"{client_id}:{secret}": {"token": ..., "time": ...}}
@@ -168,45 +171,48 @@ def get_yandex_token(client_id: str, client_secret: str) -> tuple[str | None, st
     if cached and time.time() - cached["time"] < 3500:
         return cached["token"], None
 
-    primary_url = f"{YANDEX_BASE}/partner/auth"
-    oauth_url = f"{YANDEX_BASE}/security/oauth/token"
-    data = {"grant_type": "client_credentials"}
-    try:
-        resp = requests.post(
-            primary_url,
-            json={"clientId": client_id, "clientSecret": client_secret},
-            timeout=(20, 60),
-        )
-        if resp.status_code == 200:
-            token = resp.json().get("access_token") or resp.json().get("token")
-            if token:
-                YANDEX_TOKENS[key] = {"token": token, "time": time.time()}
-                return token, None
-        elif resp.status_code in (401, 403):
-            return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
+    last_error = None
+    for base in YANDEX_BASES:
+        primary_url = f"{base}/partner/auth"
+        oauth_url = f"{base}/security/oauth/token"
+        data = {"grant_type": "client_credentials"}
+        try:
+            resp = requests.post(
+                primary_url,
+                json={"clientId": client_id, "clientSecret": client_secret},
+                timeout=(30, 60),
+            )
+            if resp.status_code == 200:
+                token = resp.json().get("access_token") or resp.json().get("token")
+                if token:
+                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                    return token, None
+            elif resp.status_code in (401, 403):
+                return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
 
-        # fallback на OAuth, если основной маршрут недоступен
-        resp_oauth = requests.post(
-            oauth_url,
-            data=data,
-            auth=HTTPBasicAuth(client_id, client_secret),
-            timeout=(20, 60),
-        )
-        if resp_oauth.status_code == 200:
-            token = resp_oauth.json().get("access_token")
-            if token:
-                YANDEX_TOKENS[key] = {"token": token, "time": time.time()}
-                return token, None
-            logger.error(f"Yandex token response without token: {resp_oauth.text}")
-            return None, "Ответ без access_token"
+            resp_oauth = requests.post(
+                oauth_url,
+                data=data,
+                auth=HTTPBasicAuth(client_id, client_secret),
+                timeout=(30, 60),
+            )
+            if resp_oauth.status_code == 200:
+                token = resp_oauth.json().get("access_token")
+                if token:
+                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                    return token, None
+                logger.error(f"Yandex token response without token: {resp_oauth.text}")
+                return None, "Ответ без access_token"
 
-        logger.error(
-            f"Yandex token failed primary={resp.status_code}, oauth={resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
-        )
-        return None, f"Ошибка OAuth {resp_oauth.status_code}: {resp_oauth.text}"
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Yandex token error: {e}")
-        return None, f"Ошибка подключения к Yandex: {e}"
+            last_error = f"{resp.status_code}/{resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
+            logger.error(
+                f"Yandex token failed for base {base}: primary={resp.status_code}, oauth={resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
+            )
+        except requests.exceptions.RequestException as e:
+            last_error = str(e)
+            logger.error(f"Yandex token error for base {base}: {e}")
+
+    return None, f"Ошибка подключения к Yandex: {last_error or 'нет ответа'}"
 
 
 # ==================== РОУТЫ ====================
@@ -268,7 +274,9 @@ def yandex_request(client_id: str, client_secret: str, path: str, *, method: str
         status = 502 if err and "подключ" in err.lower() else 401
         return None, (status, err or "no token")
 
-    url = f"{YANDEX_BASE}{path}"
+    cache = YANDEX_TOKENS.get(f"{client_id}:{client_secret}") or {}
+    base = cache.get("base") or YANDEX_BASES[0]
+    url = f"{base}{path}"
     headers = {"Authorization": f"Bearer {token}"}
     try:
         resp = requests.request(method, url, params=params, json=payload, headers=headers, timeout=timeout)
@@ -287,7 +295,8 @@ def yandex_token():
     if not token:
         status = 502 if err and "подключ" in err.lower() else 401
         return jsonify({"error": err or "invalid"}), status
-    return jsonify({"token": token})
+    cache = YANDEX_TOKENS.get(f"{data.get('client_id')}:{data.get('client_secret')}") or {}
+    return jsonify({"token": token, "base": cache.get("base")})
 
 @app.route("/api/yandex/cities", methods=["GET"])
 @require_auth
