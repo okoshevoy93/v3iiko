@@ -268,8 +268,8 @@ function renderPlaces(places) {
   placeSelect.innerHTML = '<option value="">Выберите точку</option>';
   places.forEach(place => {
     const option = document.createElement('option');
-    const placeId = place.yandexPlaceId || place.id || place.place_id || '';
-    option.value = placeId || place.orgId || '';
+    const placeId = place.orgId || place.yandexPlaceId || place.id || place.place_id || '';
+    option.value = placeId;
     const name = place.name || place.title || place.slug || 'Без названия';
     option.textContent = name;
     option.dataset.cityId = place.city_id || place.cityId || place.city || '';
@@ -447,7 +447,7 @@ function renderPlaceCard(placeOption) {
   const schedule = Array.isArray(scheduleRaw?.days)
     ? scheduleRaw.days.map(d => `${d.day || ''}: ${d.from || d.start || ''} — ${d.to || d.end || ''}`).join('<br>')
     : 'График не указан';
-  const hint = placeOption.dataset.placeId ? '' : '<div class="text-[11px] text-amber-600 mt-1">Для вызовов Yandex укажите place_id вручную или выберите совпадение.</div>';
+  const hint = placeOption.dataset.placeId ? '' : '<div class="text-[11px] text-amber-600 mt-1">Для вызовов укажите restaurant_id вручную.</div>';
   placeCard.innerHTML = `
     <div class="space-y-1">
       <div class="text-sm font-semibold text-slate-800">${placeOption.textContent || 'Без названия'}</div>
@@ -462,7 +462,7 @@ function renderPlaceCard(placeOption) {
 async function loadScheduleForPlace(placeId) {
   if (!placeId) return;
   try {
-    const data = await callYandex('/api/yandex/schedule', { params: { place_id: placeId } });
+    const data = await callYandex('/api/yandex/schedule', { params: { restaurant_id: placeId } });
     const schedule = data?.schedule || data?.items || data;
     cachedSchedule.set(placeId, schedule);
     const option = placeSelect.options[placeSelect.selectedIndex];
@@ -532,7 +532,7 @@ async function loadPlaces() {
     const places = filtered.map(org => {
       const matched = findYandexPlace(org) || {};
       return {
-        id: matched.id || matched.place_id || '',
+        id: org.id || org.organizationId || org.uuid,
         yandexPlaceId: matched.id || matched.place_id || '',
         name: org.name || org.organizationName || org.title || 'Без названия',
         city: org.city || org.address?.city || cityName,
@@ -555,12 +555,12 @@ async function loadMenu() {
   if (!creds) return;
   const placeId = getActivePlaceId();
   if (!placeId) {
-    setStatus('Выберите точку (place), чтобы загрузить меню.', 'err');
+    setStatus('Выберите организацию, чтобы загрузить меню.', 'err');
     return;
   }
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
   try {
-    const params = new URLSearchParams({ ...creds, place_id: placeId, webhook_url: getWebhookUrl() }).toString();
+    const params = new URLSearchParams({ ...creds, restaurant_id: placeId, webhook_url: getWebhookUrl() }).toString();
     const data = await apiFetch(`/api/yandex/menu?${params}`);
     renderMenu(data);
     setStatus('Меню загружено.', 'ok');
@@ -641,9 +641,9 @@ async function deleteIntegration() {
 
 async function runAvailability() {
   const placeId = getActivePlaceId();
-  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
-    const data = await callYandex('/api/yandex/availability', { params: { place_id: placeId } });
+    const data = await callYandex('/api/yandex/availability', { params: { restaurant_id: placeId } });
     renderExtraResult('Недоступные позиции', data);
     setStatus('Получены данные о недоступных позициях.', 'ok');
   } catch (e) {
@@ -653,9 +653,9 @@ async function runAvailability() {
 
 async function runPromos() {
   const placeId = getActivePlaceId();
-  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
-    const data = await callYandex('/api/yandex/promos', { params: { place_id: placeId } });
+    const data = await callYandex('/api/yandex/promos', { params: { restaurant_id: placeId } });
     renderExtraResult('Акционные позиции', data);
     setStatus('Акции получены.', 'ok');
   } catch (e) {
@@ -665,9 +665,9 @@ async function runPromos() {
 
 async function runZones() {
   const placeId = getActivePlaceId();
-  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
-    const data = await callYandex('/api/yandex/delivery_zones', { params: { place_id: placeId } });
+    const data = await callYandex('/api/yandex/delivery_zones', { params: { restaurant_id: placeId } });
     renderExtraResult('Зоны доставки', data);
     setStatus('Зоны доставки получены.', 'ok');
   } catch (e) {
@@ -677,9 +677,9 @@ async function runZones() {
 
 async function runSchedule() {
   const placeId = getActivePlaceId();
-  if (!placeId) return setStatus('Укажите place_id (выберите точку или заполните поле).', 'err');
+  if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
-    const data = await callYandex('/api/yandex/schedule', { params: { place_id: placeId } });
+    const data = await callYandex('/api/yandex/schedule', { params: { restaurant_id: placeId } });
     renderExtraResult('График работы', data);
     setStatus('График получен.', 'ok');
   } catch (e) {
@@ -775,7 +775,7 @@ placeSelect.addEventListener('change', () => {
     loadScheduleForPlace(placeId);
   } else {
     placeIdManual.value = '';
-    setStatus('У выбранной точки нет связанного place_id. Укажите вручную.', 'info');
+    setStatus('У выбранной точки нет связанного restaurant_id. Укажите вручную.', 'info');
   }
 });
 integrationSelect.addEventListener('change', () => {

@@ -26,14 +26,7 @@ logger = logging.getLogger(__name__)
 
 IIKO_V1 = "https://api-ru.iiko.services/api/1"
 IIKO_V2 = "https://api-ru.iiko.services/api/2"
-YANDEX_BASES = [
-    "https://eda-api.yandex.ru",
-    "https://api.eda.yandex.ru",
-    "https://eda-api.yandex.net",
-    "https://api.eda.yandex.net",
-    "https://api.partner.yandex.ru",
-    "https://apimenu.ru/yandex",
-]
+YANDEX_BASES: list[str] = []  # опираемся на base из webhook
 
 TOKENS = {}
 YANDEX_TOKENS = {}  # {f"{client_id}:{secret}": {"token": ..., "time": ...}}
@@ -179,8 +172,26 @@ def _is_host_resolvable(base: str) -> tuple[bool, str | None]:
         return False, str(e)
 
 
+def derive_base_from_webhook(webhook_url: str | None) -> str | None:
+    """Вернуть схему и хост из webhook URL iiko (без пути и хвоста)."""
+
+    if not webhook_url:
+        return None
+    try:
+        parsed = urlparse(webhook_url.strip())
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+    except Exception:
+        return None
+    return None
+
+
 def get_yandex_token(client_id: str, client_secret: str, base_override: str | None = None) -> tuple[str | None, str | None]:
-    """Получить и кешировать токен для Яндекс. Возвращает (token, error)."""
+    """Получить и кешировать токен для Яндекс. Возвращает (token, error).
+
+    Теперь обязательным является base из webhook (хост iiko), так как именно там
+    лежат /security/oauth/token, /restaurants и /menu/{restaurantId}.
+    """
 
     key = f"{client_id}:{client_secret}"
     cached = YANDEX_TOKENS.get(key)
@@ -195,9 +206,9 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
             logger.error(f"Yandex host not resolved {base_override}: {err}")
             return None, f"Хост {base_override} не разрешается через DNS: {err}"
         bases.append(base_override)
-    for b in YANDEX_BASES:
-        if b not in bases:
-            bases.append(b)
+
+    if not bases:
+        return None, "Укажите URL вебхука iiko, чтобы определить хост API."
 
     last_error = None
     for base in bases:
@@ -352,13 +363,15 @@ def image_proxy():
 def yandex_request(client_id: str, client_secret: str, path: str, *, method: str = "GET",
                    params: dict | None = None, payload: dict | None = None,
                    timeout: tuple[int, int] = (20, 60), base: str | None = None):
+    if not base:
+        return None, (400, "Укажите webhook_url iiko, чтобы определить хост API.")
     token, err = get_yandex_token(client_id, client_secret, base)
     if not token:
         status = 502 if err and "подключ" in err.lower() else 401
         return None, (status, err or "no token")
 
     cache = YANDEX_TOKENS.get(f"{client_id}:{client_secret}") or {}
-    api_base = base or cache.get("base") or YANDEX_BASES[0]
+    api_base = (base or cache.get("base") or "").rstrip("/")
     url = f"{api_base}{path}"
     headers = {"Authorization": f"Bearer {token}"}
     try:
@@ -380,6 +393,9 @@ def _read_yandex_base() -> str | None:
         base = payload.get("base") or base
     else:
         base = request.form.get("base") or base
+    webhook = (request.args.get("webhook_url") if request.args else None) or payload.get("webhook_url") or None
+    if not base:
+        base = derive_base_from_webhook(webhook)
     if base:
         return base.strip().rstrip("/")
     return None
@@ -429,11 +445,11 @@ def yandex_places():
 def yandex_menu():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    place_id = request.args.get("place_id")
-    if not place_id:
-        return jsonify({"error": "place_id required"}), 400
+    restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
+    if not restaurant_id:
+        return jsonify({"error": "restaurant_id required"}), 400
     base = _read_yandex_base()
-    data, err = yandex_request(client_id, client_secret, "/partner/menu", params={"place_id": place_id}, timeout=(20, 60), base=base)
+    data, err = yandex_request(client_id, client_secret, f"/menu/{restaurant_id}", timeout=(20, 60), base=base)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -445,11 +461,11 @@ def yandex_menu():
 def yandex_availability():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    place_id = request.args.get("place_id")
-    if not place_id:
-        return jsonify({"error": "place_id required"}), 400
+    restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
+    if not restaurant_id:
+        return jsonify({"error": "restaurant_id required"}), 400
     base = _read_yandex_base()
-    data, err = yandex_request(client_id, client_secret, "/partner/availability", params={"place_id": place_id}, timeout=(20, 60), base=base)
+    data, err = yandex_request(client_id, client_secret, f"/menu/{restaurant_id}/availability", timeout=(20, 60), base=base)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -461,11 +477,11 @@ def yandex_availability():
 def yandex_promos():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    place_id = request.args.get("place_id")
-    if not place_id:
-        return jsonify({"error": "place_id required"}), 400
+    restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
+    if not restaurant_id:
+        return jsonify({"error": "restaurant_id required"}), 400
     base = _read_yandex_base()
-    data, err = yandex_request(client_id, client_secret, "/partner/promos", params={"place_id": place_id}, timeout=(20, 60), base=base)
+    data, err = yandex_request(client_id, client_secret, "/partner/promos", params={"place_id": restaurant_id}, timeout=(20, 60), base=base)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -478,7 +494,7 @@ def yandex_restaurants():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
     base = _read_yandex_base()
-    data, err = yandex_request(client_id, client_secret, "/partner/places", timeout=(20, 60), base=base)
+    data, err = yandex_request(client_id, client_secret, "/restaurants", timeout=(20, 60), base=base)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -490,11 +506,11 @@ def yandex_restaurants():
 def yandex_delivery_zones():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    place_id = request.args.get("place_id")
-    if not place_id:
-        return jsonify({"error": "place_id required"}), 400
+    restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
+    if not restaurant_id:
+        return jsonify({"error": "restaurant_id required"}), 400
     base = _read_yandex_base()
-    data, err = yandex_request(client_id, client_secret, "/partner/delivery/zones", params={"place_id": place_id}, timeout=(20, 60), base=base)
+    data, err = yandex_request(client_id, client_secret, "/partner/delivery/zones", params={"place_id": restaurant_id}, timeout=(20, 60), base=base)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -506,11 +522,11 @@ def yandex_delivery_zones():
 def yandex_schedule():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    place_id = request.args.get("place_id")
-    if not place_id:
-        return jsonify({"error": "place_id required"}), 400
+    restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
+    if not restaurant_id:
+        return jsonify({"error": "restaurant_id required"}), 400
     base = _read_yandex_base()
-    data, err = yandex_request(client_id, client_secret, "/partner/schedule", params={"place_id": place_id}, timeout=(20, 60), base=base)
+    data, err = yandex_request(client_id, client_secret, "/partner/schedule", params={"place_id": restaurant_id}, timeout=(20, 60), base=base)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
