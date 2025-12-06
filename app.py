@@ -32,6 +32,7 @@ YANDEX_BASES = [
     "https://eda-api.yandex.net",
     "https://api.eda.yandex.net",
     "https://api.partner.yandex.ru",
+    "https://apimenu.ru/yandex",
 ]
 
 TOKENS = {}
@@ -42,6 +43,7 @@ IMAGE_CACHE_DIR = BASE_DIR / "image_cache"
 EXPORTS_DIR = BASE_DIR / "exports"
 USERS_FILE = BASE_DIR / "users.json"
 WEBHOOKS_FILE = BASE_DIR / "webhooks.json"
+HOSTS_FILE = BASE_DIR / "hosts.json"
 
 for d in (IMAGE_CACHE_DIR, EXPORTS_DIR):
     d.mkdir(exist_ok=True)
@@ -77,6 +79,7 @@ def save_users():
 load_users()
 
 WEBHOOKS_DB: dict[str, dict] = {}
+CUSTOM_YANDEX_HOSTS: list[str] = []
 
 
 def load_webhooks():
@@ -100,6 +103,31 @@ def save_webhooks():
 
 
 load_webhooks()
+
+
+def load_hosts():
+    global CUSTOM_YANDEX_HOSTS
+    try:
+        if HOSTS_FILE.exists():
+            data = json.loads(HOSTS_FILE.read_text("utf-8") or "[]")
+            if isinstance(data, dict):
+                data = data.get("hosts") or []
+            CUSTOM_YANDEX_HOSTS = [h.strip().rstrip("/") for h in data if h]
+        else:
+            HOSTS_FILE.write_text("[]", encoding="utf-8")
+    except Exception as e:
+        logger.error(f"Ошибка загрузки hosts.json: {e}")
+        CUSTOM_YANDEX_HOSTS = []
+
+
+def save_hosts():
+    try:
+        HOSTS_FILE.write_text(json.dumps(CUSTOM_YANDEX_HOSTS, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        logger.error(f"Ошибка сохранения hosts.json: {e}")
+
+
+load_hosts()
 
 def check_auth(username, password):
     user = USERS_DB.get(username)
@@ -177,6 +205,15 @@ def _is_host_resolvable(base: str) -> tuple[bool, str | None]:
         return False, str(e)
 
 
+def get_known_yandex_bases() -> list[str]:
+    bases: list[str] = []
+    for b in YANDEX_BASES + CUSTOM_YANDEX_HOSTS:
+        b = b.rstrip("/")
+        if b and b not in bases:
+            bases.append(b)
+    return bases
+
+
 def get_yandex_token(client_id: str, client_secret: str, base_override: str | None = None) -> tuple[str | None, str | None]:
     """Получить и кешировать токен для Яндекс. Возвращает (token, error)."""
 
@@ -188,7 +225,7 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
     bases: list[str] = []
     if base_override:
         bases.append(base_override.rstrip("/"))
-    for b in YANDEX_BASES:
+    for b in get_known_yandex_bases():
         if b not in bases:
             bases.append(b)
 
@@ -313,7 +350,8 @@ def yandex_request(client_id: str, client_secret: str, path: str, *, method: str
         return None, (status, err or "no token")
 
     cache = YANDEX_TOKENS.get(f"{client_id}:{client_secret}") or {}
-    api_base = base or cache.get("base") or YANDEX_BASES[0]
+    known_bases = get_known_yandex_bases()
+    api_base = base or cache.get("base") or (known_bases[0] if known_bases else YANDEX_BASES[0])
     url = f"{api_base}{path}"
     headers = {"Authorization": f"Bearer {token}"}
     try:
@@ -350,11 +388,21 @@ def yandex_token():
     return jsonify({"token": token, "base": cache.get("base")})
 
 
-@app.route("/api/yandex/hosts", methods=["GET"])
+@app.route("/api/yandex/hosts", methods=["GET", "POST"])
 @require_auth
 def yandex_hosts():
-    """Вернуть список доступных хостов и диагностику DNS."""
-    bases = list(dict.fromkeys([b.rstrip("/") for b in YANDEX_BASES]))
+    """Вернуть или сохранить список доступных хостов и диагностику DNS."""
+    if request.method == "POST":
+        payload = request.get_json() or {}
+        host = (payload.get("host") or "").strip().rstrip("/")
+        if not host:
+            return jsonify({"error": "host required"}), 400
+        if host not in CUSTOM_YANDEX_HOSTS:
+            CUSTOM_YANDEX_HOSTS.append(host)
+            save_hosts()
+        return jsonify({"ok": True, "hosts": get_known_yandex_bases()})
+
+    bases = get_known_yandex_bases()
     for item in WEBHOOKS_DB.values():
         base_url = (item.get("base_url") or "").strip().rstrip("/")
         if base_url and base_url not in bases:
@@ -559,6 +607,9 @@ def webhooks_save():
     iiko_key = (data.get("iiko_key") or "").strip()
     if not name or not webhook_url:
         return jsonify({"error": "name and webhook_url required"}), 400
+    if base_url and base_url not in CUSTOM_YANDEX_HOSTS:
+        CUSTOM_YANDEX_HOSTS.append(base_url.rstrip("/"))
+        save_hosts()
     WEBHOOKS_DB[name] = {
         "name": name,
         "webhook_url": webhook_url,

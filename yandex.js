@@ -10,6 +10,7 @@ const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
 const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
 const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
+const baseSelect = document.getElementById('baseSelect');
 const baseInput = document.getElementById('baseInput');
 const addHostBtn = document.getElementById('addHostBtn');
 const iikoKeyInput = document.getElementById('iikoKey');
@@ -83,20 +84,29 @@ function getCreds() {
   return { client_id, client_secret };
 }
 
-function getBase() {
-  const base = baseInput?.value?.trim();
+function getBase(preferInput = false) {
+  const inputVal = baseInput?.value?.trim() || '';
+  const selectVal = baseSelect?.value?.trim() || '';
+  const base = preferInput && inputVal ? inputVal : inputVal || selectVal;
   return base || 'https://api.eda.yandex.ru';
 }
 
-function addHostToList(value) {
+function addHostToList(value, { selectOnly = false } = {}) {
   if (!value) return;
   const host = value.trim().replace(/\/$/, '');
   if (!host) return;
   if (!hostOptions.has(host)) {
     hostOptions.add(host);
-    const option = document.createElement('option');
-    option.value = host;
-    document.getElementById('baseList')?.appendChild(option);
+    if (baseSelect) {
+      const option = document.createElement('option');
+      option.value = host;
+      option.textContent = host.replace(/^https?:\/\//, '');
+      baseSelect.appendChild(option);
+    }
+  }
+  if (!selectOnly) {
+    if (baseInput) baseInput.value = host;
+    if (baseSelect) baseSelect.value = host;
   }
 }
 
@@ -116,14 +126,32 @@ function renderHostDiagnostics(details = []) {
 async function loadHostList() {
   try {
     const data = await apiFetch('/api/yandex/hosts');
-    (data.hosts || []).forEach(addHostToList);
+    (data.hosts || []).forEach(host => addHostToList(host, { selectOnly: true }));
     renderHostDiagnostics(data.diagnostics || []);
-    if (!baseInput.value && data.hosts && data.hosts.length) {
-      baseInput.value = data.hosts[0];
+    if (baseSelect && !baseSelect.value && data.hosts?.length) baseSelect.value = data.hosts[0];
+    if (!baseInput.value && (baseSelect?.value || data.hosts?.length)) {
+      baseInput.value = baseSelect?.value || data.hosts[0];
     }
   } catch (e) {
     renderHostDiagnostics();
     console.error('hosts', e);
+  }
+}
+
+async function persistHost(host) {
+  const value = host?.trim();
+  if (!value) return setStatus('Введите хост для сохранения.', 'err');
+  addHostToList(value);
+  try {
+    await apiFetch('/api/yandex/hosts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: value }),
+    });
+    setStatus(`Хост ${value} сохранён.`, 'info');
+    loadHostList();
+  } catch (e) {
+    setStatus(e.message || 'Не удалось сохранить хост', 'err');
   }
 }
 
@@ -812,7 +840,15 @@ btnOrderDetails?.addEventListener('click', runOrderDetails);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
-addHostBtn?.addEventListener('click', () => addHostToList(getBase()));
+addHostBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  persistHost(getBase(true));
+});
+
+baseSelect?.addEventListener('change', () => {
+  const selected = baseSelect.value;
+  if (selected && baseInput && !baseInput.value) baseInput.value = selected;
+});
 
 if (baseInput && !baseInput.value) {
   baseInput.value = 'https://eda-api.yandex.ru';
