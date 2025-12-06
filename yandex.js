@@ -12,6 +12,7 @@ const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
 const baseInput = document.getElementById('baseInput');
 const addHostBtn = document.getElementById('addHostBtn');
+const iikoKeyInput = document.getElementById('iikoKey');
 const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
@@ -44,6 +45,8 @@ const btnLoadRestaurants = document.getElementById('btnLoadRestaurants');
 
 let cachedCities = [];
 let cachedPlaces = [];
+let iikoOrgs = [];
+let yandexPlaces = [];
 let lastMenuPayload = null;
 let integrations = [];
 let cachedSchedule = new Map();
@@ -129,10 +132,13 @@ function getWebhookUrl() {
 }
 
 function getActivePlaceId() {
-  const selected = placeSelect?.value?.trim();
+  const option = placeSelect?.options?.[placeSelect.selectedIndex];
+  const selected = option?.dataset?.placeId;
   if (selected) return selected;
   const manual = placeIdManual?.value?.trim();
-  return manual || '';
+  if (manual) return manual;
+  const fallback = option?.value?.trim();
+  return fallback || '';
 }
 
 async function apiFetch(url, options = {}) {
@@ -180,8 +186,11 @@ function renderHistory(data, title = 'История') {
     const number = order.number || order.id || order.order_id || '—';
     const created = order.created_at || order.createdAt || order.created || order.date || '';
     const cooking = order.cooking_started_at || order.cookingStart || order.cooking_start || '';
-    const ready = order.ready_at || order.readyTime || order.ready_time || '';
-    const items = Array.isArray(order.items) ? order.items.map(i => `${i.name || i.title || 'Позиция'} — ${i.quantity || i.qty || 1} шт. × ${(i.price || i.cost || '')}`).join('<br>') : '—';
+    const ready = order.ready_at || order.readyTime || order.ready_time || order.ready || '';
+    const handed = order.handover_time || order.handed_at || order.delivered_at || '';
+    const items = Array.isArray(order.items)
+      ? order.items.map(i => `${i.name || i.title || 'Позиция'} — ${i.quantity || i.qty || 1} шт. × ${(i.price || i.cost || '')}`).join('<br>')
+      : '—';
     const total = order.total_price || order.totalPrice || order.summary || order.amount || '';
     const block = document.createElement('div');
     block.className = 'border border-slate-200 rounded-lg p-2 bg-white';
@@ -190,6 +199,7 @@ function renderHistory(data, title = 'История') {
       <div class="text-xs text-slate-600">Создан: ${created || '—'}</div>
       <div class="text-xs text-slate-600">Готовка: ${cooking || '—'}</div>
       <div class="text-xs text-slate-600">Готов: ${ready || '—'}</div>
+      <div class="text-xs text-slate-600">Выдан / доставлен: ${handed || '—'}</div>
       <div class="text-xs text-slate-600">Состав:<br>${items}</div>
       <div class="text-xs text-slate-700 font-semibold mt-1">Сумма: ${total || '—'}</div>
     `;
@@ -240,12 +250,40 @@ function normalizePlaces(payload) {
   return [];
 }
 
+function normalizeCityName(val) {
+  return (val || '').toString().trim();
+}
+
+function normalizeKey(str) {
+  return (str || '').toString().toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-я]/g, '');
+}
+
+function findYandexPlace(org) {
+  const orgName = normalizeKey(org.name || org.fullName || org.title || org.organizationName || '');
+  const orgCity = normalizeKey(org.city || org.address?.city || org.region?.city || '');
+  return yandexPlaces.find(p => {
+    const pName = normalizeKey(p.name || p.title || p.slug || '');
+    const pCity = normalizeKey(p.city || p.cityName || p.city_id || '');
+    return pName && orgName && pName.includes(orgName.slice(0, Math.max(4, orgName.length - 2))) && (!orgCity || pCity === orgCity || pCity.includes(orgCity));
+  }) || null;
+}
+
+function buildCitiesFromIiko(orgs) {
+  const map = new Map();
+  (orgs || []).forEach(org => {
+    const city = normalizeCityName(org.city || org.address?.city || org.region?.city || org.location?.city || '');
+    if (!city) return;
+    if (!map.has(city)) map.set(city, { id: city, name: city });
+  });
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+}
+
 function renderCities(cities) {
   cachedCities = cities;
   citySelect.innerHTML = '<option value="">Выберите город</option>';
   cities.forEach(city => {
     const option = document.createElement('option');
-    option.value = city.id || city.city_id || city.slug || city.code || '';
+    option.value = city.id || city.city_id || city.slug || city.code || city.name || '';
     option.textContent = city.name || city.title || city.slug || 'Без названия';
     option.dataset.region = city.region || city.region_name || '';
     citySelect.appendChild(option);
@@ -262,11 +300,15 @@ function renderPlaces(places) {
   placeSelect.innerHTML = '<option value="">Выберите точку</option>';
   places.forEach(place => {
     const option = document.createElement('option');
-    option.value = place.id || place.place_id || place.slug || '';
+    const placeId = place.yandexPlaceId || place.id || place.place_id || '';
+    option.value = placeId || place.orgId || '';
     const name = place.name || place.title || place.slug || 'Без названия';
     option.textContent = name;
-    option.dataset.cityId = place.city_id || place.cityId || '';
-    option.dataset.address = place.address || place.full_address || place.location || '';
+    option.dataset.cityId = place.city_id || place.cityId || place.city || '';
+    option.dataset.address = place.address || place.full_address || place.location || place.address_full || '';
+    option.dataset.orgId = place.orgId || place.organizationId || '';
+    option.dataset.cityName = place.city || place.cityName || '';
+    option.dataset.placeId = placeId;
     option.dataset.schedule = JSON.stringify(place.schedule || place.work_time || {});
     placeSelect.appendChild(option);
   });
@@ -363,6 +405,7 @@ function applyIntegration(name) {
   clientIdInput.value = found.client_id || '';
   clientSecretInput.value = found.client_secret || '';
   integrationNameInput.value = found.name;
+  if (iikoKeyInput) iikoKeyInput.value = found.iiko_key || '';
   if (baseInput) {
     const host = found.base_url || getBase();
     addHostToList(host);
@@ -389,10 +432,11 @@ function renderMenu(payload) {
       totalModifiers += row.modifiers.length;
       const tr = document.createElement('tr');
       tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''}`;
+      const stopBadge = row.stopList ? '<span class="stop-pill">Стоп-лист</span>' : '';
       tr.innerHTML = `
         <td class="px-3 py-2 text-slate-800 font-semibold">${row.menu}</td>
         <td class="px-3 py-2">${row.category}</td>
-        <td class="px-3 py-2">${row.name}</td>
+        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
         <td class="px-3 py-2 text-xs text-slate-500">${row.id}</td>
         <td class="px-3 py-2 text-xs text-slate-600">${row.modifiers.join(', ') || '—'}</td>
         <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
@@ -428,21 +472,25 @@ function updateCurrentInfo() {
 
 function renderPlaceCard(placeOption) {
   if (!placeCard) return;
-  if (!placeOption || !placeOption.value) {
+  if (!placeOption || (!placeOption.value && !placeOption.dataset.placeId)) {
     placeCard.innerHTML = 'Выберите точку, чтобы увидеть название ресторана, город, адрес и график.';
     return;
   }
   const cityOption = citySelect.options[citySelect.selectedIndex];
   const cityName = cityOption ? (cityOption.textContent || '') : '';
   const address = placeOption.dataset.address || 'Адрес не указан';
-  const scheduleRaw = cachedSchedule.get(placeOption.value) || JSON.parse(placeOption.dataset.schedule || '{}');
-  const schedule = Array.isArray(scheduleRaw?.days) ? scheduleRaw.days.map(d => `${d.day || ''}: ${d.from || d.start || ''} — ${d.to || d.end || ''}`).join('<br>') : 'График не указан';
+  const scheduleRaw = cachedSchedule.get(placeOption.dataset.placeId || placeOption.value) || JSON.parse(placeOption.dataset.schedule || '{}');
+  const schedule = Array.isArray(scheduleRaw?.days)
+    ? scheduleRaw.days.map(d => `${d.day || ''}: ${d.from || d.start || ''} — ${d.to || d.end || ''}`).join('<br>')
+    : 'График не указан';
+  const hint = placeOption.dataset.placeId ? '' : '<div class="text-[11px] text-amber-600 mt-1">Для вызовов Yandex укажите place_id вручную или выберите совпадение.</div>';
   placeCard.innerHTML = `
     <div class="space-y-1">
       <div class="text-sm font-semibold text-slate-800">${placeOption.textContent || 'Без названия'}</div>
       <div class="text-xs text-slate-600">Город: ${cityName || '—'}</div>
       <div class="text-xs text-slate-600">Адрес: ${address}</div>
       <div class="text-xs text-slate-600">График: <br>${schedule}</div>
+      ${hint}
     </div>
   `;
 }
@@ -463,13 +511,26 @@ async function loadScheduleForPlace(placeId) {
 async function loadCities() {
   const creds = getCreds();
   if (!creds) return;
+  const iikoKey = iikoKeyInput?.value?.trim();
+  if (!iikoKey) {
+    setStatus('Укажите API-ключ iiko, чтобы загрузить города и точки.', 'err');
+    return;
+  }
   buttonLoading(loadCitiesBtn, true, 'Загружаем города...');
   try {
-    const query = new URLSearchParams({ ...creds, base: getBase() }).toString();
-    const data = await apiFetch(`/api/yandex/cities?${query}`);
-    const cities = normalizeCities(data);
+    const [iikoData, yandexData] = await Promise.all([
+      apiFetch('/api/iiko/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: iikoKey }),
+      }),
+      callYandex('/api/yandex/restaurants'),
+    ]);
+    iikoOrgs = Array.isArray(iikoData?.organizations) ? iikoData.organizations : (iikoData?.items || []);
+    yandexPlaces = normalizePlaces(yandexData);
+    const cities = buildCitiesFromIiko(iikoOrgs);
     renderCities(cities);
-    setStatus(`Найдено городов: ${cities.length}.`, 'ok');
+    setStatus(`Найдено городов iiko: ${cities.length}, заведений Yandex: ${yandexPlaces.length}.`, 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить города', 'err');
   } finally {
@@ -481,11 +542,25 @@ async function loadPlaces() {
   const creds = getCreds();
   if (!creds) return;
   const cityId = citySelect.value;
+  const cityName = citySelect.options[citySelect.selectedIndex]?.textContent || '';
   buttonLoading(placeSelect, true, '');
   try {
-    const params = new URLSearchParams({ ...creds, city_id: cityId || '', base: getBase() }).toString();
-    const data = await apiFetch(`/api/yandex/places?${params}`);
-    const places = normalizePlaces(data);
+    if (!iikoOrgs.length) {
+      await loadCities();
+    }
+    const filtered = iikoOrgs.filter(org => normalizeCityName(org.city || org.address?.city || org.region?.city || '') === normalizeCityName(cityId || cityName));
+    const places = filtered.map(org => {
+      const matched = findYandexPlace(org) || {};
+      return {
+        id: matched.id || matched.place_id || '',
+        yandexPlaceId: matched.id || matched.place_id || '',
+        name: org.name || org.organizationName || org.title || 'Без названия',
+        city: org.city || org.address?.city || cityName,
+        address: org.address?.full || org.address?.street || org.address?.line1 || org.address || matched.address,
+        orgId: org.id || org.organizationId || org.uuid,
+        schedule: matched.schedule,
+      };
+    });
     renderPlaces(places);
     setStatus(`Мест в городе: ${places.length}.`, 'ok');
   } catch (e) {
@@ -498,7 +573,7 @@ async function loadPlaces() {
 async function loadMenu() {
   const creds = getCreds();
   if (!creds) return;
-  const placeId = placeSelect.value;
+  const placeId = getActivePlaceId();
   if (!placeId) {
     setStatus('Выберите точку (place), чтобы загрузить меню.', 'err');
     return;
@@ -551,6 +626,7 @@ async function saveIntegration() {
         client_secret: creds.client_secret,
         base_url: getBase(),
         provider: 'yandex',
+        iiko_key: iikoKeyInput?.value?.trim() || '',
       }),
     });
     setStatus(`Интеграция «${name}» сохранена. Для подключения нажмите «Проверить доступ».`, 'info');
@@ -711,8 +787,15 @@ citySelect.addEventListener('change', () => {
 });
 placeSelect.addEventListener('change', () => {
   updateCurrentInfo();
-  const placeId = placeSelect.value;
-  if (placeId) loadScheduleForPlace(placeId);
+  const option = placeSelect.options[placeSelect.selectedIndex];
+  const placeId = option?.dataset?.placeId || '';
+  if (placeId) {
+    placeIdManual.value = placeId;
+    loadScheduleForPlace(placeId);
+  } else {
+    placeIdManual.value = '';
+    setStatus('У выбранной точки нет связанного place_id. Укажите вручную.', 'info');
+  }
 });
 integrationSelect.addEventListener('change', () => {
   if (integrationSelect.value) {
@@ -732,7 +815,7 @@ deleteIntegrationBtn.addEventListener('click', deleteIntegration);
 addHostBtn?.addEventListener('click', () => addHostToList(getBase()));
 
 if (baseInput && !baseInput.value) {
-  baseInput.value = 'https://api.eda.yandex.ru';
+  baseInput.value = 'https://eda-api.yandex.ru';
 }
 
 setStatus('Введите client_id и client_secret для подключения.');

@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 IIKO_V1 = "https://api-ru.iiko.services/api/1"
 IIKO_V2 = "https://api-ru.iiko.services/api/2"
 YANDEX_BASES = [
+    "https://eda-api.yandex.ru",
     "https://api.eda.yandex.ru",
+    "https://eda-api.yandex.net",
     "https://api.eda.yandex.net",
     "https://api.partner.yandex.ru",
 ]
@@ -267,6 +269,17 @@ def proxy():
     data = request.get_json() or {}
     return jsonify(iiko_request(data.get("api_key"), data.get("endpoint") or data.get("path"),
                                 data.get("payload"), int(data.get("version", 2))))
+
+
+@app.route("/api/iiko/organizations", methods=["POST"])
+@require_auth
+def iiko_organizations():
+    data = request.get_json() or {}
+    api_key = data.get("api_key")
+    if not api_key:
+        return jsonify({"error": "api_key required"}), 400
+    result = iiko_request(api_key, "organizations", version=1)
+    return jsonify(result)
 
 @app.route("/download/<filename>")
 @require_auth
@@ -528,6 +541,7 @@ def webhooks_list():
         "client_secret": data.get("client_secret", ""),
         "base_url": data.get("base_url", ""),
         "provider": data.get("provider", "yandex"),
+        "iiko_key": data.get("iiko_key", ""),
     } for name, data in WEBHOOKS_DB.items()), key=lambda x: x["name"].lower())
     return jsonify({"items": items})
 
@@ -542,6 +556,7 @@ def webhooks_save():
     client_secret = (data.get("client_secret") or "").strip()
     base_url = (data.get("base_url") or "").strip()
     provider = (data.get("provider") or "yandex").strip() or "yandex"
+    iiko_key = (data.get("iiko_key") or "").strip()
     if not name or not webhook_url:
         return jsonify({"error": "name and webhook_url required"}), 400
     WEBHOOKS_DB[name] = {
@@ -551,6 +566,7 @@ def webhooks_save():
         "client_secret": client_secret,
         "base_url": base_url,
         "provider": provider,
+        "iiko_key": iiko_key,
     }
     save_webhooks()
     return jsonify({"ok": True, "item": WEBHOOKS_DB[name]})

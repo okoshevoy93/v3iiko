@@ -79,6 +79,15 @@
     .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
     .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .btn-big { position: relative; overflow: hidden; transition: box-shadow .12s, transform .05s; min-height: 44px; min-width: 210px; white-space: normal; text-align: center; padding: 0.6rem 0.85rem; border-radius: 12px; font-weight: 700; font-size: 14px; }
+    .btn-big::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to right, rgba(249,115,22,0.5), rgba(234,88,12,0.98)); transform-origin: left; transform: scaleX(var(--progress,0)); transition: transform .12s linear; z-index: 0; opacity: 0.9; pointer-events: none; }
+    .btn-big > span { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; line-height: 1.2; }
+    .btn-red { background: linear-gradient(135deg,#ef4444,#b91c1c); color: #fff; box-shadow: 0 4px 14px rgba(239,68,68,0.35); }
+    .btn-amber { background: linear-gradient(135deg,#f59e0b,#d97706); color: #fff; box-shadow: 0 4px 14px rgba(245,158,11,0.35); }
+    .btn-green { background: linear-gradient(135deg,#22c55e,#15803d); color: #fff; box-shadow: 0 4px 14px rgba(34,197,94,0.35); }
+    .btn-big:hover { transform: translateY(-1px); }
+    .btn-big:active { transform: translateY(0); }
+    .stop-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 9999px; background: #fef2f2; color: #b91c1c; font-weight: 700; font-size: 11px; border: 1px solid #fecdd3; }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -105,140 +114,157 @@
       </div>
     </div>
 
-    <div class="card panel-bg p-4 space-y-4">
-      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+    <div class="grid lg:grid-cols-[320px,1fr] gap-4">
+      <div class="card panel-bg p-4 space-y-3 self-start">
+        <div>
+          <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
+          <p class="text-sm text-slate-600">Храните хост, ключи и вебхук рядом с интеграцией.</p>
+        </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
           <div class="flex gap-2">
             <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
-            <option value="">— Не выбрано —</option>
+              <option value="">— Не выбрано —</option>
             </select>
-              <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition">✕</button>
-            </div>
-            <p class="text-xs text-slate-500">Выберите сохранённый вебхук, чтобы подставить URL и ключи.</p>
+            <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition">✕</button>
+          </div>
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="integrationName">Название для сохранения</label>
-          <div class="flex gap-2">
-            <input id="integrationName" type="text" placeholder="Моя интеграция" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-            <button id="saveIntegrationBtn" class="px-4 h-10 text-sm font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-white transition">Сохранить</button>
-          </div>
-          <p class="text-xs text-slate-500">Запомнить текущий вебхук и ключи под своим именем.</p>
+          <label class="text-xs text-slate-500" for="integrationName">Название интеграции</label>
+          <input id="integrationName" type="text" placeholder="Моя интеграция" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="baseInput">Хост API</label>
           <div class="flex gap-2">
-            <input id="baseInput" list="baseList" type="text" placeholder="https://api.eda.yandex.ru" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+            <input id="baseInput" list="baseList" type="text" placeholder="https://eda-api.yandex.ru" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
             <button id="addHostBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">＋</button>
           </div>
           <datalist id="baseList">
+            <option value="https://eda-api.yandex.ru"></option>
             <option value="https://api.eda.yandex.ru"></option>
+            <option value="https://eda-api.yandex.net"></option>
             <option value="https://api.eda.yandex.net"></option>
             <option value="https://api.partner.yandex.ru"></option>
           </datalist>
-          <p class="text-xs text-slate-500">Можно редактировать и добавлять новые адреса, сохраняются вместе с интеграцией.</p>
         </div>
-        <div class="flex flex-wrap gap-2 items-end justify-end md:justify-start xl:justify-end">
-          <button id="connectBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition">Проверить доступ</button>
-          <button id="loadCitiesBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Обновить города</button>
-          <button id="loadMenuBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-white transition">Загрузить меню</button>
-        </div>
-      </div>
-      <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
           <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-          <p class="text-xs text-slate-500">Используется для подписки интеграции.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-slate-500" for="clientId">Client ID</label>
+            <input id="clientId" type="text" placeholder="Client ID" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-slate-500" for="clientSecret">Client Secret</label>
+            <input id="clientSecret" type="password" placeholder="Client Secret" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+          </div>
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="clientId">Client ID</label>
-          <input id="clientId" type="text" placeholder="Введите Client ID" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+          <label class="text-xs text-slate-500" for="iikoKey">API-ключ iiko (для городов и карточек)</label>
+          <input id="iikoKey" type="text" placeholder="iiko API key" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="clientSecret">Client Secret</label>
-          <input id="clientSecret" type="password" placeholder="Введите Client Secret" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-        </div>
-      </div>
-      <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-        Введите client_id и client_secret для доступа к данным Yandex Еды.
-      </div>
-      <div class="grid md:grid-cols-4 gap-3">
-        <div class="card card-bg p-3 space-y-2 md:col-span-2 lg:col-span-1">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Город (по названию в iiko)</span>
-            <span class="badge" id="cityCount">0</span>
-          </div>
-          <select id="citySelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
-            <option value="">Выберите город</option>
-          </select>
-          <p class="text-xs muted">Выпадающий список по названиям. После выбора будут показаны точки.</p>
-        </div>
-        <div class="card card-bg p-3 space-y-2 md:col-span-2 lg:col-span-1">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Точки (организации)</span>
-            <span class="badge" id="placeCount">0</span>
-          </div>
-          <select id="placeSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
-            <option value="">Выберите точку</option>
-          </select>
-          <p class="text-xs muted">Список свернут до названий организаций. Выбор покажет карточку ресторана.</p>
-        </div>
-        <div class="card card-bg p-3 space-y-3 md:col-span-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Карточка ресторана</span>
-            <span class="badge" id="menuCount">0</span>
-          </div>
-          <div class="space-y-1 text-sm">
-            <div id="currentCity" class="flex items-center gap-2"><span class="pill blue">Город не выбран</span></div>
-            <div id="currentPlace" class="flex items-center gap-2"><span class="pill red">Точка не выбрана</span></div>
-          </div>
-          <div id="placeCard" class="text-xs muted border border-dashed border-slate-200 rounded-lg p-3 bg-white">
-            Выберите точку, чтобы увидеть название ресторана, город, адрес и график.
-          </div>
-        </div>
-        <div class="card card-bg p-3 space-y-2 md:col-span-2 lg:col-span-1">
-          <div class="flex items-center justify-between">
-            <span class="text-xs text-slate-500 uppercase tracking-wide">Диагностика хоста</span>
-          </div>
+        <button id="saveIntegrationBtn" class="w-full py-2.5 text-sm font-semibold rounded-md bg-slate-800 text-white hover:bg-slate-700 transition">Сохранить</button>
+        <div class="border border-dashed border-slate-200 rounded-lg p-3 bg-slate-50">
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Диагностика хоста</p>
           <div id="hostDiag" class="text-xs text-slate-600 leading-relaxed">Проверяем DNS...</div>
-          <p class="text-xs muted">Если DNS не отвечает, укажите IP или другой хост и сохраните его.</p>
+          <p class="text-xs muted mt-2">Если DNS не отвечает, выберите другой хост или добавьте IP и сохраните.</p>
         </div>
       </div>
-    </div>
 
-    <div class="card panel-bg p-4 space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-800">Меню выбранной точки</h2>
-          <p class="text-sm text-slate-500">Все блюда, модификаторы, цены и остатки из Yandex Еды.</p>
+      <div class="space-y-4">
+        <div class="card panel-bg p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-800">Работа с API Yandex Еда</h2>
+              <p class="text-sm text-slate-500">Проверьте доступ, загрузите города iiko и меню точки.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="connectBtn" class="btn-big btn-green"><span>Проверить доступ</span></button>
+              <button id="loadCitiesBtn" class="btn-big btn-amber"><span>Обновить города</span></button>
+              <button id="loadMenuBtn" class="btn-big btn-red"><span>Загрузить меню</span></button>
+            </div>
+          </div>
+          <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+            Введите client_id, client_secret и хост для доступа к данным Yandex Еды.
+          </div>
+          <div class="grid md:grid-cols-3 gap-3">
+            <div class="card card-bg p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-500 uppercase tracking-wide">Город (из iiko)</span>
+                <span class="badge" id="cityCount">0</span>
+              </div>
+              <select id="citySelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+                <option value="">Выберите город</option>
+              </select>
+              <p class="text-xs muted">Список городов формируется по названиям организаций iiko.</p>
+            </div>
+            <div class="card card-bg p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-500 uppercase tracking-wide">Точка (по названию iiko)</span>
+                <span class="badge" id="placeCount">0</span>
+              </div>
+              <select id="placeSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+                <option value="">Выберите точку</option>
+              </select>
+              <p class="text-xs muted">Отфильтрованы точки выбранного города, отображаются названия iiko.</p>
+            </div>
+            <div class="card card-bg p-3 space-y-2">
+              <label class="text-xs text-slate-500" for="placeIdManual">place_id (если не выбрана точка)</label>
+              <input id="placeIdManual" type="text" placeholder="UUID точки" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+              <p class="text-xs muted">Если нет совпадения по названию, укажите place_id вручную.</p>
+            </div>
+          </div>
+          <div class="card card-bg p-3 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Карточка ресторана</span>
+              <span class="badge" id="menuCount">0</span>
+            </div>
+            <div class="space-y-1 text-sm">
+              <div id="currentCity" class="flex items-center gap-2"><span class="pill blue">Город не выбран</span></div>
+              <div id="currentPlace" class="flex items-center gap-2"><span class="pill red">Точка не выбрана</span></div>
+            </div>
+            <div id="placeCard" class="text-xs muted border border-dashed border-slate-200 rounded-lg p-3 bg-white">
+              Выберите точку, чтобы увидеть название ресторана, город, адрес и график.
+            </div>
+          </div>
         </div>
-        <div class="flex gap-2 text-sm text-slate-500">
-          <span id="summaryCategories" class="pill blue">Категории: 0</span>
-          <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
-          <span id="summaryItems" class="pill">Блюд: 0</span>
+
+        <div class="card panel-bg p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-800">Меню выбранной точки</h2>
+              <p class="text-sm text-slate-500">Все блюда, модификаторы, цены и остатки из Yandex Еды.</p>
+            </div>
+            <div class="flex gap-2 text-sm text-slate-500">
+              <span id="summaryCategories" class="pill blue">Категории: 0</span>
+              <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
+              <span id="summaryItems" class="pill">Блюд: 0</span>
+            </div>
+          </div>
+          <div class="table-shell border border-soft rounded-xl bg-white">
+            <table class="w-full text-sm">
+              <thead class="uppercase text-[11px] text-slate-600">
+                <tr>
+                  <th class="text-left px-3 py-2 border-b border-soft">Меню</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Категория</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Блюдо / товар</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">ID / SKU</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Модификаторы</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Цена</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Количество</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Доступность</th>
+                </tr>
+              </thead>
+              <tbody id="menuTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+          <details class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-700">
+            <summary class="cursor-pointer font-semibold text-slate-800">Сырой ответ Yandex Еда</summary>
+            <pre id="rawPayload" class="mt-2 text-xs whitespace-pre-wrap break-words text-slate-600"></pre>
+          </details>
         </div>
-      </div>
-      <div class="table-shell border border-soft rounded-xl bg-white">
-        <table class="w-full text-sm">
-          <thead class="uppercase text-[11px] text-slate-600">
-            <tr>
-              <th class="text-left px-3 py-2 border-b border-soft">Меню</th>
-              <th class="text-left px-3 py-2 border-b border-soft">Категория</th>
-              <th class="text-left px-3 py-2 border-b border-soft">Блюдо / товар</th>
-              <th class="text-left px-3 py-2 border-b border-soft">ID / SKU</th>
-              <th class="text-left px-3 py-2 border-b border-soft">Модификаторы</th>
-              <th class="text-left px-3 py-2 border-b border-soft">Цена</th>
-              <th class="text-left px-3 py-2 border-b border-soft">Количество</th>
-              <th class="text-left px-3 py-2 border-b border-soft">Доступность</th>
-            </tr>
-          </thead>
-          <tbody id="menuTableBody" class="divide-y divide-slate-100"></tbody>
-        </table>
-      </div>
-      <details class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-700">
-        <summary class="cursor-pointer font-semibold text-slate-800">Сырой ответ Yandex Еда</summary>
-        <pre id="rawPayload" class="mt-2 text-xs whitespace-pre-wrap break-words text-slate-600"></pre>
-      </details>
       </div>
     </div>
 
@@ -252,10 +278,6 @@
 
       <div class="grid lg:grid-cols-2 gap-4">
         <div class="space-y-3">
-          <div class="flex flex-col gap-2">
-            <label class="text-xs text-slate-500" for="placeIdManual">place_id (если не выбрана точка)</label>
-            <input id="placeIdManual" type="text" placeholder="UUID точки" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-          </div>
           <div class="flex flex-wrap gap-2">
             <button id="btnAvailability" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Недоступные позиции</button>
             <button id="btnPromos" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Акции</button>
