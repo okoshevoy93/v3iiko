@@ -211,9 +211,16 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
         oauth_url = f"{base}/security/oauth/token"
         data = {"grant_type": "client_credentials"}
         try:
+            # 1) x-www-form-urlencoded с client_id/client_secret как в официальной схеме partner.auth.post
+            primary_payload = {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": "client_credentials",
+            }
             resp = requests.post(
                 primary_url,
-                json={"clientId": client_id, "clientSecret": client_secret},
+                data=primary_payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
                 timeout=(45, 75),
             )
             if resp.status_code == 200:
@@ -221,22 +228,23 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
                 if token:
                     YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
                     return token, None
-            elif resp.status_code == 405:
-                # пробуем альтернативную форму (x-www-form-urlencoded)
-                resp = requests.post(
+
+            # 2) JSON-форма (историческая)
+            if resp.status_code in (400, 404, 405):
+                resp_json = requests.post(
                     primary_url,
-                    data={"clientId": client_id, "clientSecret": client_secret},
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    json={"clientId": client_id, "clientSecret": client_secret},
                     timeout=(45, 75),
                 )
-                if resp.status_code == 200:
-                    token = resp.json().get("access_token") or resp.json().get("token")
+                if resp_json.status_code == 200:
+                    token = resp_json.json().get("access_token") or resp_json.json().get("token")
                     if token:
                         YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
                         return token, None
-            elif resp.status_code in (401, 403):
-                return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
+                elif resp_json.status_code in (401, 403):
+                    return None, f"Ошибка авторизации {resp_json.status_code}: {resp_json.text}"
 
+            # 3) OAuth endpoint с двумя попытками: Basic + form-url-encoded
             resp_oauth = requests.post(
                 oauth_url,
                 data=data,
@@ -248,13 +256,23 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
                 if token:
                     YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
                     return token, None
-                logger.error(f"Yandex token response without token: {resp_oauth.text}")
-                return None, "Ответ без access_token"
 
-            if resp.status_code == 405 and resp_oauth.status_code == 405:
-                last_error = "Метод partner/auth не поддержан на этом хосте (405). Проверьте корректность базового URL из документации Яндекс Еды."
-            else:
-                last_error = f"{resp.status_code}/{resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
+            if resp_oauth.status_code in (400, 404, 405):
+                resp_oauth_form = requests.post(
+                    oauth_url,
+                    data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
+                    timeout=(45, 75),
+                )
+                if resp_oauth_form.status_code == 200:
+                    token = resp_oauth_form.json().get("access_token")
+                    if token:
+                        YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                        return token, None
+
+            if resp.status_code in (401, 403):
+                return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
+
+            last_error = f"primary={resp.status_code}, oauth={resp_oauth.status_code}"
             logger.error(
                 f"Yandex token failed for base {base}: primary={resp.status_code}, oauth={resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
             )
