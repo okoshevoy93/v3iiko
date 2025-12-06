@@ -122,17 +122,14 @@ async function callYandex(path, { method = 'GET', params = {}, body = null } = {
   const creds = getCreds();
   if (!creds) return null;
   const url = new URL(path, window.location.origin);
-  const webhook = getWebhookUrl();
   Object.entries(params || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
   });
-  if (webhook) url.searchParams.set('webhook_url', webhook);
   const options = { method, headers: { 'Content-Type': 'application/json' } };
-  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, webhook_url: webhook, ...body });
+  if (method !== 'GET' && body) options.body = JSON.stringify({ ...creds, ...body });
   if (method === 'GET') {
     url.searchParams.set('client_id', creds.client_id);
     url.searchParams.set('client_secret', creds.client_secret);
-    if (webhook) url.searchParams.set('webhook_url', webhook);
   }
   return apiFetch(url.toString(), options);
 }
@@ -560,7 +557,7 @@ async function loadMenu() {
   }
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
   try {
-    const params = new URLSearchParams({ ...creds, restaurant_id: placeId, webhook_url: getWebhookUrl() }).toString();
+    const params = new URLSearchParams({ ...creds, restaurant_id: placeId }).toString();
     const data = await apiFetch(`/api/yandex/menu?${params}`);
     renderMenu(data);
     setStatus('Меню загружено.', 'ok');
