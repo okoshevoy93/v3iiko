@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yandex Еда | iiko Menu Web</title>
+  <meta name="theme-color" content="#111827" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --app-bg: #f3f4f6;
+      --panel-bg: #ffffff;
+      --card-bg: #f9fafb;
+      --border-soft: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text-primary: #111827;
+      --text-muted: #6b7280;
+    }
+    body { background-color: var(--app-bg); color: var(--text-primary); font-size: 14px; }
+    .panel-bg { background-color: var(--panel-bg); }
+    .card-bg { background-color: var(--card-bg); }
+    .border-soft { border-color: var(--border-soft); }
+    .tab-link {
+      border: 1px solid var(--border-soft);
+      padding: 8px 14px;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color .15s, border-color .15s, box-shadow .15s, transform .05s;
+    }
+    .tab-link:hover { background: #eef2ff; border-color: #a5b4fc; box-shadow: 0 2px 6px rgba(129,140,248,0.35); transform: translateY(-1px); }
+    .tab-link.active { background: linear-gradient(135deg, #6366f1, #3b82f6); color: #ffffff; border-color: #6366f1; box-shadow: 0 4px 12px rgba(99,102,241,0.35); }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 14px;
+      background: #ffffff;
+      border: 1px solid var(--border-soft);
+      color: #4b5563;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .status-dot { width: 10px; height: 10px; border-radius: 9999px; background: #9ca3af; }
+    .status-dot.ok { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,0.15); }
+    .status-dot.err { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.15); }
+    .logout-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
+      background: #dc2626;
+      color: white;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logout-btn:hover { background: #b91c1c; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5); }
+    .badge { padding: 4px 10px; border-radius: 9999px; background: #e5e7eb; font-weight: 700; font-size: 12px; }
+    .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
+    .muted { color: var(--text-muted); }
+    .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
+    .table-shell table { min-width: 960px; }
+    .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
+    .pill { padding: 6px 12px; border-radius: 12px; font-weight: 600; border: 1px solid var(--border-soft); }
+    .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
+    .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
+    .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+  </style>
+</head>
+<body class="h-full app-bg">
+  <a href="/logout" class="logout-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+    Выйти
+  </a>
+
+  <div class="max-w-7xl mx-auto px-4 py-6 space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="/" class="tab-link">
+          <span>iiko</span>
+        </a>
+        <a href="/yandex" class="tab-link active">
+          <span>Yandex Еда</span>
+        </a>
+      </div>
+      <div class="status-pill" id="statusPill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Не подключено</span>
+      </div>
+    </div>
+
+    <div class="card panel-bg p-4 space-y-4">
+      <div class="flex flex-wrap gap-3 items-center">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="clientId">Client ID</label>
+          <input id="clientId" type="text" placeholder="Введите Client ID" class="w-72 px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="clientSecret">Client Secret</label>
+          <input id="clientSecret" type="password" placeholder="Введите Client Secret" class="w-72 px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
+        <div class="flex flex-wrap gap-2 items-end">
+          <button id="connectBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition">Проверить доступ</button>
+          <button id="loadCitiesBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Обновить города</button>
+          <button id="loadMenuBtn" class="px-4 h-11 text-sm font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-white transition">Загрузить меню</button>
+        </div>
+      </div>
+      <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+        Введите client_id и client_secret для доступа к данным Yandex Еды.
+      </div>
+      <div class="grid md:grid-cols-3 gap-3">
+        <div class="card card-bg p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Город</span>
+            <span class="badge" id="cityCount">0</span>
+          </div>
+          <select id="citySelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+            <option value="">Выберите город</option>
+          </select>
+          <p class="text-xs muted">Список городов доступен после проверки доступа. Отбор мест зависит от выбранного города.</p>
+        </div>
+        <div class="card card-bg p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Точки (place)</span>
+            <span class="badge" id="placeCount">0</span>
+          </div>
+          <select id="placeSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+            <option value="">Выберите точку</option>
+          </select>
+          <p class="text-xs muted">После выбора города загрузите список мест и выберите нужную точку.</p>
+        </div>
+        <div class="card card-bg p-3 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-500 uppercase tracking-wide">Результат</span>
+            <span class="badge" id="menuCount">0</span>
+          </div>
+          <div class="space-y-1 text-sm">
+            <div id="currentCity" class="flex items-center gap-2"><span class="pill blue">Город не выбран</span></div>
+            <div id="currentPlace" class="flex items-center gap-2"><span class="pill red">Точка не выбрана</span></div>
+          </div>
+          <div class="text-xs muted">Ниже будет таблица с меню: блюда, модификаторы, цены и количество по выбранной организации.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card panel-bg p-4 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-800">Меню выбранной точки</h2>
+          <p class="text-sm text-slate-500">Все блюда, модификаторы, цены и остатки из Yandex Еды.</p>
+        </div>
+        <div class="flex gap-2 text-sm text-slate-500">
+          <span id="summaryCategories" class="pill blue">Категории: 0</span>
+          <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
+          <span id="summaryItems" class="pill">Блюд: 0</span>
+        </div>
+      </div>
+      <div class="table-shell border border-soft rounded-xl bg-white">
+        <table class="w-full text-sm">
+          <thead class="uppercase text-[11px] text-slate-600">
+            <tr>
+              <th class="text-left px-3 py-2 border-b border-soft">Меню</th>
+              <th class="text-left px-3 py-2 border-b border-soft">Категория</th>
+              <th class="text-left px-3 py-2 border-b border-soft">Блюдо / товар</th>
+              <th class="text-left px-3 py-2 border-b border-soft">ID / SKU</th>
+              <th class="text-left px-3 py-2 border-b border-soft">Модификаторы</th>
+              <th class="text-left px-3 py-2 border-b border-soft">Цена</th>
+              <th class="text-left px-3 py-2 border-b border-soft">Количество</th>
+              <th class="text-left px-3 py-2 border-b border-soft">Доступность</th>
+            </tr>
+          </thead>
+          <tbody id="menuTableBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+      <details class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-700">
+        <summary class="cursor-pointer font-semibold text-slate-800">Сырой ответ Yandex Еда</summary>
+        <pre id="rawPayload" class="mt-2 text-xs whitespace-pre-wrap break-words text-slate-600"></pre>
+      </details>
+    </div>
+  </div>
+
+  <script src="/yandex.js"></script>
+</body>
+</html>

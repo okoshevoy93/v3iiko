@@ -100,6 +100,31 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .tab-link {
+      border: 1px solid var(--border-soft);
+      padding: 8px 14px;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background-color .15s, border-color .15s, box-shadow .15s, transform .05s;
+    }
+    .tab-link:hover {
+      background: #eef2ff;
+      border-color: #a5b4fc;
+      box-shadow: 0 2px 6px rgba(129,140,248,0.35);
+      transform: translateY(-1px);
+    }
+    .tab-link.active {
+      background: linear-gradient(135deg, #6366f1, #3b82f6);
+      color: #ffffff;
+      border-color: #6366f1;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.35);
+    }
     .btn-big {
       position: relative;
       overflow: hidden;
@@ -531,6 +556,10 @@
 
   <header class="header">
     <div class="flex flex-col gap-3 h-full">
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="/" class="tab-link active">iiko</a>
+        <a href="/yandex" class="tab-link">Yandex Еда</a>
+      </div>
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2">
           <span id="apiStatusDot" class="inline-block w-2.5 h-2.5 rounded-full bg-slate-500"></span>

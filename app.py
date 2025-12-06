@@ -162,10 +162,20 @@ def get_yandex_token(client_id: str, client_secret: str) -> str | None:
 def index():
     return send_file(BASE_DIR / "index.html")
 
+@app.route("/yandex")
+@require_auth
+def yandex_page():
+    return send_file(BASE_DIR / "yandex.html")
+
 @app.route("/app.js")
 @require_auth
 def app_js():
     return send_file(BASE_DIR / "app.js")
+
+@app.route("/yandex.js")
+@require_auth
+def yandex_js():
+    return send_file(BASE_DIR / "yandex.js")
 
 @app.route("/api/proxy", methods=["POST"])
 @require_auth
