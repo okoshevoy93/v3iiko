@@ -2920,6 +2920,27 @@ if (menuTheadEl) {
 }
 
 if (menuTbodyEl) {
+  menuTbodyEl.addEventListener('click', (e) => {
+    const cityRow = e.target.closest('tr.group-city-row');
+    if (cityRow && cityRow.dataset.city) {
+      e.preventDefault();
+      const cityLabel = cityRow.dataset.city;
+      if (collapsedCities.has(cityLabel)) collapsedCities.delete(cityLabel);
+      else collapsedCities.add(cityLabel);
+      renderTable();
+      return;
+    }
+
+    const catRow = e.target.closest('tr.group-category-row');
+    if (catRow && catRow.dataset.catKey) {
+      e.preventDefault();
+      const catKey = catRow.dataset.catKey;
+      if (collapsedCategories.has(catKey)) collapsedCategories.delete(catKey);
+      else collapsedCategories.add(catKey);
+      renderTable();
+    }
+  });
+
   const openFromTarget = (e) => {
     const img = e.target.closest('[data-gallery-index]');
     if (!img) return;

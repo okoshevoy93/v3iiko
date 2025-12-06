@@ -160,33 +160,37 @@ def iiko_request(api_key: str, endpoint: str, payload: dict | None = None, versi
     return {"error": "Превышено попыток"}
 
 # ==================== YANDEX EDA ЛОГИКА ====================
-def get_yandex_token(client_id: str, client_secret: str) -> str | None:
+def get_yandex_token(client_id: str, client_secret: str) -> tuple[str | None, str | None]:
+    """Получить и кешировать токен для Яндекс. Возвращает (token, error)."""
+
     key = f"{client_id}:{client_secret}"
     cached = YANDEX_TOKENS.get(key)
     if cached and time.time() - cached["time"] < 3500:
-        return cached["token"]
+        return cached["token"], None
+
     url = f"{YANDEX_BASE}/security/oauth/token"
-    data = {
-        "grant_type": "client_credentials",
-    }
+    data = {"grant_type": "client_credentials"}
     try:
         resp = requests.post(
             url,
             data=data,
             auth=HTTPBasicAuth(client_id, client_secret),
-            timeout=15,
+            timeout=(10, 40),
         )
         if resp.status_code == 200:
             token = resp.json().get("access_token")
             if token:
                 YANDEX_TOKENS[key] = {"token": token, "time": time.time()}
-                return token
+                return token, None
             logger.error(f"Yandex token response without token: {resp.text}")
-        else:
-            logger.error(f"Yandex token failed {resp.status_code}: {resp.text}")
-    except Exception as e:
+            return None, "Ответ без access_token"
+
+        logger.error(f"Yandex token failed {resp.status_code}: {resp.text}")
+        return None, f"Ошибка OAuth {resp.status_code}: {resp.text}"
+    except requests.exceptions.RequestException as e:
         logger.error(f"Yandex token error: {e}")
-    return None
+        return None, f"Ошибка подключения к Yandex: {e}"
+
 
 # ==================== РОУТЫ ====================
 @app.route("/")
@@ -243,21 +247,28 @@ def image_proxy():
 @require_auth
 def yandex_token():
     data = request.get_json() or {}
-    token = get_yandex_token(data.get("client_id"), data.get("client_secret"))
-    return jsonify({"token": token} if token else {"error": "invalid"}), 200 if token else 401
+    token, err = get_yandex_token(data.get("client_id"), data.get("client_secret"))
+    if not token:
+        status = 502 if err and "подключ" in err.lower() else 401
+        return jsonify({"error": err or "invalid"}), status
+    return jsonify({"token": token})
 
 @app.route("/api/yandex/cities", methods=["GET"])
 @require_auth
 def yandex_cities():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    token = get_yandex_token(client_id, client_secret)
+    token, err = get_yandex_token(client_id, client_secret)
     if not token:
-        return jsonify({"error": "no token"}), 401
+        status = 502 if err and "подключ" in err.lower() else 401
+        return jsonify({"error": err or "no token"}), status
     url = f"{YANDEX_BASE}/v2/cities"
     headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.get(url, headers=headers, timeout=15)
-    return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+    try:
+        resp = requests.get(url, headers=headers, timeout=30)
+        return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Ошибка запроса городов: {e}"}), 502
 
 @app.route("/api/yandex/places", methods=["GET"])
 @require_auth
@@ -265,14 +276,18 @@ def yandex_places():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
     city_id = request.args.get("city_id")
-    token = get_yandex_token(client_id, client_secret)
+    token, err = get_yandex_token(client_id, client_secret)
     if not token:
-        return jsonify({"error": "no token"}), 401
+        status = 502 if err and "подключ" in err.lower() else 401
+        return jsonify({"error": err or "no token"}), status
     url = f"{YANDEX_BASE}/v2/places"
     params = {"city_id": city_id} if city_id else {}
     headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.get(url, params=params, headers=headers, timeout=15)
-    return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=30)
+        return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Ошибка запроса точек: {e}"}), 502
 
 @app.route("/api/yandex/menu", methods=["GET"])
 @require_auth
@@ -282,14 +297,18 @@ def yandex_menu():
     place_id = request.args.get("place_id")
     if not place_id:
         return jsonify({"error": "place_id required"}), 400
-    token = get_yandex_token(client_id, client_secret)
+    token, err = get_yandex_token(client_id, client_secret)
     if not token:
-        return jsonify({"error": "no token"}), 401
+        status = 502 if err and "подключ" in err.lower() else 401
+        return jsonify({"error": err or "no token"}), status
     url = f"{YANDEX_BASE}/v2/menus"
     params = {"place_id": place_id}
     headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.get(url, params=params, headers=headers, timeout=30)
-    return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=40)
+        return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": f"Ошибка запроса меню: {e}"}), 502
 
 # ==================== ВЕБХУКИ ====================
 @app.route("/api/webhooks", methods=["GET"])
