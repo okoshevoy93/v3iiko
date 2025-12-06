@@ -196,7 +196,8 @@ async function verifyAccess() {
       body: JSON.stringify({ ...creds, webhook_url: getWebhookUrl() }),
     });
     if (data.token) {
-      setStatus('Доступ подтверждён. Теперь можно обновить города и загрузить меню.', 'ok');
+      setStatus('Доступ подтверждён. Загружаем рестораны...', 'ok');
+      await runRestaurants();
     } else {
       setStatus('Не удалось получить токен. Проверьте данные.', 'err');
     }
