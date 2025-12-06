@@ -265,8 +265,7 @@ async function verifyAccess() {
     });
     if (data.token) {
       const base = data.base ? ` (хост: ${data.base.replace('https://', '')})` : '';
-      setStatus(`Доступ подтверждён${base}. Можете загрузить города и меню.`, 'ok');
-      loadCities();
+      setStatus(`Доступ подтверждён${base}. Теперь можно обновить города и загрузить меню.`, 'ok');
     } else {
       setStatus('Не удалось получить токен. Проверьте данные.', 'err');
     }
@@ -457,8 +456,8 @@ function applyIntegration(name) {
     addHostToList(host);
     baseInput.value = host;
   }
-  setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ».`, 'info');
-  verifyAccess();
+  setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ» и обновите города.`, 'info');
+  loadCities({ skipYandex: true });
 }
 
 function renderMenu(payload) {
@@ -554,7 +553,7 @@ async function loadScheduleForPlace(placeId) {
   }
 }
 
-async function loadCities() {
+async function loadCities({ skipYandex = false } = {}) {
   const creds = getCreds();
   if (!creds) return;
   const iikoKey = (iikoKeyInput?.value?.trim()) || storedIikoKey;
@@ -566,19 +565,33 @@ async function loadCities() {
   }
   buttonLoading(loadCitiesBtn, true, 'Загружаем города...');
   try {
-    const [iikoData, yandexData] = await Promise.all([
-      apiFetch('/api/iiko/organizations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: iikoKey }),
-      }),
-      callYandex('/api/yandex/restaurants'),
-    ]);
+    const iikoPromise = apiFetch('/api/iiko/organizations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: iikoKey }),
+    });
+
+    let yandexData = null;
+    let yandexError = null;
+    if (!skipYandex) {
+      try {
+        yandexData = await callYandex('/api/yandex/restaurants');
+      } catch (e) {
+        yandexError = e;
+      }
+    }
+
+    const iikoData = await iikoPromise;
     iikoOrgs = Array.isArray(iikoData?.organizations) ? iikoData.organizations : (iikoData?.items || []);
     yandexPlaces = normalizePlaces(yandexData);
     const cities = buildCitiesFromIiko(iikoOrgs);
     renderCities(cities);
-    setStatus(`Найдено городов iiko: ${cities.length}, заведений Yandex: ${yandexPlaces.length}.`, 'ok');
+
+    if (yandexError) {
+      setStatus(`Города iiko загружены (${cities.length}). Yandex ответил ошибкой: ${yandexError.message}`, 'err');
+    } else {
+      setStatus(`Найдено городов iiko: ${cities.length}, заведений Yandex: ${yandexPlaces.length || 0}.`, 'ok');
+    }
   } catch (e) {
     setStatus(e.message || 'Не удалось получить города', 'err');
   } finally {

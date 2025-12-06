@@ -286,7 +286,10 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
                 logger.error(f"Yandex token response without token: {resp_oauth.text}")
                 return None, "Ответ без access_token"
 
-            last_error = f"{resp.status_code}/{resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
+            if resp.status_code == 405 and resp_oauth.status_code == 405:
+                last_error = "Метод partner/auth не поддержан на этом хосте (405). Проверьте корректность базового URL из документации Яндекс Еды."
+            else:
+                last_error = f"{resp.status_code}/{resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
             logger.error(
                 f"Yandex token failed for base {base}: primary={resp.status_code}, oauth={resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
             )
@@ -296,6 +299,8 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
 
     if last_error and last_error.startswith("DNS"):
         return None, f"DNS не отвечает для указанных хостов: {last_error}"
+    if last_error and "timed out" in last_error:
+        return None, f"Таймаут подключения к {bases[0]}: {last_error}. Проверьте сетевые ограничения или используйте другой хост."
     return None, f"Ошибка подключения к Yandex ({bases[0]}): {last_error or 'нет ответа'}"
 
 
