@@ -23,6 +23,12 @@ app.secret_key = "iiko-menu-secret-2025"
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+BASE_DIR = Path(__file__).resolve().parent
+IMAGE_CACHE_DIR = BASE_DIR / "image_cache"
+EXPORTS_DIR = BASE_DIR / "exports"
+USERS_FILE = BASE_DIR / "users.json"
+WEBHOOKS_FILE = BASE_DIR / "webhooks.json"
+
 IIKO_V1 = "https://api-ru.iiko.services/api/1"
 IIKO_V2 = "https://api-ru.iiko.services/api/2"
 YANDEX_BASE = "https://eda-api.yandex.ru"
@@ -31,12 +37,6 @@ TOKENS = {}
 YANDEX_TOKENS = {}  # {f"{client_id}:{secret}": {"token": ..., "time": ...}}
 YANDEX_COLLECTION_FILE = BASE_DIR / "API_для_интеграции_сервиса_Яндекс_Еда_для_статьи_БЗ_postman_collection.json"
 YANDEX_COLLECTION = {}
-
-BASE_DIR = Path(__file__).resolve().parent
-IMAGE_CACHE_DIR = BASE_DIR / "image_cache"
-EXPORTS_DIR = BASE_DIR / "exports"
-USERS_FILE = BASE_DIR / "users.json"
-WEBHOOKS_FILE = BASE_DIR / "webhooks.json"
 
 for d in (IMAGE_CACHE_DIR, EXPORTS_DIR):
     d.mkdir(exist_ok=True)
