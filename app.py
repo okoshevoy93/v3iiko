@@ -186,11 +186,13 @@ def derive_base_from_webhook(webhook_url: str | None) -> str | None:
     return None
 
 
-def get_yandex_token(client_id: str, client_secret: str, base_override: str | None = None) -> tuple[str | None, str | None]:
-    """Получить и кешировать токен для Яндекс. Возвращает (token, error).
 
-    Теперь обязательным является base из webhook (хост iiko), так как именно там
-    лежат /security/oauth/token, /restaurants и /menu/{restaurantId}.
+
+def get_yandex_token(client_id: str, client_secret: str, base_override: str | None = None) -> tuple[str | None, str | None]:
+    """Получить и кешировать токен для Яндекс через iiko-хост.
+
+    Используем только `/security/oauth/token` на стороне iiko (по base из webhook),
+    т.к. `/partner/auth` на этих хостах отсутствует и даёт 404.
     """
 
     key = f"{client_id}:{client_secret}"
@@ -218,75 +220,43 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
             logger.error(f"Yandex host not resolved {base}: {dns_error}")
             continue
 
-        primary_url = f"{base}/partner/auth"
         oauth_url = f"{base}/security/oauth/token"
-        data = {"grant_type": "client_credentials"}
         try:
-            # 1) x-www-form-urlencoded с client_id/client_secret как в официальной схеме partner.auth.post
-            primary_payload = {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "grant_type": "client_credentials",
-            }
-            resp = requests.post(
-                primary_url,
-                data=primary_payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                timeout=(45, 75),
-            )
-            if resp.status_code == 200:
-                token = resp.json().get("access_token") or resp.json().get("token")
-                if token:
-                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
-                    return token, None
-
-            # 2) JSON-форма (историческая)
-            if resp.status_code in (400, 404, 405):
-                resp_json = requests.post(
-                    primary_url,
-                    json={"clientId": client_id, "clientSecret": client_secret},
-                    timeout=(45, 75),
-                )
-                if resp_json.status_code == 200:
-                    token = resp_json.json().get("access_token") or resp_json.json().get("token")
-                    if token:
-                        YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
-                        return token, None
-                elif resp_json.status_code in (401, 403):
-                    return None, f"Ошибка авторизации {resp_json.status_code}: {resp_json.text}"
-
-            # 3) OAuth endpoint с двумя попытками: Basic + form-url-encoded
+            # Основной путь: form-url-encoded client_credentials
             resp_oauth = requests.post(
                 oauth_url,
-                data=data,
-                auth=HTTPBasicAuth(client_id, client_secret),
+                data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
                 timeout=(45, 75),
             )
             if resp_oauth.status_code == 200:
-                token = resp_oauth.json().get("access_token")
+                token = resp_oauth.json().get("access_token") or resp_oauth.json().get("token")
                 if token:
                     YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
                     return token, None
 
-            if resp_oauth.status_code in (400, 404, 405):
-                resp_oauth_form = requests.post(
-                    oauth_url,
-                    data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
-                    timeout=(45, 75),
-                )
-                if resp_oauth_form.status_code == 200:
-                    token = resp_oauth_form.json().get("access_token")
-                    if token:
-                        YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
-                        return token, None
-
-            if resp.status_code in (401, 403):
-                return None, f"Ошибка авторизации {resp.status_code}: {resp.text}"
-
-            last_error = f"primary={resp.status_code}, oauth={resp_oauth.status_code}"
-            logger.error(
-                f"Yandex token failed for base {base}: primary={resp.status_code}, oauth={resp_oauth.status_code}: {resp.text} / {resp_oauth.text}"
+            # Дополнительная попытка с HTTP Basic (некоторые iiko-хосты требуют Basic)
+            resp_basic = requests.post(
+                oauth_url,
+                data={"grant_type": "client_credentials"},
+                auth=HTTPBasicAuth(client_id, client_secret),
+                timeout=(45, 75),
             )
+            if resp_basic.status_code == 200:
+                token = resp_basic.json().get("access_token") or resp_basic.json().get("token")
+                if token:
+                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
+                    return token, None
+
+            if resp_oauth.status_code in (401, 403):
+                return None, f"Ошибка авторизации {resp_oauth.status_code}: {resp_oauth.text}"
+
+            if resp_oauth.status_code in (404, 405):
+                last_error = f"endpoint {resp_oauth.status_code}: {resp_oauth.text or 'нет маршрута /security/oauth/token'}"
+                logger.error(f"Yandex token failed for base {base}: {last_error}")
+                continue
+
+            last_error = f"oauth={resp_oauth.status_code}: {resp_oauth.text}" if resp_oauth else "unknown"
+            logger.error(f"Yandex token failed for base {base}: {last_error}")
         except requests.exceptions.RequestException as e:
             last_error = str(e)
             logger.error(f"Yandex token error for base {base}: {e}")
@@ -294,8 +264,9 @@ def get_yandex_token(client_id: str, client_secret: str, base_override: str | No
     if last_error and last_error.startswith("DNS"):
         return None, f"DNS не отвечает для указанных хостов: {last_error}"
     if last_error and "timed out" in last_error:
-        return None, f"Таймаут подключения к {bases[0]}: {last_error}. Проверьте сетевые ограничения или используйте другой хост."
+        return None, f"Таймаут подключения к {bases[0]}: {last_error}. Проверьте сетевые ограничения или используйте рабочий webhook iiko."
     return None, f"Ошибка подключения к Yandex ({bases[0]}): {last_error or 'нет ответа'}"
+
 
 
 # ==================== РОУТЫ ====================
