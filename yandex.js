@@ -353,7 +353,29 @@ function buildCategoryMap(menu) {
   return map;
 }
 
-function normalizeMenuItems(menuName, menuData) {
+function buildAvailabilityMap(data) {
+  const map = new Map();
+  if (!data) return map;
+  const items = Array.isArray(data)
+    ? data
+    : (Array.isArray(data.items)
+      ? data.items
+      : Array.isArray(data.products)
+        ? data.products
+        : Array.isArray(data.result?.items)
+          ? data.result.items
+          : []);
+  items.forEach(entry => {
+    const id = entry.id || entry.item_id || entry.product_id || entry.sku || entry.code;
+    if (!id) return;
+    const available = entry.available ?? entry.is_available ?? entry.in_stock;
+    const quantity = entry.balance ?? entry.quantity ?? entry.count ?? entry.stock ?? null;
+    map.set(id, { available, quantity });
+  });
+  return map;
+}
+
+function normalizeMenuItems(menuName, menuData, availabilityMap) {
   const items = menuData?.items || menuData?.products || menuData?.menu_items || [];
   const categories = buildCategoryMap(menuData);
   const modifiersPool = menuData?.modifiers || menuData?.groupModifiers || [];
@@ -363,15 +385,18 @@ function normalizeMenuItems(menuName, menuData) {
     const categoryId = item.category_id || item.group_id || item.categoryId || item.groupId || item.parent_group;
     const categoryName = categories.get(categoryId) || item.category || 'Без категории';
     const modifiers = parseModifiers(item);
+    const availability = availabilityMap?.get(item.id || item.sku || item.code || item.item_id || item.product_id || '') || {};
+    const availabilityFlag = availability.available;
+    const qtyOverride = availability.quantity;
     return {
       menu: menuName,
       category: categoryName,
       name: item.name || item.public_name || item.title || 'Без названия',
       id: item.id || item.sku || item.code || item.item_id || '',
       price: parsePrice(item),
-      quantity: parseQuantity(item),
-      available: item.available ?? item.is_available ?? item.in_stock ?? true,
-      stopList: item.available === false || item.is_available === false || item.in_stock === false,
+      quantity: qtyOverride ?? parseQuantity(item),
+      available: availabilityFlag ?? (item.available ?? item.is_available ?? item.in_stock ?? true),
+      stopList: availabilityFlag === false || item.available === false || item.is_available === false || item.in_stock === false,
       modifiers,
       modifierCount,
     };
@@ -418,7 +443,7 @@ function applyIntegration(name) {
   loadCities({ skipYandex: true });
 }
 
-function renderMenu(payload) {
+function renderMenu(payload, availabilityMap) {
   lastMenuPayload = payload;
   rawPayload.textContent = JSON.stringify(payload || {}, null, 2);
   const menus = collectMenus(payload);
@@ -429,7 +454,7 @@ function renderMenu(payload) {
   const categorySet = new Set();
 
   menus.forEach(menu => {
-    const rows = normalizeMenuItems(menu.name, menu.data || {});
+    const rows = normalizeMenuItems(menu.name, menu.data || {}, availabilityMap);
     rows.forEach(row => {
       categorySet.add(row.category);
       totalModifiers += row.modifiers.length;
@@ -600,8 +625,16 @@ async function loadMenu() {
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
   try {
     const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: placeId } });
-    renderMenu(data);
-    setStatus('Меню загружено.', 'ok');
+    let availabilityMap;
+    try {
+      const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: placeId } });
+      availabilityMap = buildAvailabilityMap(availability);
+    } catch (err) {
+      console.warn('Availability request failed', err);
+      setStatus('Меню получено, но стоп-лист недоступен (проверьте блокировки логинов в iiko).', 'info');
+    }
+    renderMenu(data, availabilityMap);
+    setStatus('Меню и стоп-лист загружены.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось загрузить меню', 'err');
   } finally {
@@ -730,7 +763,14 @@ async function runMenuComposition() {
   if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
     const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: placeId } });
-    renderMenu(data);
+    let availabilityMap;
+    try {
+      const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: placeId } });
+      availabilityMap = buildAvailabilityMap(availability);
+    } catch (err) {
+      console.warn('Availability request failed', err);
+    }
+    renderMenu(data, availabilityMap);
     renderExtraResult('Меню (composition)', data);
     setStatus('Меню (composition) получено.', 'ok');
   } catch (e) {
@@ -859,8 +899,16 @@ async function runOrderDetails() {
 async function runRestaurants() {
   try {
     const data = await callYandex('/api/yandex/restaurants');
+    const places = normalizePlaces(data);
+    if (places.length) {
+      renderPlaces(places);
+      citySelect.innerHTML = '<option value="">Город не требуется</option>';
+      cityCount.textContent = '—';
+      setStatus(`Точек: ${places.length}. Выберите ресторан и загрузите меню.`, 'ok');
+    } else {
+      setStatus('Рестораны получены, но список пуст.', 'warn');
+    }
     renderExtraResult('Список ресторанов', data);
-    setStatus('Рестораны получены.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить рестораны', 'err');
   }
