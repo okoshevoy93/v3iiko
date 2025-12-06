@@ -31,15 +31,9 @@ WEBHOOKS_FILE = BASE_DIR / "webhooks.json"
 
 IIKO_V1 = "https://api-ru.iiko.services/api/1"
 IIKO_V2 = "https://api-ru.iiko.services/api/2"
-# Основные хосты Яндекс.Еды: оба используются как запасные в случае DNS/сетевых проблем.
-YANDEX_BASES = [
-    "https://eda-api.yandex.ru",
-    "https://api.eda.yandex.ru",
-]
-YANDEX_BASE = YANDEX_BASES[0]
 
 TOKENS = {}
-YANDEX_TOKENS = {}  # {f"{client_id}:{secret}": {"token": ..., "time": ...}}
+YANDEX_TOKENS = {}  # {f"{client_id}:{secret}:{base}": {"token": ..., "time": ..., "base": base}}
 YANDEX_COLLECTION_FILE = BASE_DIR / "API_для_интеграции_сервиса_Яндекс_Еда_для_статьи_БЗ_postman_collection.json"
 YANDEX_COLLECTION_DEFAULT = [
     {
@@ -316,50 +310,48 @@ def iiko_request(api_key: str, endpoint: str, payload: dict | None = None, versi
     return {"error": "Превышено попыток"}
 
 # ==================== YANDEX EDA ЛОГИКА ====================
-def get_yandex_token(client_id: str, client_secret: str) -> tuple[str | None, str | None]:
-    """Получить и кешировать токен Яндекс.Еды через /oauth2/token с fallback по хостам."""
-    key = f"{client_id}:{client_secret}"
+def get_yandex_token(client_id: str, client_secret: str, base: str) -> tuple[str | None, str | None]:
+    """Получить и кешировать токен Яндекс.Еды у хоста интеграции (webhook base)."""
+    if not (client_id and client_secret and base):
+        return None, "client_id, client_secret и webhook_url обязательны"
+
+    norm_base = base.rstrip("/")
+    key = f"{client_id}:{client_secret}:{norm_base}"
     cached = YANDEX_TOKENS.get(key)
     if cached and time.time() - cached["time"] < 3500:
         return cached["token"], None
 
-    errors = []
-    for base in YANDEX_BASES:
-        oauth_url = f"{base}/oauth2/token"
-        try:
-            resp_oauth = requests.post(
-                oauth_url,
-                data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
-                timeout=(30, 60),
-            )
-            if resp_oauth.status_code == 200:
-                token = resp_oauth.json().get("access_token") or resp_oauth.json().get("token")
-                if token:
-                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
-                    return token, None
+    oauth_url = f"{norm_base}/oauth2/token"
+    try:
+        resp_oauth = requests.post(
+            oauth_url,
+            data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
+            timeout=(30, 60),
+        )
+        if resp_oauth.status_code == 200:
+            token = resp_oauth.json().get("access_token") or resp_oauth.json().get("token")
+            if token:
+                YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": norm_base}
+                return token, None
 
-            resp_basic = requests.post(
-                oauth_url,
-                data={"grant_type": "client_credentials"},
-                auth=HTTPBasicAuth(client_id, client_secret),
-                timeout=(30, 60),
-            )
-            if resp_basic.status_code == 200:
-                token = resp_basic.json().get("access_token") or resp_basic.json().get("token")
-                if token:
-                    YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": base}
-                    return token, None
+        resp_basic = requests.post(
+            oauth_url,
+            data={"grant_type": "client_credentials"},
+            auth=HTTPBasicAuth(client_id, client_secret),
+            timeout=(30, 60),
+        )
+        if resp_basic.status_code == 200:
+            token = resp_basic.json().get("access_token") or resp_basic.json().get("token")
+            if token:
+                YANDEX_TOKENS[key] = {"token": token, "time": time.time(), "base": norm_base}
+                return token, None
 
-            if resp_oauth.status_code in (401, 403):
-                return None, f"Ошибка авторизации {resp_oauth.status_code}: {resp_oauth.text}"
-
-            errors.append(f"{base}: oauth={resp_oauth.status_code}")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Yandex token error for {base}: {e}")
-            errors.append(f"{base}: {e}")
-
-    err_text = "; ".join(errors) or "unknown"
-    return None, f"Не удалось получить токен Yandex ({err_text})"
+        if resp_oauth.status_code in (401, 403):
+            return None, f"Ошибка авторизации {resp_oauth.status_code}: {resp_oauth.text}"
+        return None, f"Токен не получен: {resp_oauth.status_code} / {resp_basic.status_code}"
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Yandex token error for {norm_base}: {e}")
+        return None, f"Ошибка запроса токена: {e}"
 
 
 
@@ -429,14 +421,16 @@ def image_proxy():
 # ==================== YANDEX ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 def yandex_request(client_id: str, client_secret: str, path: str, *, method: str = "GET",
                    params: dict | None = None, payload: dict | None = None,
-                   timeout: tuple[int, int] = (20, 60)):
-    token, err = get_yandex_token(client_id, client_secret)
+                   timeout: tuple[int, int] = (20, 60), base: str | None = None):
+    token, err = get_yandex_token(client_id, client_secret, base or "")
     if not token:
-        status = 502 if err and "подключ" in err.lower() else 401
+        status = 502 if err and "подключ" in (err or "").lower() else 401
         return None, (status, err or "no token")
 
-    cache = YANDEX_TOKENS.get(f"{client_id}:{client_secret}") or {}
-    api_base = (cache.get("base") or YANDEX_BASE).rstrip("/")
+    cache = YANDEX_TOKENS.get(f"{client_id}:{client_secret}:{(base or '').rstrip('/')}") or {}
+    api_base = (cache.get("base") or (base or "")).rstrip("/")
+    if not api_base:
+        return None, (400, "webhook_url (base) required")
     url = f"{api_base}{path}"
     headers = {"Authorization": f"Bearer {token}"}
     try:
@@ -460,11 +454,12 @@ def render_template_string(template: str, variables: dict[str, str]) -> str:
 @require_auth
 def yandex_token():
     data = request.get_json() or {}
-    token, err = get_yandex_token(data.get("client_id"), data.get("client_secret"))
+    webhook_url = (data.get("webhook_url") or data.get("base") or "").strip()
+    token, err = get_yandex_token(data.get("client_id"), data.get("client_secret"), webhook_url)
     if not token:
         status = 502 if err and "подключ" in err.lower() else 401
         return jsonify({"error": err or "invalid"}), status
-    cache = YANDEX_TOKENS.get(f"{data.get('client_id')}:{data.get('client_secret')}") or {}
+    cache = YANDEX_TOKENS.get(f"{data.get('client_id')}:{data.get('client_secret')}:{webhook_url.rstrip('/')}" ) or {}
     return jsonify({"token": token, "base": cache.get("base")})
 
 
@@ -509,6 +504,9 @@ def yandex_collection_execute():
 
     client_id = data.get("client_id") or ""
     client_secret = data.get("client_secret") or ""
+    webhook_url = (data.get("webhook_url") or data.get("base") or "").strip()
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     vars_payload = {k: str(v) for k, v in (data.get("vars") or {}).items()}
     vars_payload.update({"client_id": client_id, "client_secret": client_secret})
 
@@ -522,14 +520,12 @@ def yandex_collection_execute():
 
     # Особый случай: токен из коллекции
     if path.startswith("/oauth2/token"):
-        resp = requests.post(
-            f"{YANDEX_BASE}{path}",
-            data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
-            timeout=(30, 60),
-        )
-        if resp.ok:
-            return jsonify(resp.json())
-        return jsonify({"error": resp.text}), resp.status_code
+        token, err = get_yandex_token(client_id, client_secret, webhook_url)
+        if token:
+            cache = YANDEX_TOKENS.get(f"{client_id}:{client_secret}:{webhook_url.rstrip('/')}" ) or {}
+            return jsonify({"access_token": token, "base": cache.get("base")})
+        status = 502 if err and "подключ" in (err or "").lower() else 401
+        return jsonify({"error": err or "invalid"}), status
 
     result, err = yandex_request(
         client_id,
@@ -539,6 +535,7 @@ def yandex_collection_execute():
         params=params,
         payload=payload,
         timeout=(20, 60),
+        base=webhook_url,
     )
     if err:
         status, msg = err
@@ -551,7 +548,10 @@ def yandex_collection_execute():
 def yandex_cities():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    data, err = yandex_request(client_id, client_secret, "/v2/cities", timeout=(20, 60))
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
+    data, err = yandex_request(client_id, client_secret, "/v2/cities", timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -562,9 +562,12 @@ def yandex_cities():
 def yandex_places():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     city_id = request.args.get("city_id")
     params = {"city_id": city_id} if city_id else None
-    data, err = yandex_request(client_id, client_secret, "/v2/places", params=params, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/v2/places", params=params, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -575,10 +578,13 @@ def yandex_places():
 def yandex_menu():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
     if not restaurant_id:
         return jsonify({"error": "restaurant_id required"}), 400
-    data, err = yandex_request(client_id, client_secret, f"/menu/{restaurant_id}", timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, f"/menu/{restaurant_id}", timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -590,10 +596,13 @@ def yandex_menu():
 def yandex_availability():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
     if not restaurant_id:
         return jsonify({"error": "restaurant_id required"}), 400
-    data, err = yandex_request(client_id, client_secret, f"/menu/{restaurant_id}/availability", timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, f"/menu/{restaurant_id}/availability", timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -605,10 +614,13 @@ def yandex_availability():
 def yandex_promos():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
     if not restaurant_id:
         return jsonify({"error": "restaurant_id required"}), 400
-    data, err = yandex_request(client_id, client_secret, "/partner/promos", params={"place_id": restaurant_id}, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/partner/promos", params={"place_id": restaurant_id}, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -620,7 +632,10 @@ def yandex_promos():
 def yandex_restaurants():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
-    data, err = yandex_request(client_id, client_secret, "/restaurants", timeout=(20, 60))
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
+    data, err = yandex_request(client_id, client_secret, "/restaurants", timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -632,10 +647,13 @@ def yandex_restaurants():
 def yandex_delivery_zones():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
     if not restaurant_id:
         return jsonify({"error": "restaurant_id required"}), 400
-    data, err = yandex_request(client_id, client_secret, "/partner/delivery/zones", params={"place_id": restaurant_id}, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/partner/delivery/zones", params={"place_id": restaurant_id}, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -647,10 +665,13 @@ def yandex_delivery_zones():
 def yandex_schedule():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     restaurant_id = request.args.get("restaurant_id") or request.args.get("place_id")
     if not restaurant_id:
         return jsonify({"error": "restaurant_id required"}), 400
-    data, err = yandex_request(client_id, client_secret, "/partner/schedule", params={"place_id": restaurant_id}, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/partner/schedule", params={"place_id": restaurant_id}, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -662,8 +683,11 @@ def yandex_schedule():
 def yandex_orders():
     client_id = request.args.get("client_id")
     client_secret = request.args.get("client_secret")
+    webhook_url = request.args.get("webhook_url") or request.args.get("base")
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     params = {"status": request.args.get("status")} if request.args.get("status") else None
-    data, err = yandex_request(client_id, client_secret, "/partner/orders", params=params, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/partner/orders", params=params, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -675,10 +699,13 @@ def yandex_orders():
 def yandex_orders_history():
     client_id = request.json.get("client_id") if request.is_json else request.form.get("client_id")
     client_secret = request.json.get("client_secret") if request.is_json else request.form.get("client_secret")
+    webhook_url = (request.json.get("webhook_url") if request.is_json else request.form.get("webhook_url")) or (request.json.get("base") if request.is_json else request.form.get("base"))
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     payload = request.get_json() or {}
     for key in ("client_id", "client_secret"):
         payload.pop(key, None)
-    data, err = yandex_request(client_id, client_secret, "/partner/orders/history", method="POST", payload=payload, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/partner/orders/history", method="POST", payload=payload, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status
@@ -690,10 +717,13 @@ def yandex_orders_history():
 def yandex_orders_details():
     client_id = request.json.get("client_id") if request.is_json else request.form.get("client_id")
     client_secret = request.json.get("client_secret") if request.is_json else request.form.get("client_secret")
+    webhook_url = (request.json.get("webhook_url") if request.is_json else request.form.get("webhook_url")) or (request.json.get("base") if request.is_json else request.form.get("base"))
+    if not webhook_url:
+        return jsonify({"error": "webhook_url required"}), 400
     payload = request.get_json() or {}
     for key in ("client_id", "client_secret"):
         payload.pop(key, None)
-    data, err = yandex_request(client_id, client_secret, "/partner/integration/v1/orders/details", method="POST", payload=payload, timeout=(20, 60))
+    data, err = yandex_request(client_id, client_secret, "/partner/integration/v1/orders/details", method="POST", payload=payload, timeout=(20, 60), base=webhook_url)
     if err:
         status, msg = err
         return jsonify({"error": msg}), status

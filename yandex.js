@@ -88,11 +88,16 @@ function buttonLoading(btn, isLoading, label) {
 function getCreds() {
   const client_id = clientIdInput.value.trim();
   const client_secret = clientSecretInput.value.trim();
+  const webhook_url = getWebhookUrl();
   if (!client_id || !client_secret) {
     setStatus('Укажите client_id и client_secret.', 'err');
     return null;
   }
-  return { client_id, client_secret };
+  if (!webhook_url) {
+    setStatus('Укажите URL вебхука (baseUrl интеграции).', 'err');
+    return null;
+  }
+  return { client_id, client_secret, webhook_url };
 }
 
 function getWebhookUrl() {
@@ -130,6 +135,10 @@ async function callYandex(path, { method = 'GET', params = {}, body = null } = {
   if (method === 'GET') {
     url.searchParams.set('client_id', creds.client_id);
     url.searchParams.set('client_secret', creds.client_secret);
+    url.searchParams.set('webhook_url', creds.webhook_url);
+  }
+  if (method !== 'GET' && !options.body) {
+    options.body = JSON.stringify({ ...creds, ...(body || {}) });
   }
   return apiFetch(url.toString(), options);
 }
