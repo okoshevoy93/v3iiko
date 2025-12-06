@@ -3,6 +3,11 @@ const clientSecretInput = document.getElementById('clientSecret');
 const connectBtn = document.getElementById('connectBtn');
 const loadCitiesBtn = document.getElementById('loadCitiesBtn');
 const loadMenuBtn = document.getElementById('loadMenuBtn');
+const integrationSelect = document.getElementById('integrationSelect');
+const webhookUrlInput = document.getElementById('webhookUrl');
+const integrationNameInput = document.getElementById('integrationName');
+const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
+const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
 const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
 const statusEl = document.getElementById('status');
@@ -22,6 +27,7 @@ const currentPlace = document.getElementById('currentPlace');
 let cachedCities = [];
 let cachedPlaces = [];
 let lastMenuPayload = null;
+let integrations = [];
 
 function setStatus(message, tone = 'info') {
   statusEl.textContent = message;
@@ -52,6 +58,10 @@ function getCreds() {
     return null;
   }
   return { client_id, client_secret };
+}
+
+function getWebhookUrl() {
+  return webhookUrlInput.value.trim();
 }
 
 async function apiFetch(url, options = {}) {
@@ -205,6 +215,28 @@ function collectMenus(payload) {
   return menus;
 }
 
+function renderIntegrations(list) {
+  integrations = list || [];
+  integrationSelect.innerHTML = '<option value="">Ручной ввод</option>';
+  integrations.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.name;
+    option.textContent = item.name;
+    integrationSelect.appendChild(option);
+  });
+}
+
+function applyIntegration(name) {
+  const found = integrations.find(i => i.name === name);
+  if (!found) return;
+  webhookUrlInput.value = found.webhook_url || '';
+  clientIdInput.value = found.client_id || '';
+  clientSecretInput.value = found.client_secret || '';
+  integrationNameInput.value = found.name;
+  setStatus(`Интеграция «${found.name}» подставлена.`, 'ok');
+  verifyAccess();
+}
+
 function renderMenu(payload) {
   lastMenuPayload = payload;
   rawPayload.textContent = JSON.stringify(payload || {}, null, 2);
@@ -314,6 +346,69 @@ async function loadMenu() {
   }
 }
 
+async function loadIntegrationsList() {
+  try {
+    const data = await apiFetch('/api/webhooks');
+    renderIntegrations(data.items || []);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function saveIntegration() {
+  const creds = getCreds();
+  if (!creds) return;
+  const webhook = getWebhookUrl();
+  const name = integrationNameInput.value.trim();
+  if (!webhook) {
+    setStatus('Укажите URL вебхука.', 'err');
+    return;
+  }
+  if (!name) {
+    setStatus('Задайте название интеграции.', 'err');
+    return;
+  }
+  buttonLoading(saveIntegrationBtn, true, 'Сохраняем...');
+  try {
+    await apiFetch('/api/webhooks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        webhook_url: webhook,
+        client_id: creds.client_id,
+        client_secret: creds.client_secret,
+      }),
+    });
+    setStatus(`Интеграция «${name}» сохранена.`, 'ok');
+    await loadIntegrationsList();
+    integrationSelect.value = name;
+  } catch (e) {
+    setStatus(e.message || 'Не удалось сохранить интеграцию', 'err');
+  } finally {
+    buttonLoading(saveIntegrationBtn, false);
+  }
+}
+
+async function deleteIntegration() {
+  const name = integrationSelect.value;
+  if (!name) {
+    setStatus('Сначала выберите интеграцию.', 'err');
+    return;
+  }
+  buttonLoading(deleteIntegrationBtn, true, '...');
+  try {
+    await apiFetch(`/api/webhooks/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    setStatus(`Интеграция «${name}» удалена.`, 'ok');
+    await loadIntegrationsList();
+    integrationSelect.value = '';
+  } catch (e) {
+    setStatus(e.message || 'Не удалось удалить интеграцию', 'err');
+  } finally {
+    buttonLoading(deleteIntegrationBtn, false);
+  }
+}
+
 connectBtn.addEventListener('click', verifyAccess);
 loadCitiesBtn.addEventListener('click', loadCities);
 loadMenuBtn.addEventListener('click', loadMenu);
@@ -326,5 +421,13 @@ citySelect.addEventListener('change', () => {
   }
 });
 placeSelect.addEventListener('change', updateCurrentInfo);
+integrationSelect.addEventListener('change', () => {
+  if (integrationSelect.value) {
+    applyIntegration(integrationSelect.value);
+  }
+});
+saveIntegrationBtn.addEventListener('click', saveIntegration);
+deleteIntegrationBtn.addEventListener('click', deleteIntegration);
 
 setStatus('Введите client_id и client_secret для подключения.');
+loadIntegrationsList();

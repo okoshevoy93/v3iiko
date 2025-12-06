@@ -32,6 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent
 IMAGE_CACHE_DIR = BASE_DIR / "image_cache"
 EXPORTS_DIR = BASE_DIR / "exports"
 USERS_FILE = BASE_DIR / "users.json"
+WEBHOOKS_FILE = BASE_DIR / "webhooks.json"
 
 for d in (IMAGE_CACHE_DIR, EXPORTS_DIR):
     d.mkdir(exist_ok=True)
@@ -65,6 +66,29 @@ def save_users():
         logger.error(f"Не удалось сохранить users.json: {e}")
 
 load_users()
+
+WEBHOOKS_DB: dict[str, dict] = {}
+
+
+def load_webhooks():
+    global WEBHOOKS_DB
+    try:
+        if WEBHOOKS_FILE.exists():
+            with open(WEBHOOKS_FILE, "r", encoding="utf-8") as f:
+                WEBHOOKS_DB = json.load(f)
+    except Exception as e:
+        logger.error(f"Ошибка загрузки webhooks.json: {e}")
+
+
+def save_webhooks():
+    try:
+        with open(WEBHOOKS_FILE, "w", encoding="utf-8") as f:
+            json.dump(WEBHOOKS_DB, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f"Не удалось сохранить webhooks.json: {e}")
+
+
+load_webhooks()
 
 def check_auth(username, password):
     user = USERS_DB.get(username)
@@ -258,6 +282,49 @@ def yandex_menu():
     headers = {"Authorization": f"Bearer {token}"}
     resp = requests.get(url, params=params, headers=headers, timeout=30)
     return jsonify(resp.json() if resp.ok else {"error": resp.status_code})
+
+# ==================== ВЕБХУКИ ====================
+@app.route("/api/webhooks", methods=["GET"])
+@require_auth
+def webhooks_list():
+    items = sorted(({
+        "name": name,
+        "webhook_url": data.get("webhook_url", ""),
+        "client_id": data.get("client_id", ""),
+        "client_secret": data.get("client_secret", ""),
+    } for name, data in WEBHOOKS_DB.items()), key=lambda x: x["name"].lower())
+    return jsonify({"items": items})
+
+
+@app.route("/api/webhooks", methods=["POST"])
+@require_auth
+def webhooks_save():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    webhook_url = (data.get("webhook_url") or "").strip()
+    client_id = (data.get("client_id") or "").strip()
+    client_secret = (data.get("client_secret") or "").strip()
+    if not name or not webhook_url:
+        return jsonify({"error": "name and webhook_url required"}), 400
+    WEBHOOKS_DB[name] = {
+        "name": name,
+        "webhook_url": webhook_url,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    save_webhooks()
+    return jsonify({"ok": True, "item": WEBHOOKS_DB[name]})
+
+
+@app.route("/api/webhooks/<name>", methods=["DELETE"])
+@require_auth
+def webhooks_delete(name):
+    key = name.strip()
+    if key in WEBHOOKS_DB:
+        WEBHOOKS_DB.pop(key)
+        save_webhooks()
+        return jsonify({"ok": True})
+    return jsonify({"error": "not found"}), 404
 
 # ==================== АДМИНКА И ВЫХОД ====================
 @app.route("/users")
