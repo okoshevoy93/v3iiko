@@ -8,8 +8,9 @@ const webhookUrlInput = document.getElementById('webhookUrl');
 const integrationNameInput = document.getElementById('integrationName');
 const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
 const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
-const citySelect = document.getElementById('citySelect');
 const placeSelect = document.getElementById('placeSelect');
+const placeSearchInput = document.getElementById('placeSearch');
+const placeTableBody = document.getElementById('placeTableBody');
 const iikoKeyInput = document.getElementById('iikoKey');
 const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
@@ -22,12 +23,24 @@ const rawPayload = document.getElementById('rawPayload');
 const summaryCategories = document.getElementById('summaryCategories');
 const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
-const currentCity = document.getElementById('currentCity');
 const currentPlace = document.getElementById('currentPlace');
 const placeCard = document.getElementById('placeCard');
 const placeIdManual = document.getElementById('placeIdManual');
 const manualBaseInput = document.getElementById('manualBase');
 const manualTokenPathInput = document.getElementById('manualTokenPath');
+const menuTitle = document.getElementById('menuTitle');
+const filterCategoryInput = document.getElementById('filterCategory');
+const filterNameInput = document.getElementById('filterName');
+const filterSkuInput = document.getElementById('filterSku');
+const overlay = document.getElementById('dishOverlay');
+const overlayClose = document.getElementById('overlayClose');
+const overlayTitle = document.getElementById('overlayTitle');
+const overlaySku = document.getElementById('overlaySku');
+const overlayImage = document.getElementById('overlayImage');
+const overlayAvailability = document.getElementById('overlayAvailability');
+const overlayPrice = document.getElementById('overlayPrice');
+const overlayDescription = document.getElementById('overlayDescription');
+const overlayModifiers = document.getElementById('overlayModifiers');
 const extraResult = document.getElementById('extraResult');
 const orderStatusInput = document.getElementById('orderStatus');
 const ordersHistoryPayloadInput = document.getElementById('ordersHistoryPayload');
@@ -50,7 +63,6 @@ const btnUpdateOrder = document.getElementById('btnUpdateOrder');
 const btnCancelOrder = document.getElementById('btnCancelOrder');
 const btnMenuFull = document.getElementById('btnMenuFull');
 
-let cachedCities = [];
 let cachedPlaces = [];
 let iikoOrgs = [];
 let yandexPlaces = [];
@@ -58,6 +70,8 @@ let lastMenuPayload = null;
 let integrations = [];
 let cachedSchedule = new Map();
 let storedIikoKey = '';
+let normalizedMenuRows = [];
+let allPlaces = [];
 
 try {
   storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
@@ -240,25 +254,12 @@ async function verifyAccess() {
   }
 }
 
-function normalizeCities(payload) {
-  if (!payload) return [];
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.cities)) return payload.cities;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (payload.result && Array.isArray(payload.result.cities)) return payload.result.cities;
-  return [];
-}
-
 function normalizePlaces(payload) {
   if (!payload) return [];
   if (Array.isArray(payload.places)) return payload.places;
   if (Array.isArray(payload.items)) return payload.items;
   if (payload.result && Array.isArray(payload.result.places)) return payload.result.places;
   return [];
-}
-
-function normalizeCityName(val) {
-  return (val || '').toString().trim();
 }
 
 function normalizeKey(str) {
@@ -275,51 +276,34 @@ function findYandexPlace(org) {
   }) || null;
 }
 
-function buildCitiesFromIiko(orgs) {
-  const map = new Map();
-  (orgs || []).forEach(org => {
-    const city = normalizeCityName(org.city || org.address?.city || org.region?.city || org.location?.city || '');
-    if (!city) return;
-    if (!map.has(city)) map.set(city, { id: city, name: city });
-  });
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-}
 
-function renderCities(cities) {
-  cachedCities = cities;
-  citySelect.innerHTML = '<option value="">Выберите город</option>';
-  cities.forEach(city => {
-    const option = document.createElement('option');
-    option.value = city.id || city.city_id || city.slug || city.code || city.name || '';
-    option.textContent = city.name || city.title || city.slug || 'Без названия';
-    option.dataset.region = city.region || city.region_name || '';
-    citySelect.appendChild(option);
-  });
-  cityCount.textContent = cities.length;
-  placeSelect.innerHTML = '<option value="">Выберите точку</option>';
-  placeCount.textContent = '0';
-  cachedPlaces = [];
-  updateCurrentInfo();
-}
-
-function renderPlaces(places) {
+function renderPlaces(places, preserveSource = false) {
+  if (!preserveSource) allPlaces = places;
   cachedPlaces = places;
   placeSelect.innerHTML = '<option value="">Выберите точку</option>';
+  placeTableBody.innerHTML = '';
   places.forEach(place => {
-    const option = document.createElement('option');
     const placeId = place.orgId || place.yandexPlaceId || place.id || place.place_id || '';
-    option.value = placeId;
     const name = place.name || place.title || place.slug || 'Без названия';
+    const option = document.createElement('option');
+    option.value = placeId;
     option.textContent = name;
-    option.dataset.cityId = place.city_id || place.cityId || place.city || '';
     option.dataset.address = place.address || place.full_address || place.location || place.address_full || '';
     option.dataset.orgId = place.orgId || place.organizationId || '';
-    option.dataset.cityName = place.city || place.cityName || '';
     option.dataset.placeId = placeId;
     option.dataset.schedule = JSON.stringify(place.schedule || place.work_time || {});
     placeSelect.appendChild(option);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="px-3 py-2 text-slate-800">${name}</td>
+      <td class="px-3 py-2 text-slate-600 text-xs">${option.dataset.address || '—'}</td>
+      <td class="px-3 py-2"><button class="px-3 py-1.5 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition" data-stop-id="${placeId}">Стоп лист</button></td>
+    `;
+    placeTableBody.appendChild(tr);
   });
   placeCount.textContent = places.length;
+  cityCount.textContent = '—';
   updateCurrentInfo();
 }
 
@@ -340,6 +324,34 @@ function parseModifiers(item) {
   const mods = item.modifiers || item.availableModifiers || item.allowedModifiers || item.options || [];
   const list = Array.isArray(mods) ? mods : (Array.isArray(mods.items) ? mods.items : []);
   return list.map(m => m.name || m.title || m.public_name || '').filter(Boolean);
+}
+
+function extractModifierGroups(item) {
+  const groups = item.modifierGroups || item.modifiersGroups || item.groupModifiers || [];
+  if (!Array.isArray(groups)) return [];
+  return groups.map(g => {
+    const mods = Array.isArray(g.modifiers) ? g.modifiers : [];
+    return {
+      name: g.name || 'Группа модификаторов',
+      min: g.minSelectedModifiers ?? g.minSelected ?? g.min ?? 0,
+      max: g.maxSelectedModifiers ?? g.maxSelected ?? g.max ?? mods.length,
+      required: (g.minSelectedModifiers ?? g.min ?? 0) > 0,
+      modifiers: mods.map(m => ({
+        id: m.id,
+        name: m.name || m.title || '',
+        price: parsePrice(m),
+        min: m.minAmount ?? m.min ?? 0,
+        max: m.maxAmount ?? m.max ?? 0,
+      })),
+    };
+  });
+}
+
+function extractImage(item) {
+  const imgs = item.images || item.image || [];
+  if (Array.isArray(imgs) && imgs.length) return imgs[0].url || imgs[0].path || imgs[0];
+  if (imgs.url) return imgs.url;
+  return '';
 }
 
 function buildCategoryMap(menu) {
@@ -385,6 +397,7 @@ function normalizeMenuItems(menuName, menuData, availabilityMap) {
     const categoryId = item.category_id || item.group_id || item.categoryId || item.groupId || item.parent_group;
     const categoryName = categories.get(categoryId) || item.category || 'Без категории';
     const modifiers = parseModifiers(item);
+    const modifierGroups = extractModifierGroups(item);
     const availability = availabilityMap?.get(item.id || item.sku || item.code || item.item_id || item.product_id || '') || {};
     const availabilityFlag = availability.available;
     const qtyOverride = availability.quantity;
@@ -398,7 +411,11 @@ function normalizeMenuItems(menuName, menuData, availabilityMap) {
       available: availabilityFlag ?? (item.available ?? item.is_available ?? item.in_stock ?? true),
       stopList: availabilityFlag === false || item.available === false || item.is_available === false || item.in_stock === false,
       modifiers,
+      modifierGroups,
       modifierCount,
+      image: extractImage(item),
+      description: item.description || item.composition || '',
+      raw: item,
     };
   });
 
@@ -416,6 +433,21 @@ function collectMenus(payload) {
     menus.push({ name: payload.name || 'Меню', data: payload });
   }
   return menus;
+}
+
+function filterPlaces(query) {
+  const q = (query || '').toLowerCase();
+  const selected = placeSelect.value;
+  const source = allPlaces.length ? allPlaces : cachedPlaces;
+  const filtered = q
+    ? source.filter(p => (p.name || '').toLowerCase().includes(q) || (p.title || '').toLowerCase().includes(q))
+    : source;
+  renderPlaces(filtered, true);
+  const found = Array.from(placeSelect.options).find(o => o.value === selected);
+  if (found) {
+    placeSelect.value = selected;
+    updateCurrentInfo();
+  }
 }
 
 function renderIntegrations(list) {
@@ -440,61 +472,124 @@ function applyIntegration(name) {
   if (iikoKeyInput) iikoKeyInput.value = iikoKey;
   syncStoredIikoKey(iikoKey);
   setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ» и обновите города.`, 'info');
-  loadCities({ skipYandex: true });
+  loadCities();
 }
 
 function renderMenu(payload, availabilityMap) {
   lastMenuPayload = payload;
   rawPayload.textContent = JSON.stringify(payload || {}, null, 2);
   const menus = collectMenus(payload);
-  menuTableBody.innerHTML = '';
-
+  normalizedMenuRows = [];
   let totalItems = 0;
   let totalModifiers = 0;
   const categorySet = new Set();
 
   menus.forEach(menu => {
     const rows = normalizeMenuItems(menu.name, menu.data || {}, availabilityMap);
+    normalizedMenuRows.push(...rows);
     rows.forEach(row => {
       categorySet.add(row.category);
-      totalModifiers += row.modifiers.length;
-      const tr = document.createElement('tr');
-      tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''}`;
-      const stopBadge = row.stopList ? '<span class="stop-pill">Стоп-лист</span>' : '';
-      tr.innerHTML = `
-        <td class="px-3 py-2 text-slate-800 font-semibold">${row.menu}</td>
-        <td class="px-3 py-2">${row.category}</td>
-        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
-        <td class="px-3 py-2 text-xs text-slate-500">${row.id}</td>
-        <td class="px-3 py-2 text-xs text-slate-600">${row.modifiers.join(', ') || '—'}</td>
-        <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
-        <td class="px-3 py-2">${row.quantity === '' ? '—' : row.quantity}</td>
-        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Стоп-лист</span>'}</td>
-      `;
-      menuTableBody.appendChild(tr);
+      totalModifiers += row.modifiers.length + (row.modifierGroups?.length || 0);
     });
     totalItems += rows.length;
   });
 
+  renderMenuTable(normalizedMenuRows);
   menuCount.textContent = totalItems;
   summaryItems.textContent = `Блюд: ${totalItems}`;
   summaryCategories.textContent = `Категории: ${categorySet.size}`;
   summaryModifiers.textContent = `Модификаторы: ${totalModifiers}`;
 }
 
-function updateCurrentInfo() {
-  const cityOption = citySelect.options[citySelect.selectedIndex];
-  const cityName = cityOption ? cityOption.textContent : '';
-  currentCity.innerHTML = citySelect.value
-    ? `<span class="pill blue">${cityName}</span>`
-    : '<span class="pill blue">Город не выбран</span>';
+function applyMenuFilters() {
+  const cat = (filterCategoryInput?.value || '').toLowerCase();
+  const name = (filterNameInput?.value || '').toLowerCase();
+  const sku = (filterSkuInput?.value || '').toLowerCase();
+  const filtered = normalizedMenuRows.filter(row => {
+    const byCat = !cat || (row.category || '').toLowerCase().includes(cat);
+    const byName = !name || (row.name || '').toLowerCase().includes(name);
+    const bySku = !sku || (row.id || '').toLowerCase().includes(sku);
+    return byCat && byName && bySku;
+  });
+  renderMenuTable(filtered);
+}
 
+function renderMenuTable(rows) {
+  if (!menuTableBody) return;
+  const data = rows || [];
+  menuTableBody.innerHTML = '';
+  const grouped = new Map();
+  data.forEach(row => {
+    if (!grouped.has(row.category)) grouped.set(row.category, []);
+    grouped.get(row.category).push(row);
+  });
+
+  grouped.forEach((items, category) => {
+    const catId = `cat-${normalizeKey(category)}`;
+    const header = document.createElement('tr');
+    header.className = 'bg-slate-50 cursor-pointer';
+    header.dataset.toggle = catId;
+    header.innerHTML = `<td colspan="7" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2">
+      <span class="pill blue">${category || 'Без категории'}</span>
+      <span class="text-xs text-slate-500">${items.length} поз.</span>
+    </td>`;
+    menuTableBody.appendChild(header);
+
+    items.forEach(row => {
+      const stopBadge = row.stopList ? '<span class="stop-pill">Стоп-лист</span>' : '';
+      const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
+      const imageHtml = imageSrc
+        ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
+        : `<div class="menu-img placeholder">нет фото</div>`;
+      const tr = document.createElement('tr');
+      tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId}`;
+      tr.dataset.category = catId;
+      tr.innerHTML = `
+        <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
+        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge} <button class="text-blue-600 text-[11px]" data-copy="${row.name || ''}">копировать</button></td>
+        <td class="px-3 py-2">${imageHtml}</td>
+        <td class="px-3 py-2 text-xs text-slate-500 flex items-center gap-2">${row.id || '—'}
+          <button class="text-blue-600 text-[11px]" data-copy="${row.id || ''}">копировать</button>
+        </td>
+        <td class="px-3 py-2 text-xs text-slate-600">${row.modifiers.join(', ') || '—'}</td>
+        <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
+        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Стоп-лист</span>'}</td>
+      `;
+      tr.dataset.itemId = row.id;
+      tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
+      menuTableBody.appendChild(tr);
+    });
+  });
+}
+
+function showDishOverlay(row, fullImg) {
+  if (!overlay) return;
+  overlayTitle.textContent = row.name || '';
+  overlaySku.textContent = row.id || '';
+  overlayImage.src = fullImg || row.image || '';
+  overlayAvailability.className = `pill ${row.available ? 'green' : 'red'}`;
+  overlayAvailability.textContent = row.available ? 'Доступно' : 'Стоп-лист';
+  overlayPrice.textContent = row.price || '';
+  overlayDescription.textContent = row.description || 'Описание отсутствует';
+  overlayModifiers.innerHTML = '';
+  (row.modifierGroups || []).forEach(g => {
+    const block = document.createElement('div');
+    block.innerHTML = `<div class="font-semibold text-slate-800">${g.name}</div>
+      <div class="text-[11px] text-slate-500 mb-1">мин: ${g.min}, макс: ${g.max}${g.required ? ' (обязательно)' : ''}</div>
+      ${(g.modifiers || []).map(m => `<div class="flex justify-between gap-2"><span>${m.name}</span><span class="text-slate-600">${m.price || ''}</span></div>`).join('') || '<div class="text-[11px] text-slate-500">Модификаторы не заданы</div>'}`;
+    block.className = 'border border-slate-200 rounded-md p-2 bg-white';
+    overlayModifiers.appendChild(block);
+  });
+  overlay.classList.add('active');
+}
+
+function updateCurrentInfo() {
   const placeOption = placeSelect.options[placeSelect.selectedIndex];
   const placeName = placeOption ? placeOption.textContent : '';
   currentPlace.innerHTML = placeSelect.value
     ? `<span class="pill green">${placeName}</span>`
     : '<span class="pill red">Точка не выбрана</span>';
-
+  if (menuTitle) menuTitle.textContent = placeName ? `Меню «${placeName}»` : 'Меню выбранной точки';
   renderPlaceCard(placeOption);
 }
 
@@ -504,8 +599,6 @@ function renderPlaceCard(placeOption) {
     placeCard.innerHTML = 'Выберите точку, чтобы увидеть название ресторана, город, адрес и график.';
     return;
   }
-  const cityOption = citySelect.options[citySelect.selectedIndex];
-  const cityName = cityOption ? (cityOption.textContent || '') : '';
   const address = placeOption.dataset.address || 'Адрес не указан';
   const scheduleRaw = cachedSchedule.get(placeOption.dataset.placeId || placeOption.value) || JSON.parse(placeOption.dataset.schedule || '{}');
   const schedule = Array.isArray(scheduleRaw?.days)
@@ -515,9 +608,8 @@ function renderPlaceCard(placeOption) {
   placeCard.innerHTML = `
     <div class="space-y-1">
       <div class="text-sm font-semibold text-slate-800">${placeOption.textContent || 'Без названия'}</div>
-      <div class="text-xs text-slate-600">Город: ${cityName || '—'}</div>
       <div class="text-xs text-slate-600">Адрес: ${address}</div>
-      <div class="text-xs text-slate-600">График: <br>${schedule}</div>
+      ${schedule && schedule !== 'График не указан' ? `<div class="text-xs text-slate-600">График: <br>${schedule}</div>` : ''}
       ${hint}
     </div>
   `;
@@ -537,80 +629,14 @@ async function loadScheduleForPlace(placeId) {
 }
 
 async function loadCities({ skipYandex = false } = {}) {
-  const creds = getCreds();
-  if (!creds) return;
-  const iikoKey = (iikoKeyInput?.value?.trim()) || storedIikoKey;
-  if (iikoKeyInput && !iikoKeyInput.value) iikoKeyInput.value = iikoKey;
-  if (iikoKey) syncStoredIikoKey(iikoKey);
-  if (!iikoKey) {
-    setStatus('Укажите API-ключ iiko, чтобы загрузить города и точки.', 'err');
-    return;
-  }
-  buttonLoading(loadCitiesBtn, true, 'Загружаем города...');
+  buttonLoading(loadCitiesBtn, true, 'Обновляем точки...');
   try {
-    const iikoPromise = apiFetch('/api/iiko/organizations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: iikoKey }),
-    });
-
-    let yandexData = null;
-    let yandexError = null;
-    if (!skipYandex) {
-      try {
-        yandexData = await callYandex('/api/yandex/restaurants');
-      } catch (e) {
-        yandexError = e;
-      }
-    }
-
-    const iikoData = await iikoPromise;
-    iikoOrgs = Array.isArray(iikoData?.organizations) ? iikoData.organizations : (iikoData?.items || []);
-    yandexPlaces = normalizePlaces(yandexData);
-    const cities = buildCitiesFromIiko(iikoOrgs);
-    renderCities(cities);
-
-    if (yandexError) {
-      setStatus(`Города iiko загружены (${cities.length}). Yandex ответил ошибкой: ${yandexError.message}`, 'err');
-    } else {
-      setStatus(`Найдено городов iiko: ${cities.length}, заведений Yandex: ${yandexPlaces.length || 0}.`, 'ok');
-    }
+    await runRestaurants();
+    setStatus('Список точек обновлен.', 'ok');
   } catch (e) {
-    setStatus(e.message || 'Не удалось получить города', 'err');
+    setStatus(e.message || 'Не удалось обновить точки', 'err');
   } finally {
     buttonLoading(loadCitiesBtn, false);
-  }
-}
-
-async function loadPlaces() {
-  const creds = getCreds();
-  if (!creds) return;
-  const cityId = citySelect.value;
-  const cityName = citySelect.options[citySelect.selectedIndex]?.textContent || '';
-  buttonLoading(placeSelect, true, '');
-  try {
-    if (!iikoOrgs.length) {
-      await loadCities();
-    }
-    const filtered = iikoOrgs.filter(org => normalizeCityName(org.city || org.address?.city || org.region?.city || '') === normalizeCityName(cityId || cityName));
-    const places = filtered.map(org => {
-      const matched = findYandexPlace(org) || {};
-      return {
-        id: org.id || org.organizationId || org.uuid,
-        yandexPlaceId: matched.id || matched.place_id || '',
-        name: org.name || org.organizationName || org.title || 'Без названия',
-        city: org.city || org.address?.city || cityName,
-        address: org.address?.full || org.address?.street || org.address?.line1 || org.address || matched.address,
-        orgId: org.id || org.organizationId || org.uuid,
-        schedule: matched.schedule,
-      };
-    });
-    renderPlaces(places);
-    setStatus(`Мест в городе: ${places.length}.`, 'ok');
-  } catch (e) {
-    setStatus(e.message || 'Не удалось получить места', 'err');
-  } finally {
-    buttonLoading(placeSelect, false);
   }
 }
 
@@ -710,12 +736,19 @@ async function deleteIntegration() {
   }
 }
 
-async function runAvailability() {
-  const placeId = getRestaurantId();
-  if (!placeId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
+async function runAvailabilityFor(placeId, renderList = false) {
+  const restaurantId = placeId || getRestaurantId();
+  if (!restaurantId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
-    const data = await callYandex('/api/yandex/availability', { params: { restaurant_id: placeId } });
-    renderExtraResult('Недоступные позиции', data);
+    const data = await callYandex('/api/yandex/availability', { params: { restaurant_id: restaurantId } });
+    if (renderList && Array.isArray(normalizedMenuRows) && normalizedMenuRows.length) {
+      const stopItems = buildAvailabilityMap(data);
+      const items = normalizedMenuRows.filter(row => stopItems.has(row.id) && stopItems.get(row.id)?.available === false);
+      const list = items.map(item => `- ${item.category} — ${item.name} (${item.id}) ${item.price || ''}`).join('\n');
+      renderExtraResult('Стоп-лист', list || data);
+    } else {
+      renderExtraResult('Недоступные позиции', data);
+    }
     setStatus('Получены данные о недоступных позициях.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить availability', 'err');
@@ -902,8 +935,6 @@ async function runRestaurants() {
     const places = normalizePlaces(data);
     if (places.length) {
       renderPlaces(places);
-      citySelect.innerHTML = '<option value="">Город не требуется</option>';
-      cityCount.textContent = '—';
       setStatus(`Точек: ${places.length}. Выберите ресторан и загрузите меню.`, 'ok');
     } else {
       setStatus('Рестораны получены, но список пуст.', 'warn');
@@ -917,14 +948,6 @@ async function runRestaurants() {
 connectBtn.addEventListener('click', verifyAccess);
 loadCitiesBtn.addEventListener('click', loadCities);
 loadMenuBtn.addEventListener('click', loadMenu);
-citySelect.addEventListener('change', () => {
-  updateCurrentInfo();
-  if (citySelect.value) {
-    loadPlaces();
-  } else {
-    renderPlaces([]);
-  }
-});
 placeSelect.addEventListener('change', () => {
   updateCurrentInfo();
   const option = placeSelect.options[placeSelect.selectedIndex];
@@ -942,7 +965,7 @@ integrationSelect.addEventListener('change', () => {
     applyIntegration(integrationSelect.value);
   }
 });
-btnAvailability?.addEventListener('click', runAvailability);
+btnAvailability?.addEventListener('click', () => runAvailabilityFor());
 btnPromos?.addEventListener('click', runPromos);
 btnZones?.addEventListener('click', runZones);
 btnSchedule?.addEventListener('click', runSchedule);
@@ -958,6 +981,41 @@ btnCancelOrder?.addEventListener('click', runCancelOrder);
 btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
+placeSearchInput?.addEventListener('input', () => filterPlaces(placeSearchInput.value));
+placeTableBody?.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-stop-id]');
+  if (!btn) return;
+  const id = btn.dataset.stopId;
+  if (id) runAvailabilityFor(id, true);
+});
+menuTableBody?.addEventListener('click', (e) => {
+  const toggle = e.target.closest('tr[data-toggle]');
+  if (toggle) {
+    const target = toggle.dataset.toggle;
+    const rows = menuTableBody.querySelectorAll(`tr.${target}`);
+    rows.forEach(r => r.classList.toggle('hidden'));
+    return;
+  }
+  const copyBtn = e.target.closest('[data-copy]');
+  if (copyBtn) {
+    navigator.clipboard?.writeText(copyBtn.dataset.copy || '');
+    setStatus('Скопировано в буфер обмена.', 'info');
+    return;
+  }
+  const img = e.target.closest('.menu-img');
+  if (img && img.dataset.full) {
+    const index = img.closest('tr')?.dataset?.itemIndex;
+    const row = normalizedMenuRows[Number(index)] || null;
+    if (row) showDishOverlay(row, img.dataset.full);
+  }
+});
+filterCategoryInput?.addEventListener('input', applyMenuFilters);
+filterNameInput?.addEventListener('input', applyMenuFilters);
+filterSkuInput?.addEventListener('input', applyMenuFilters);
+overlayClose?.addEventListener('click', () => overlay?.classList.remove('active'));
+overlay?.addEventListener('click', (e) => {
+  if (e.target === overlay) overlay.classList.remove('active');
+});
 
 if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
   iikoKeyInput.value = storedIikoKey;

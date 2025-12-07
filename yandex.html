@@ -73,12 +73,20 @@
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
-    .table-shell table { min-width: 960px; }
+    .table-shell table { min-width: 1200px; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
     .pill { padding: 6px 12px; border-radius: 12px; font-weight: 600; border: 1px solid var(--border-soft); }
     .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
     .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .filter-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 12px; }
+    .menu-img { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; }
+    .menu-img.placeholder { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; }
+    .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+    .overlay.active { display: flex; }
+    .overlay-card { background: #fff; border-radius: 18px; border: 1px solid var(--border-soft); max-width: 960px; width: 100%; box-shadow: 0 16px 45px rgba(15,23,42,0.25); overflow: hidden; }
+    .overlay-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+    @media (max-width: 900px) { .overlay-grid { grid-template-columns: 1fr; } }
     .btn-big { position: relative; overflow: hidden; transition: box-shadow .12s, transform .05s; min-height: 44px; min-width: 210px; white-space: normal; text-align: center; padding: 0.6rem 0.85rem; border-radius: 12px; font-weight: 700; font-size: 14px; }
     .btn-big::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to right, rgba(249,115,22,0.5), rgba(234,88,12,0.98)); transform-origin: left; transform: scaleX(var(--progress,0)); transition: transform .12s linear; z-index: 0; opacity: 0.9; pointer-events: none; }
     .btn-big > span { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; line-height: 1.2; }
@@ -122,11 +130,11 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
-        <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить города</span></button>
+        <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить точки</span></button>
         <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
       </div>
       <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-        Введите client_id, client_secret и URL вебхука, чтобы получить доступ к данным Yandex Еды. Город загружается из iiko.
+        Введите client_id, client_secret и URL вебхука, чтобы получить доступ к данным Yandex Еды. Точки загрузятся после проверки доступа.
       </div>
     </div>
 
@@ -153,14 +161,6 @@
           <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
           <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="manualBase">Override base URL (опционально)</label>
-          <input id="manualBase" type="url" placeholder="https://example.com" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-500" for="manualTokenPath">Override token path (опционально)</label>
-          <input id="manualTokenPath" type="text" placeholder="/oauth2/token,/security/oauth/token" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-        </div>
         <div class="grid grid-cols-2 gap-2">
           <div class="flex flex-col gap-1">
             <label class="text-xs text-slate-500" for="clientId">Client ID</label>
@@ -171,6 +171,14 @@
             <input id="clientSecret" type="password" placeholder="Client Secret" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
           </div>
         </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="manualBase">Override base URL (опционально)</label>
+          <input id="manualBase" type="url" placeholder="https://example.com" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-slate-500" for="manualTokenPath">Override token path (опционально)</label>
+          <input id="manualTokenPath" type="text" placeholder="/oauth2/token,/security/oauth/token" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
+        </div>
         <button id="saveIntegrationBtn" class="w-full py-2.5 text-sm font-semibold rounded-md bg-slate-800 text-white hover:bg-slate-700 transition">Сохранить</button>
       </div>
 
@@ -180,31 +188,37 @@
             <h2 class="text-lg font-semibold text-slate-800">Работа с API Yandex Еда</h2>
             <p class="text-sm text-slate-500">После подключения обновите города и выберите точку, чтобы загрузить меню.</p>
           </div>
-          <div class="grid md:grid-cols-3 gap-3">
-            <div class="card card-bg p-3 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-slate-500 uppercase tracking-wide">Город (из iiko)</span>
-                <span class="badge" id="cityCount">0</span>
-              </div>
-              <select id="citySelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
-                <option value="">Выберите город</option>
-              </select>
-              <p class="text-xs muted">Список городов формируется по названиям организаций iiko.</p>
-            </div>
-            <div class="card card-bg p-3 space-y-2">
+          <div class="grid md:grid-cols-2 gap-3">
+            <div class="card card-bg p-3 space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-xs text-slate-500 uppercase tracking-wide">Точка (по названию iiko)</span>
                 <span class="badge" id="placeCount">0</span>
               </div>
+              <input id="placeSearch" type="text" placeholder="Быстрый поиск по названию" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
               <select id="placeSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
                 <option value="">Выберите точку</option>
               </select>
-              <p class="text-xs muted">Отфильтрованы точки выбранного города, отображаются названия iiko.</p>
+              <p class="text-xs muted">Начните ввод, чтобы отфильтровать список.</p>
             </div>
             <div class="card card-bg p-3 space-y-2">
-              <label class="text-xs text-slate-500" for="placeIdManual">place_id (если не выбрана точка)</label>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-500 uppercase tracking-wide">Управление точками</span>
+                <span class="badge" id="cityCount">—</span>
+              </div>
+              <label class="text-xs text-slate-500" for="placeIdManual">restaurant_id (ручной ввод)</label>
               <input id="placeIdManual" type="text" placeholder="UUID точки" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
-              <p class="text-xs muted">Если нет совпадения по названию, укажите place_id вручную.</p>
+              <div class="table-shell border border-soft rounded-lg bg-white">
+                <table class="w-full text-xs">
+                  <thead class="text-[11px] uppercase text-slate-500">
+                    <tr>
+                      <th class="px-3 py-2 text-left">Точка</th>
+                      <th class="px-3 py-2 text-left">Адрес</th>
+                      <th class="px-3 py-2 text-left">Стоп-лист</th>
+                    </tr>
+                  </thead>
+                  <tbody id="placeTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
             </div>
           </div>
           <div class="card card-bg p-3 space-y-3">
@@ -213,11 +227,10 @@
               <span class="badge" id="menuCount">0</span>
             </div>
             <div class="space-y-1 text-sm">
-              <div id="currentCity" class="flex items-center gap-2"><span class="pill blue">Город не выбран</span></div>
               <div id="currentPlace" class="flex items-center gap-2"><span class="pill red">Точка не выбрана</span></div>
             </div>
             <div id="placeCard" class="text-xs muted border border-dashed border-slate-200 rounded-lg p-3 bg-white">
-              Выберите точку, чтобы увидеть название ресторана, город, адрес и график.
+              Выберите точку, чтобы увидеть название ресторана и адрес.
             </div>
           </div>
         </div>
@@ -238,14 +251,22 @@
             <table class="w-full text-sm">
               <thead class="uppercase text-[11px] text-slate-600">
                 <tr>
-                  <th class="text-left px-3 py-2 border-b border-soft">Меню</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Категория</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Блюдо / товар</th>
+                  <th class="text-left px-3 py-2 border-b border-soft">Фото</th>
                   <th class="text-left px-3 py-2 border-b border-soft">ID / SKU</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Модификаторы</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Цена</th>
-                  <th class="text-left px-3 py-2 border-b border-soft">Количество</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Доступность</th>
+                </tr>
+                <tr class="bg-slate-50 text-[11px]">
+                  <th class="px-2 py-1"><input id="filterCategory" class="filter-input" placeholder="Фильтр" /></th>
+                  <th class="px-2 py-1"><input id="filterName" class="filter-input" placeholder="Фильтр" /></th>
+                  <th class="px-2 py-1"></th>
+                  <th class="px-2 py-1"><input id="filterSku" class="filter-input" placeholder="Фильтр" /></th>
+                  <th class="px-2 py-1"></th>
+                  <th class="px-2 py-1"></th>
+                  <th class="px-2 py-1"></th>
                 </tr>
               </thead>
               <tbody id="menuTableBody" class="divide-y divide-slate-100"></tbody>
@@ -330,6 +351,32 @@
         <pre id="extraResult" class="overflow-auto max-h-80 text-xs bg-slate-900 text-slate-50 rounded-lg p-3"></pre>
       </div>
     </div>
+
+  <div id="dishOverlay" class="overlay">
+    <div class="overlay-card p-4">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <div id="overlayTitle" class="text-lg font-semibold text-slate-900"></div>
+          <div id="overlaySku" class="text-xs text-slate-500"></div>
+        </div>
+        <button id="overlayClose" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Закрыть</button>
+      </div>
+      <div class="overlay-grid">
+        <div class="space-y-2">
+          <img id="overlayImage" src="" alt="Фото блюда" class="w-full rounded-xl border border-slate-200 object-cover" />
+          <div id="overlayAvailability" class="pill"></div>
+          <div id="overlayPrice" class="text-base font-semibold text-slate-900"></div>
+        </div>
+        <div class="space-y-2 text-sm text-slate-700">
+          <div id="overlayDescription" class="text-slate-700"></div>
+          <div>
+            <div class="text-xs uppercase text-slate-500 mb-1">Модификаторы и группы</div>
+            <div id="overlayModifiers" class="space-y-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/yandex.js"></script>
 </body>
