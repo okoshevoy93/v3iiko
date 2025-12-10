@@ -27,6 +27,7 @@ const summaryCategories = document.getElementById('summaryCategories');
 const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
 const summaryStop = document.getElementById('summaryStop');
+const exportYandexBtn = document.getElementById('exportYandexBtn');
 const currentPlace = document.getElementById('currentPlace');
 const manualBaseInput = document.getElementById('manualBase');
 const manualTokenPathInput = document.getElementById('manualTokenPath');
@@ -78,6 +79,19 @@ let normalizedMenuRows = [];
 let allPlaces = [];
 let selectedPlaceIds = new Set();
 const YANDEX_STATE_KEY = 'yandexPageState';
+
+function stripHtml(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.innerHTML = str;
+  return d.textContent || d.innerText || '';
+}
+
+function formatPrice(val) {
+  if (val === null || val === undefined || val === '') return '';
+  const s = String(val).trim();
+  return s.includes('₽') ? s : `${s} ₽`;
+}
 let showModifiers = true;
 let showDescription = false;
 let restoredSession = false;
@@ -557,9 +571,9 @@ function renderMenuAggregate(entries = []) {
   rawPayload.textContent = JSON.stringify(entries.map(e => e.payload) || {}, null, 2);
   renderMenuTable(normalizedMenuRows);
   menuCount.textContent = totalItems;
-  summaryItems.textContent = `Блюд: ${totalItems || ''}`;
-  summaryCategories.textContent = `Категории: ${categorySet.size || ''}`;
-  summaryModifiers.textContent = `Модификаторы: ${totalModifiers || ''}`;
+  summaryItems.textContent = `Блюд: ${totalItems || 0}`;
+  summaryCategories.textContent = `Категории: ${categorySet.size || 0}`;
+  summaryModifiers.textContent = `Модификаторы: ${totalModifiers || 0}`;
   const stopText = totalStops ? `Стоп-лист: ${totalStops}` : 'Стоп-лист';
   summaryStop.textContent = stopText;
   summaryStop.dataset.count = totalStops || '';
@@ -669,7 +683,7 @@ function buildModifiersHtml(row) {
   return groups.map(g => {
       const mods = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[11px] items-center">
           <span class="truncate"><span class="font-semibold">${m.name}</span>${m.id ? ` <span class="text-slate-500">(${m.id})</span>` : ''}</span>
-          <span class="text-slate-700 whitespace-nowrap">${m.price ? `${m.price} ₽` : ''}</span>
+          <span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>
         </div>`).join('') || '<div class="text-[11px] text-slate-500">Нет модификаторов</div>';
       return `<div class="mb-2">
         <div class="font-semibold text-[12px] text-indigo-700">${g.name || 'Группа модификаторов'}</div>
@@ -1225,6 +1239,55 @@ toggleDescriptionBtn?.addEventListener('click', () => {
   renderMenuTable(normalizedMenuRows);
   persistSession();
 });
+exportYandexBtn?.addEventListener('click', async () => {
+  try {
+    if (!normalizedMenuRows.length) {
+      setStatus('Нет данных для экспорта.', 'error');
+      return;
+    }
+    const columns = [
+      { key: 'place', title: 'Город/точка' },
+      { key: 'category', title: 'Категория' },
+      { key: 'name', title: 'Блюдо' },
+      { key: 'id', title: 'SKU' },
+      { key: 'description', title: 'Описание' },
+      { key: 'modifiers', title: 'Модификаторы' },
+      { key: 'price', title: 'Цена' },
+      { key: 'available', title: 'Доступность' }
+    ];
+    const table_data = normalizedMenuRows.map(row => ({
+      place: row.place || '',
+      category: row.category || '',
+      name: row.name || '',
+      id: row.id || '',
+      description: showDescription ? (row.description || '') : '',
+      modifiers: showModifiers ? (stripHtml(buildModifiersHtml(row)) || '') : '',
+      price: row.price || '',
+      available: row.stopList ? 'В стоп-листе' : (row.available ? 'Доступно' : 'Недоступно')
+    }));
+    const res = await fetch('/api/export_excel', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ table_data, columns })
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || 'Ошибка экспорта');
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'yandex_menu.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    setStatus('Экспорт завершён.', 'success');
+  } catch (e) {
+    setStatus(e.message || 'Ошибка экспорта', 'error');
+  }
+});
 filterCategoryInput?.addEventListener('input', applyMenuFilters);
 filterNameInput?.addEventListener('input', applyMenuFilters);
 filterSkuInput?.addEventListener('input', applyMenuFilters);
@@ -1242,3 +1305,6 @@ if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Мод
 if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
 setStatus('Введите client_id и client_secret для подключения.');
 loadIntegrationsList();
+if (webhookUrlInput.value && clientIdInput.value && clientSecretInput.value) {
+  loadCities();
+}

@@ -17,6 +17,8 @@ import bcrypt
 import json
 import urllib.parse
 from urllib.parse import urlparse
+import io
+import csv
 
 app = Flask(__name__)
 CORS(app)
@@ -999,7 +1001,47 @@ def admin_save():
 @app.route("/api/export_excel", methods=["POST"])
 @require_auth
 def export_excel():
-    return json_response({"error": "Экспорт временно недоступен"}, 501)
+    payload = request.get_json(silent=True) or {}
+    table_data = payload.get("table_data") or []
+    columns = payload.get("columns") or payload.get("layout", {}).get("columns")
+
+    if not isinstance(table_data, list) or not table_data:
+        return json_response({"error": "Нет данных для экспорта"}, 400)
+
+    # Определяем заголовки
+    headers = []
+    keys = []
+    if columns and isinstance(columns, list) and all(isinstance(c, dict) for c in columns):
+        for col in columns:
+            title = col.get("title") or col.get("label") or col.get("name") or col.get("key") or ""
+            key = col.get("key") or col.get("field") or col.get("name") or title
+            headers.append(title)
+            keys.append(key)
+    else:
+        sample = table_data[0]
+        if isinstance(sample, dict):
+            keys = list(sample.keys())
+            headers = keys[:]
+        elif isinstance(sample, list):
+            headers = [f"Колонка {i+1}" for i in range(len(sample))]
+
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';')
+    if headers:
+        writer.writerow(headers)
+
+    for row in table_data:
+        if isinstance(row, dict):
+            writer.writerow([row.get(k, "") for k in keys])
+        elif isinstance(row, list):
+            writer.writerow(row)
+        else:
+            writer.writerow([row])
+
+    output.seek(0)
+    filename = f"export_{int(time.time())}.csv"
+    return Response(output.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @app.route("/logout")
 def logout():

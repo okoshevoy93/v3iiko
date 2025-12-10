@@ -154,7 +154,7 @@
     Выйти
   </a>
 
-  <div class="max-w-7xl mx-auto px-0 md:px-4 py-6 space-y-4">
+  <div class="w-full mx-auto px-2 md:px-4 py-6 space-y-4">
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-center gap-3">
         <input id="iikoKey" type="hidden" />
@@ -187,10 +187,7 @@
               <div id="placeList" class="space-y-2"></div>
             </div>
             <select id="placeSelect" class="hidden" multiple></select>
-            <div class="flex justify-between items-center pt-2">
-              <div id="currentPlace" class="text-xs text-slate-600"></div>
-              <button id="stopListBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition">Стоп лист</button>
-            </div>
+            <div id="currentPlace" class="text-xs text-slate-600"></div>
           </div>
         </div>
       </div>
@@ -200,7 +197,7 @@
     </div>
 
     <div class="grid lg:grid-cols-[320px,1fr] gap-4">
-      <div class="card panel-bg p-4 space-y-3 self-start" style="margin-left:0">
+      <div class="card panel-bg p-4 space-y-3 self-start ml-0" style="margin-left:0">
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
           <p class="text-sm text-slate-600">Храните ключи и вебхук рядом с интеграцией.</p>
@@ -250,13 +247,14 @@
               <h2 id="menuTitle" class="text-lg font-semibold text-slate-800">Меню выбранной точки</h2>
               <p class="text-sm text-slate-500">Все блюда, модификаторы, цены и остатки из Yandex Еды.</p>
             </div>
-            <div class="flex gap-2 text-sm text-slate-500">
+            <div class="flex gap-2 text-sm text-slate-500 flex-wrap items-center justify-end">
               <span id="summaryCategories" class="pill blue">Категории: 0</span>
               <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
               <span id="summaryItems" class="pill">Блюд: 0</span>
               <span id="summaryStop" class="pill red cursor-pointer">Стоп-лист</span>
               <button id="toggleModifiers" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Модификаторы +/−</button>
               <button id="toggleDescription" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Показать описание</button>
+              <button id="exportYandexBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-50">Экспорт Excel</button>
             </div>
           </div>
           <div class="table-shell border border-soft rounded-xl bg-white">
