@@ -101,8 +101,10 @@ function syncStoredIikoKey(value) {
 function setStatus(message, tone = 'info') {
   statusEl.textContent = message;
   statusEl.className = `text-sm px-3 py-2 rounded-lg border ${tone === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : tone === 'err' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`;
-  statusDot.classList.toggle('ok', tone === 'ok');
-  statusDot.classList.toggle('err', tone === 'err');
+  if (statusDot) {
+    statusDot.classList.toggle('ok', tone === 'ok');
+    statusDot.classList.toggle('err', tone === 'err');
+  }
   if (statusText) statusText.textContent = tone === 'ok' ? '' : tone === 'err' ? 'Ошибка' : '';
 }
 
@@ -664,13 +666,13 @@ function renderStopListPanel() {
 function buildModifiersHtml(row) {
   const groups = row.modifierGroups || [];
   if (groups.length) {
-    return groups.map(g => {
-      const mods = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[11px]">
-          <span>${m.name}${m.id ? ` (${m.id})` : ''}</span>
-          <span class="text-slate-500">${m.price || ''}</span>
+  return groups.map(g => {
+      const mods = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[11px] items-center">
+          <span class="truncate"><span class="font-semibold">${m.name}</span>${m.id ? ` <span class="text-slate-500">(${m.id})</span>` : ''}</span>
+          <span class="text-slate-700 whitespace-nowrap">${m.price ? `${m.price} ₽` : ''}</span>
         </div>`).join('') || '<div class="text-[11px] text-slate-500">Нет модификаторов</div>';
       return `<div class="mb-2">
-        <div class="font-semibold text-[12px]">${g.name || 'Группа модификаторов'}</div>
+        <div class="font-semibold text-[12px] text-indigo-700">${g.name || 'Группа модификаторов'}</div>
         <div class="text-[11px] text-slate-500">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
         ${mods}
       </div>`;
@@ -751,12 +753,12 @@ function showDishOverlay(row, fullImg) {
   overlayModifiers.innerHTML = '';
   (row.modifierGroups || []).forEach(g => {
     const block = document.createElement('div');
-    const modsHtml = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[12px]">
+    const modsHtml = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[12px] items-center">
         <div class="flex flex-col">
-          <span class="font-semibold">${m.name}</span>
+          <span class="font-semibold">${m.name}${m.id ? ` (${m.id})` : ''}</span>
           <span class="text-slate-500">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>
         </div>
-        <span class="text-slate-600">${m.price || ''}</span>
+        <span class="text-slate-600 whitespace-nowrap">${m.price ? `${m.price} ₽` : ''}</span>
       </div>`).join('') || '<div class="text-[11px] text-slate-500">Модификаторы не заданы</div>';
     block.innerHTML = `<div class="font-semibold text-slate-800">${g.name}</div>
       <div class="text-[11px] text-slate-500 mb-1">мин: ${g.min}, макс: ${g.max}${g.required ? ' (обязательно)' : ''}</div>
@@ -764,6 +766,12 @@ function showDishOverlay(row, fullImg) {
     block.className = 'border border-slate-200 rounded-md p-2 bg-white';
     overlayModifiers.appendChild(block);
   });
+  if (!(row.modifierGroups || []).length && !(row.modifiers || []).length) {
+    const empty = document.createElement('div');
+    empty.className = 'text-xs text-slate-500';
+    empty.textContent = 'Нет модификаторов';
+    overlayModifiers.appendChild(empty);
+  }
   overlay.classList.add('active');
 }
 

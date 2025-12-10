@@ -75,6 +75,7 @@
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
     .table-shell table { min-width: 1200px; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
+    .table-shell td { vertical-align: middle; }
     .pill { padding: 6px 12px; border-radius: 12px; font-weight: 600; border: 1px solid var(--border-soft); }
     .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
@@ -153,13 +154,9 @@
     Выйти
   </a>
 
-  <div class="max-w-7xl mx-auto px-4 py-6 space-y-4">
+  <div class="max-w-7xl mx-auto px-0 md:px-4 py-6 space-y-4">
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-center gap-3">
-        <div class="flex items-center gap-2 text-sm text-slate-600">
-          <span class="status-dot" id="statusDot"></span>
-          <span id="statusText" class="text-slate-500 hidden"></span>
-        </div>
         <input id="iikoKey" type="hidden" />
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -174,6 +171,28 @@
         <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
         <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить точки</span></button>
         <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
+        <div class="h-10 w-px bg-slate-200"></div>
+        <div class="flex-1 min-w-[260px]">
+          <div class="card card-bg p-3 space-y-2 picker" id="placePicker">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-500 uppercase tracking-wide">Точка (по названию iiko)</span>
+              <span class="badge" id="placeCount">0</span>
+            </div>
+            <button id="placeToggle" class="picker-toggle">
+              <span id="placeToggleLabel" class="truncate">Выберите точку</span>
+              <span class="text-xs text-slate-500">▼</span>
+            </button>
+            <div class="picker-panel" id="placePanel">
+              <input id="placeSearch" type="text" class="picker-search" placeholder="Поиск по названию, адресу или placeId" />
+              <div id="placeList" class="space-y-2"></div>
+            </div>
+            <select id="placeSelect" class="hidden" multiple></select>
+            <div class="flex justify-between items-center pt-2">
+              <div id="currentPlace" class="text-xs text-slate-600"></div>
+              <button id="stopListBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition">Стоп лист</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
         Введите client_id, client_secret и URL вебхука, чтобы получить доступ к данным Yandex Еды. Точки загрузятся после проверки доступа.
@@ -181,7 +200,7 @@
     </div>
 
     <div class="grid lg:grid-cols-[320px,1fr] gap-4">
-      <div class="card panel-bg p-4 space-y-3 self-start">
+      <div class="card panel-bg p-4 space-y-3 self-start" style="margin-left:0">
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
           <p class="text-sm text-slate-600">Храните ключи и вебхук рядом с интеграцией.</p>
@@ -225,35 +244,6 @@
       </div>
 
       <div class="space-y-4">
-        <div class="card panel-bg p-4 space-y-4">
-          <div class="flex flex-col gap-1">
-            <h2 class="text-lg font-semibold text-slate-800">Работа с API Yandex Еда</h2>
-            <p class="text-sm text-slate-500">Выберите точку, затем загрузите меню и стоп-листы.</p>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-3 items-start">
-            <div class="card card-bg p-3 space-y-3 picker" id="placePicker">
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-slate-500 uppercase tracking-wide">Точка (по названию iiko)</span>
-                <span class="badge" id="placeCount">0</span>
-              </div>
-              <button id="placeToggle" class="picker-toggle">
-                <span id="placeToggleLabel" class="truncate">Выберите точку</span>
-                <span class="text-xs text-slate-500">▼</span>
-              </button>
-              <div class="picker-panel" id="placePanel">
-                <input id="placeSearch" type="text" class="picker-search" placeholder="Поиск по названию" />
-                <div id="placeList" class="space-y-2"></div>
-              </div>
-              <select id="placeSelect" class="hidden"></select>
-              <div class="flex justify-between items-center pt-2">
-                <div id="currentPlace" class="text-xs text-slate-600"></div>
-                <button id="stopListBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition">Стоп лист</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div class="card panel-bg p-4 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
