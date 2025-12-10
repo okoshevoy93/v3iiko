@@ -26,8 +26,8 @@ const rawPayload = document.getElementById('rawPayload');
 const summaryCategories = document.getElementById('summaryCategories');
 const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
+const summaryStop = document.getElementById('summaryStop');
 const currentPlace = document.getElementById('currentPlace');
-const placeCard = document.getElementById('placeCard');
 const manualBaseInput = document.getElementById('manualBase');
 const manualTokenPathInput = document.getElementById('manualTokenPath');
 const menuTitle = document.getElementById('menuTitle');
@@ -76,6 +76,7 @@ let cachedSchedule = new Map();
 let storedIikoKey = '';
 let normalizedMenuRows = [];
 let allPlaces = [];
+let selectedPlaceIds = new Set();
 let showModifiers = true;
 let showDescription = false;
 let restoredSession = false;
@@ -142,6 +143,13 @@ function getOverrides() {
   return { manual_base, manual_token_path };
 }
 
+function getSelectedPlaceIds() {
+  if (selectedPlaceIds.size) return Array.from(selectedPlaceIds);
+  const option = placeSelect?.options?.[placeSelect.selectedIndex];
+  const selected = option?.dataset?.placeId || option?.value || '';
+  return selected ? [selected] : [];
+}
+
 function getActivePlaceId() {
   const option = placeSelect?.options?.[placeSelect.selectedIndex];
   const selected = option?.dataset?.placeId;
@@ -150,6 +158,14 @@ function getActivePlaceId() {
   if (manual) return manual;
   const fallback = option?.value?.trim();
   return fallback || '';
+}
+
+function getPlaceMeta(placeId) {
+  const place = allPlaces.find(p => (p.placeId || p.id || p.restaurant_id || p.code) === placeId) || {};
+  return {
+    placeId,
+    placeName: place.name || place.title || place.label || '',
+  };
 }
 
 function getRestaurantId() {
@@ -288,7 +304,7 @@ function findYandexPlace(org) {
 function renderPlaces(places, preserveSource = false) {
   if (!preserveSource) allPlaces = places;
   cachedPlaces = places;
-  placeSelect.innerHTML = '<option value="">Выберите точку</option>';
+  placeSelect.innerHTML = '';
   placeList.innerHTML = '';
   places.forEach(place => {
     const placeId = place.orgId || place.yandexPlaceId || place.id || place.place_id || '';
@@ -300,6 +316,7 @@ function renderPlaces(places, preserveSource = false) {
     option.dataset.orgId = place.orgId || place.organizationId || '';
     option.dataset.placeId = placeId;
     option.dataset.schedule = JSON.stringify(place.schedule || place.work_time || {});
+    if (selectedPlaceIds.has(placeId)) option.selected = true;
     placeSelect.appendChild(option);
 
     const btn = document.createElement('button');
@@ -307,18 +324,33 @@ function renderPlaces(places, preserveSource = false) {
     btn.className = 'picker-item';
     btn.dataset.placeId = placeId;
     btn.dataset.address = option.dataset.address;
+    const checked = selectedPlaceIds.has(placeId) ? '☑' : '☐';
     btn.innerHTML = `<div class="flex flex-col">` +
       `<span class="title">${name}</span>` +
       `<span class="meta">${option.dataset.address || 'Адрес не указан'}</span>` +
-      `</div><div class="text-[11px] text-slate-500">${placeId}</div>`;
+      `</div><div class="text-[11px] text-slate-500 flex items-center gap-1">${checked}<span>${placeId}</span></div>`;
+    btn.addEventListener('click', () => togglePlaceSelection(placeId));
     placeList.appendChild(btn);
   });
   if (restorePlaceId) {
-    const opt = Array.from(placeSelect.options).find(o => o.value === restorePlaceId);
-    if (opt) placeSelect.value = restorePlaceId;
+    if (!selectedPlaceIds.size) selectedPlaceIds = new Set([restorePlaceId]);
   }
   placeCount.textContent = places.length;
   updateCurrentInfo();
+}
+
+function togglePlaceSelection(placeId) {
+  if (!placeId) return;
+  if (selectedPlaceIds.has(placeId)) {
+    selectedPlaceIds.delete(placeId);
+  } else {
+    selectedPlaceIds.add(placeId);
+  }
+  Array.from(placeSelect.options).forEach(opt => {
+    opt.selected = selectedPlaceIds.has(opt.value);
+  });
+  renderPlaces(allPlaces, true);
+  persistSession();
 }
 
 function parsePrice(item) {
@@ -337,7 +369,13 @@ function parseQuantity(item) {
 function parseModifiers(item) {
   const mods = item.modifiers || item.availableModifiers || item.allowedModifiers || item.options || [];
   const list = Array.isArray(mods) ? mods : (Array.isArray(mods.items) ? mods.items : []);
-  return list.map(m => m.name || m.title || m.public_name || '').filter(Boolean);
+  return list.map(m => ({
+    id: m.id || m.sku || m.code || '',
+    name: m.name || m.title || m.public_name || '',
+    price: parsePrice(m),
+    min: m.minAmount ?? m.min ?? 0,
+    max: m.maxAmount ?? m.max ?? 0,
+  }));
 }
 
 function extractModifierGroups(item) {
@@ -351,7 +389,7 @@ function extractModifierGroups(item) {
       max: g.maxSelectedModifiers ?? g.maxSelected ?? g.max ?? mods.length,
       required: (g.minSelectedModifiers ?? g.min ?? 0) > 0,
       modifiers: mods.map(m => ({
-        id: m.id,
+        id: m.id || m.sku || m.code || '',
         name: m.name || m.title || '',
         price: parsePrice(m),
         min: m.minAmount ?? m.min ?? 0,
@@ -401,7 +439,7 @@ function buildAvailabilityMap(data) {
   return map;
 }
 
-function normalizeMenuItems(menuName, menuData, availabilityMap) {
+function normalizeMenuItems(menuName, menuData, availabilityMap, meta = {}) {
   const items = menuData?.items || menuData?.products || menuData?.menu_items || [];
   const categories = buildCategoryMap(menuData);
   const modifiersPool = menuData?.modifiers || menuData?.groupModifiers || [];
@@ -429,6 +467,8 @@ function normalizeMenuItems(menuName, menuData, availabilityMap) {
       modifierCount,
       image: extractImage(item),
       description: item.description || item.composition || '',
+      place: meta.placeName || '',
+      placeId: meta.placeId || '',
       raw: item,
     };
   });
@@ -451,17 +491,17 @@ function collectMenus(payload) {
 
 function filterPlaces(query) {
   const q = (query || '').toLowerCase();
-  const selected = placeSelect.value;
   const source = allPlaces.length ? allPlaces : cachedPlaces;
   const filtered = q
-    ? source.filter(p => (p.name || '').toLowerCase().includes(q) || (p.title || '').toLowerCase().includes(q))
+    ? source.filter(p => {
+      const name = (p.name || p.title || '').toLowerCase();
+      const addr = (p.address || p.full_address || p.location || '').toLowerCase();
+      const pid = (p.orgId || p.id || p.yandexPlaceId || '').toLowerCase();
+      return name.includes(q) || addr.includes(q) || pid.includes(q);
+    })
     : source;
   renderPlaces(filtered, true);
-  const found = Array.from(placeSelect.options).find(o => o.value === selected);
-  if (found) {
-    placeSelect.value = selected;
-    updateCurrentInfo();
-  }
+  updateCurrentInfo();
 }
 
 function renderIntegrations(list) {
@@ -489,30 +529,37 @@ function applyIntegration(name) {
   loadCities();
 }
 
-function renderMenu(payload, availabilityMap) {
-  lastMenuPayload = payload;
-  rawPayload.textContent = JSON.stringify(payload || {}, null, 2);
-  const menus = collectMenus(payload);
+function renderMenuAggregate(entries = []) {
   normalizedMenuRows = [];
   let totalItems = 0;
   let totalModifiers = 0;
+  let totalStops = 0;
   const categorySet = new Set();
-
-  menus.forEach(menu => {
-    const rows = normalizeMenuItems(menu.name, menu.data || {}, availabilityMap);
-    normalizedMenuRows.push(...rows);
-    rows.forEach(row => {
-      categorySet.add(row.category);
-      totalModifiers += row.modifiers.length + (row.modifierGroups?.length || 0);
+  entries.forEach(entry => {
+    const { payload, availabilityMap, meta } = entry;
+    lastMenuPayload = payload;
+    const menus = collectMenus(payload);
+    menus.forEach(menu => {
+      const rows = normalizeMenuItems(menu.name, menu.data || {}, availabilityMap, meta);
+      normalizedMenuRows.push(...rows);
+      rows.forEach(row => {
+        categorySet.add(row.category);
+        totalModifiers += (row.modifiers?.length || 0) + (row.modifierGroups?.length || 0);
+        if (row.stopList) totalStops += 1;
+      });
+      totalItems += rows.length;
     });
-    totalItems += rows.length;
   });
 
+  rawPayload.textContent = JSON.stringify(entries.map(e => e.payload) || {}, null, 2);
   renderMenuTable(normalizedMenuRows);
   menuCount.textContent = totalItems;
-  summaryItems.textContent = `Блюд: ${totalItems}`;
-  summaryCategories.textContent = `Категории: ${categorySet.size}`;
-  summaryModifiers.textContent = `Модификаторы: ${totalModifiers}`;
+  summaryItems.textContent = `Блюд: ${totalItems || ''}`;
+  summaryCategories.textContent = `Категории: ${categorySet.size || ''}`;
+  summaryModifiers.textContent = `Модификаторы: ${totalModifiers || ''}`;
+  const stopText = totalStops ? `Стоп-лист: ${totalStops}` : 'Стоп-лист';
+  summaryStop.textContent = stopText;
+  summaryStop.dataset.count = totalStops || '';
 }
 
 function applyMenuFilters() {
@@ -532,48 +579,106 @@ function renderMenuTable(rows) {
   if (!menuTableBody) return;
   const data = rows || [];
   menuTableBody.innerHTML = '';
-  const grouped = new Map();
+  const placeGroups = new Map();
   data.forEach(row => {
-    if (!grouped.has(row.category)) grouped.set(row.category, []);
-    grouped.get(row.category).push(row);
+    const key = row.place || 'Без точки';
+    if (!placeGroups.has(key)) placeGroups.set(key, []);
+    placeGroups.get(key).push(row);
   });
 
-  grouped.forEach((items, category) => {
-    const catId = `cat-${normalizeKey(category)}`;
-    const header = document.createElement('tr');
-    header.className = 'bg-slate-50 cursor-pointer';
-    header.dataset.toggle = catId;
-    const colspan = 6 + (showModifiers ? 1 : 0) + (showDescription ? 1 : 0);
-    header.innerHTML = `<td colspan="${colspan}" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2">
-      <span class="pill blue">${category || 'Без категории'}</span>
-      <span class="text-xs text-slate-500">${items.length} поз.</span>
-    </td>`;
-    menuTableBody.appendChild(header);
+  placeGroups.forEach((itemsForPlace, placeName) => {
+    const placeHeader = document.createElement('tr');
+    placeHeader.className = 'bg-indigo-50 font-semibold';
+    placeHeader.innerHTML = `<td colspan="8" class="px-3 py-2">${placeName}</td>`;
+    menuTableBody.appendChild(placeHeader);
 
-    items.forEach(row => {
-      const stopBadge = row.stopList ? '<span class="stop-pill">В стоп-листе</span>' : '';
-      const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
-      const imageHtml = imageSrc
-        ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
-        : `<div class="menu-img placeholder">нет фото</div>`;
-      const tr = document.createElement('tr');
-      tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId}`;
-      tr.dataset.category = catId;
-      tr.innerHTML = `
-        <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
-        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
-        <td class="px-3 py-2">${imageHtml}</td>
-        <td class="px-3 py-2 text-xs text-slate-500">${row.id || '—'}</td>
-        <td class="px-3 py-2 text-xs text-slate-600 ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
-        <td class="px-3 py-2 text-xs text-slate-600 ${showModifiers ? '' : 'hidden'}">${row.modifiers.join(', ') || '—'}</td>
-        <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
-        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>'}</td>
-      `;
-      tr.dataset.itemId = row.id;
-      tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
-      menuTableBody.appendChild(tr);
+    const grouped = new Map();
+    itemsForPlace.forEach(row => {
+      if (!grouped.has(row.category)) grouped.set(row.category, []);
+      grouped.get(row.category).push(row);
+    });
+
+    grouped.forEach((items, category) => {
+      const catId = `cat-${normalizeKey(category)}-${normalizeKey(placeName)}`;
+      const header = document.createElement('tr');
+      header.className = 'bg-slate-50 cursor-pointer';
+      header.dataset.toggle = catId;
+      header.innerHTML = `<td colspan="8" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2">
+        <span class="pill blue">${category || 'Без категории'}</span>
+        <span class="text-xs text-slate-500">${items.length} поз.</span>
+      </td>`;
+      menuTableBody.appendChild(header);
+
+      items.forEach(row => {
+        const stopBadge = row.stopList ? '<span class="stop-pill">В стоп-листе</span>' : '';
+        const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
+        const imageHtml = imageSrc
+          ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
+          : `<div class="menu-img placeholder">нет фото</div>`;
+        const modifiersHtml = buildModifiersHtml(row);
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId}`;
+        tr.dataset.category = catId;
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
+          <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
+          <td class="px-3 py-2">${imageHtml}</td>
+          <td class="px-3 py-2 text-xs text-slate-500">${row.id || '—'}</td>
+          <td class="px-3 py-2 text-xs text-slate-600 ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
+          <td class="px-3 py-2 text-xs text-slate-600 ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
+          <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
+          <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>'}</td>
+        `;
+        tr.dataset.itemId = row.id;
+        tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
+        menuTableBody.appendChild(tr);
+      });
     });
   });
+}
+
+function renderStopListPanel() {
+  const stops = normalizedMenuRows.filter(r => r.stopList);
+  if (!stops.length) {
+    setStatus('Стоп-лист пуст.', 'info');
+    extraResult.innerHTML = '';
+    return;
+  }
+  const rows = stops.map(r => `<tr>
+      <td class="px-2 py-1"><img class="menu-img" src="${r.image ? `/img?url=${encodeURIComponent(r.image)}&thumb=1` : ''}" alt=""/></td>
+      <td class="px-2 py-1">${r.name}</td>
+      <td class="px-2 py-1 text-xs text-slate-500">${r.id}</td>
+      <td class="px-2 py-1">${r.price || ''}</td>
+    </tr>`).join('');
+  extraResult.innerHTML = `<div class="overflow-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs text-slate-600">
+          <tr><th class="px-2 py-1 text-left">Фото</th><th class="px-2 py-1 text-left">Название</th><th class="px-2 py-1 text-left">SKU</th><th class="px-2 py-1 text-left">Цена</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function buildModifiersHtml(row) {
+  const groups = row.modifierGroups || [];
+  if (groups.length) {
+    return groups.map(g => {
+      const mods = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[11px]">
+          <span>${m.name}${m.id ? ` (${m.id})` : ''}</span>
+          <span class="text-slate-500">${m.price || ''}</span>
+        </div>`).join('') || '<div class="text-[11px] text-slate-500">Нет модификаторов</div>';
+      return `<div class="mb-2">
+        <div class="font-semibold text-[12px]">${g.name || 'Группа модификаторов'}</div>
+        <div class="text-[11px] text-slate-500">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
+        ${mods}
+      </div>`;
+    }).join('');
+  }
+  if (row.modifiers && row.modifiers.length) {
+    return row.modifiers.map(m => `${m.name}${m.id ? ` (${m.id})` : ''}${m.price ? ` · ${m.price}` : ''}`).join(', ');
+  }
+  return '<span class="text-xs text-slate-400">Нет модификаторов</span>';
 }
 
 function persistSession() {
@@ -583,7 +688,7 @@ function persistSession() {
       client_secret: clientSecretInput.value,
       webhook_url: webhookUrlInput.value,
       integration: integrationNameInput.value,
-      placeId: getActivePlaceId(),
+      placeIds: Array.from(selectedPlaceIds),
       menu: lastMenuPayload,
       filters: {
         category: filterCategoryInput?.value || '',
@@ -610,7 +715,10 @@ function restoreSession() {
     if (state.client_secret) clientSecretInput.value = state.client_secret;
     if (state.webhook_url) webhookUrlInput.value = state.webhook_url;
     if (state.integration) integrationNameInput.value = state.integration;
-    if (state.placeId) restorePlaceId = state.placeId;
+    if (state.placeIds && Array.isArray(state.placeIds)) {
+      selectedPlaceIds = new Set(state.placeIds);
+      restorePlaceId = state.placeIds[0];
+    }
     if (state.filters) {
       if (filterCategoryInput) filterCategoryInput.value = state.filters.category || '';
       if (filterNameInput) filterNameInput.value = state.filters.name || '';
@@ -653,30 +761,18 @@ function showDishOverlay(row, fullImg) {
 }
 
 function updateCurrentInfo() {
-  const placeOption = placeSelect.options[placeSelect.selectedIndex];
-  const placeName = placeOption ? placeOption.textContent : '';
-  currentPlace.innerHTML = placeSelect.value
-    ? `<span class="pill green">${placeName}</span>`
+  const selected = selectedPlaceIds.size ? Array.from(selectedPlaceIds) : [placeSelect.value].filter(Boolean);
+  const labels = selected.map(id => {
+    const opt = Array.from(placeSelect.options).find(o => o.value === id);
+    return opt ? opt.textContent : id;
+  });
+  const labelText = labels.length ? labels.join(', ') : 'Выберите точку';
+  currentPlace.innerHTML = labels.length
+    ? `<span class="pill green">${labelText}</span>`
     : '<span class="pill red">Точка не выбрана</span>';
-  if (placeToggleLabel) placeToggleLabel.textContent = placeName || 'Выберите точку';
-  if (menuTitle) menuTitle.textContent = placeName ? `Меню «${placeName}»` : 'Меню выбранной точки';
-  renderPlaceCard(placeOption);
+  if (placeToggleLabel) placeToggleLabel.textContent = labelText;
+  if (menuTitle) menuTitle.textContent = labels.length ? `Меню «${labels.join(', ')}»` : 'Меню выбранной точки';
   persistSession();
-}
-
-function renderPlaceCard(placeOption) {
-  if (!placeCard) return;
-  if (!placeOption || (!placeOption.value && !placeOption.dataset.placeId)) {
-    placeCard.innerHTML = 'Выберите точку, чтобы увидеть название ресторана и адрес.';
-    return;
-  }
-  const address = placeOption.dataset.address || 'Адрес не указан';
-  placeCard.innerHTML = `
-    <div class="space-y-1">
-      <div class="text-sm font-semibold text-slate-800">${placeOption.textContent || 'Без названия'}</div>
-      <div class="text-xs text-slate-600">Адрес: ${address}</div>
-    </div>
-  `;
 }
 
 async function loadScheduleForPlace(placeId) {
@@ -707,23 +803,27 @@ async function loadCities({ skipYandex = false } = {}) {
 async function loadMenu() {
   const creds = getCreds();
   if (!creds) return;
-  const placeId = getActivePlaceId();
-  if (!placeId) {
+  const placeIds = getSelectedPlaceIds();
+  if (!placeIds.length) {
     setStatus('Выберите организацию, чтобы загрузить меню.', 'err');
     return;
   }
   buttonLoading(loadMenuBtn, true, 'Загружаем меню...');
+  const entries = [];
   try {
-    const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: placeId } });
-    let availabilityMap;
-    try {
-      const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: placeId } });
-      availabilityMap = buildAvailabilityMap(availability);
-    } catch (err) {
-      console.warn('Availability request failed', err);
-      setStatus('Меню получено, но стоп-лист недоступен (проверьте блокировки логинов в iiko).', 'info');
+    for (const pid of placeIds) {
+      const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: pid } });
+      let availabilityMap;
+      try {
+        const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: pid } });
+        availabilityMap = buildAvailabilityMap(availability);
+      } catch (err) {
+        console.warn('Availability request failed', err);
+      }
+      const placeMeta = getPlaceMeta(pid);
+      entries.push({ payload: data, availabilityMap, meta: placeMeta });
     }
-    renderMenu(data, availabilityMap);
+    renderMenuAggregate(entries);
     setStatus('Меню и стоп-лист загружены.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось загрузить меню', 'err');
@@ -1061,8 +1161,12 @@ placeList?.addEventListener('click', (e) => {
   placeToggle.closest('.picker')?.classList.remove('open');
 });
 stopListBtn?.addEventListener('click', () => {
-  if (placeSelect.value) runAvailabilityFor(placeSelect.value, true);
+  const ids = getSelectedPlaceIds();
+  if (!ids.length) return setStatus('Выберите точку для стоп-листа.', 'err');
+  ids.forEach(id => runAvailabilityFor(id, true));
+  renderStopListPanel();
 });
+summaryStop?.addEventListener('click', renderStopListPanel);
 document.addEventListener('click', (e) => {
   if (!placeToggle?.closest('.picker')) return;
   if (!placeToggle.closest('.picker').contains(e.target)) {
@@ -1095,7 +1199,7 @@ menuTableBody?.addEventListener('contextmenu', (e) => {
 
 toggleModifiersBtn?.addEventListener('click', () => {
   showModifiers = !showModifiers;
-  toggleModifiersBtn.textContent = showModifiers ? 'Скрыть модификаторы' : 'Показать модификаторы';
+  toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
   renderMenuTable(normalizedMenuRows);
   persistSession();
 });
@@ -1119,7 +1223,7 @@ if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
 }
 
 restoreSession();
-if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Скрыть модификаторы' : 'Показать модификаторы';
+if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
 if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
 setStatus('Введите client_id и client_secret для подключения.');
 loadIntegrationsList();

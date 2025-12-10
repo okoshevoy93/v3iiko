@@ -246,16 +246,9 @@
                 <div id="placeList" class="space-y-2"></div>
               </div>
               <select id="placeSelect" class="hidden"></select>
-            </div>
-
-            <div class="card card-bg p-3 space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-slate-500 uppercase tracking-wide">Карточка ресторана</span>
+              <div class="flex justify-between items-center pt-2">
+                <div id="currentPlace" class="text-xs text-slate-600"></div>
                 <button id="stopListBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition">Стоп лист</button>
-              </div>
-              <div id="currentPlace" class="flex items-center gap-2"><span class="pill red">Точка не выбрана</span></div>
-              <div id="placeCard" class="text-xs muted border border-dashed border-slate-200 rounded-lg p-3 bg-white">
-                Выберите точку, чтобы увидеть название ресторана и адрес.
               </div>
             </div>
           </div>
@@ -271,7 +264,8 @@
               <span id="summaryCategories" class="pill blue">Категории: 0</span>
               <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
               <span id="summaryItems" class="pill">Блюд: 0</span>
-              <button id="toggleModifiers" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Скрыть модификаторы</button>
+              <span id="summaryStop" class="pill red cursor-pointer">Стоп-лист</span>
+              <button id="toggleModifiers" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Модификаторы +/−</button>
               <button id="toggleDescription" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Показать описание</button>
             </div>
           </div>
