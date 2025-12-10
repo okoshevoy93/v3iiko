@@ -34,6 +34,8 @@ const menuTitle = document.getElementById('menuTitle');
 const filterCategoryInput = document.getElementById('filterCategory');
 const filterNameInput = document.getElementById('filterName');
 const filterSkuInput = document.getElementById('filterSku');
+const toggleModifiersBtn = document.getElementById('toggleModifiers');
+const toggleDescriptionBtn = document.getElementById('toggleDescription');
 const overlay = document.getElementById('dishOverlay');
 const overlayClose = document.getElementById('overlayClose');
 const overlayTitle = document.getElementById('overlayTitle');
@@ -74,6 +76,10 @@ let cachedSchedule = new Map();
 let storedIikoKey = '';
 let normalizedMenuRows = [];
 let allPlaces = [];
+let showModifiers = true;
+let showDescription = false;
+let restoredSession = false;
+let restorePlaceId = '';
 
 try {
   storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
@@ -95,7 +101,7 @@ function setStatus(message, tone = 'info') {
   statusEl.className = `text-sm px-3 py-2 rounded-lg border ${tone === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : tone === 'err' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`;
   statusDot.classList.toggle('ok', tone === 'ok');
   statusDot.classList.toggle('err', tone === 'err');
-  statusText.textContent = tone === 'ok' ? 'Подключено' : tone === 'err' ? 'Ошибка' : 'Не подключено';
+  if (statusText) statusText.textContent = tone === 'ok' ? '' : tone === 'err' ? 'Ошибка' : '';
 }
 
 function buttonLoading(btn, isLoading, label) {
@@ -307,6 +313,10 @@ function renderPlaces(places, preserveSource = false) {
       `</div><div class="text-[11px] text-slate-500">${placeId}</div>`;
     placeList.appendChild(btn);
   });
+  if (restorePlaceId) {
+    const opt = Array.from(placeSelect.options).find(o => o.value === restorePlaceId);
+    if (opt) placeSelect.value = restorePlaceId;
+  }
   placeCount.textContent = places.length;
   updateCurrentInfo();
 }
@@ -533,7 +543,8 @@ function renderMenuTable(rows) {
     const header = document.createElement('tr');
     header.className = 'bg-slate-50 cursor-pointer';
     header.dataset.toggle = catId;
-    header.innerHTML = `<td colspan="7" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2">
+    const colspan = 6 + (showModifiers ? 1 : 0) + (showDescription ? 1 : 0);
+    header.innerHTML = `<td colspan="${colspan}" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2">
       <span class="pill blue">${category || 'Без категории'}</span>
       <span class="text-xs text-slate-500">${items.length} поз.</span>
     </td>`;
@@ -550,12 +561,11 @@ function renderMenuTable(rows) {
       tr.dataset.category = catId;
       tr.innerHTML = `
         <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
-        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge} <button class="text-blue-600 text-xs" title="Скопировать" data-copy="${row.name || ''}">📋</button></td>
+        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
         <td class="px-3 py-2">${imageHtml}</td>
-        <td class="px-3 py-2 text-xs text-slate-500 flex items-center gap-2">${row.id || '—'}
-          <button class="text-blue-600 text-xs" title="Скопировать" data-copy="${row.id || ''}">📋</button>
-        </td>
-        <td class="px-3 py-2 text-xs text-slate-600">${row.modifiers.join(', ') || '—'}</td>
+        <td class="px-3 py-2 text-xs text-slate-500">${row.id || '—'}</td>
+        <td class="px-3 py-2 text-xs text-slate-600 ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
+        <td class="px-3 py-2 text-xs text-slate-600 ${showModifiers ? '' : 'hidden'}">${row.modifiers.join(', ') || '—'}</td>
         <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
         <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>'}</td>
       `;
@@ -564,6 +574,54 @@ function renderMenuTable(rows) {
       menuTableBody.appendChild(tr);
     });
   });
+}
+
+function persistSession() {
+  try {
+    const state = {
+      client_id: clientIdInput.value,
+      client_secret: clientSecretInput.value,
+      webhook_url: webhookUrlInput.value,
+      integration: integrationNameInput.value,
+      placeId: getActivePlaceId(),
+      menu: lastMenuPayload,
+      filters: {
+        category: filterCategoryInput?.value || '',
+        name: filterNameInput?.value || '',
+        sku: filterSkuInput?.value || ''
+      },
+      showModifiers,
+      showDescription
+    };
+    sessionStorage.setItem('yandexSessionState', JSON.stringify(state));
+  } catch (e) {
+    console.warn('Cannot persist session', e);
+  }
+}
+
+function restoreSession() {
+  if (restoredSession) return;
+  restoredSession = true;
+  try {
+    const raw = sessionStorage.getItem('yandexSessionState');
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (state.client_id) clientIdInput.value = state.client_id;
+    if (state.client_secret) clientSecretInput.value = state.client_secret;
+    if (state.webhook_url) webhookUrlInput.value = state.webhook_url;
+    if (state.integration) integrationNameInput.value = state.integration;
+    if (state.placeId) restorePlaceId = state.placeId;
+    if (state.filters) {
+      if (filterCategoryInput) filterCategoryInput.value = state.filters.category || '';
+      if (filterNameInput) filterNameInput.value = state.filters.name || '';
+      if (filterSkuInput) filterSkuInput.value = state.filters.sku || '';
+    }
+    if (typeof state.showModifiers === 'boolean') showModifiers = state.showModifiers;
+    if (typeof state.showDescription === 'boolean') showDescription = state.showDescription;
+    if (state.menu) renderMenu(state.menu);
+  } catch (e) {
+    console.warn('Cannot restore session', e);
+  }
 }
 
 function showDishOverlay(row, fullImg) {
@@ -603,6 +661,7 @@ function updateCurrentInfo() {
   if (placeToggleLabel) placeToggleLabel.textContent = placeName || 'Выберите точку';
   if (menuTitle) menuTitle.textContent = placeName ? `Меню «${placeName}»` : 'Меню выбранной точки';
   renderPlaceCard(placeOption);
+  persistSession();
 }
 
 function renderPlaceCard(placeOption) {
@@ -1018,18 +1077,34 @@ menuTableBody?.addEventListener('click', (e) => {
     rows.forEach(r => r.classList.toggle('hidden'));
     return;
   }
-  const copyBtn = e.target.closest('[data-copy]');
-  if (copyBtn) {
-    navigator.clipboard?.writeText(copyBtn.dataset.copy || '');
-    setStatus('Скопировано в буфер обмена.', 'info');
-    return;
-  }
   const img = e.target.closest('.menu-img');
   if (img && img.dataset.full) {
     const index = img.closest('tr')?.dataset?.itemIndex;
     const row = normalizedMenuRows[Number(index)] || null;
     if (row) showDishOverlay(row, img.dataset.full);
   }
+});
+menuTableBody?.addEventListener('contextmenu', (e) => {
+  const cell = e.target.closest('td');
+  if (!cell) return;
+  e.preventDefault();
+  const text = (cell.textContent || '').trim();
+  if (text) navigator.clipboard?.writeText(text);
+  setStatus('Скопировано в буфер обмена.', 'info');
+});
+
+toggleModifiersBtn?.addEventListener('click', () => {
+  showModifiers = !showModifiers;
+  toggleModifiersBtn.textContent = showModifiers ? 'Скрыть модификаторы' : 'Показать модификаторы';
+  renderMenuTable(normalizedMenuRows);
+  persistSession();
+});
+
+toggleDescriptionBtn?.addEventListener('click', () => {
+  showDescription = !showDescription;
+  toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
+  renderMenuTable(normalizedMenuRows);
+  persistSession();
 });
 filterCategoryInput?.addEventListener('input', applyMenuFilters);
 filterNameInput?.addEventListener('input', applyMenuFilters);
@@ -1043,5 +1118,8 @@ if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
   iikoKeyInput.value = storedIikoKey;
 }
 
+restoreSession();
+if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Скрыть модификаторы' : 'Показать модификаторы';
+if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
 setStatus('Введите client_id и client_secret для подключения.');
 loadIntegrationsList();
