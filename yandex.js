@@ -77,6 +77,7 @@ let storedIikoKey = '';
 let normalizedMenuRows = [];
 let allPlaces = [];
 let selectedPlaceIds = new Set();
+const YANDEX_STATE_KEY = 'yandexPageState';
 let showModifiers = true;
 let showDescription = false;
 let restoredSession = false;
@@ -696,9 +697,10 @@ function persistSession() {
         sku: filterSkuInput?.value || ''
       },
       showModifiers,
-      showDescription
+      showDescription,
+      normalizedMenuRows
     };
-    sessionStorage.setItem('yandexSessionState', JSON.stringify(state));
+    localStorage.setItem(YANDEX_STATE_KEY, JSON.stringify(state));
   } catch (e) {
     console.warn('Cannot persist session', e);
   }
@@ -708,7 +710,7 @@ function restoreSession() {
   if (restoredSession) return;
   restoredSession = true;
   try {
-    const raw = sessionStorage.getItem('yandexSessionState');
+    const raw = localStorage.getItem(YANDEX_STATE_KEY);
     if (!raw) return;
     const state = JSON.parse(raw);
     if (state.client_id) clientIdInput.value = state.client_id;
@@ -726,7 +728,12 @@ function restoreSession() {
     }
     if (typeof state.showModifiers === 'boolean') showModifiers = state.showModifiers;
     if (typeof state.showDescription === 'boolean') showDescription = state.showDescription;
-    if (state.menu) renderMenu(state.menu);
+    if (Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
+      normalizedMenuRows = state.normalizedMenuRows;
+      renderMenuTable(normalizedMenuRows);
+    } else if (state.menu) {
+      renderMenu(state.menu);
+    }
   } catch (e) {
     console.warn('Cannot restore session', e);
   }
