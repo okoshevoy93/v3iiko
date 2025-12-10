@@ -995,6 +995,12 @@ def admin_save():
     save_users()
     return redirect("/users?msg=Успешно!")
 
+
+@app.route("/api/export_excel", methods=["POST"])
+@require_auth
+def export_excel():
+    return json_response({"error": "Экспорт временно недоступен"}, 501)
+
 @app.route("/logout")
 def logout():
     return Response('Вы вышли', 401,

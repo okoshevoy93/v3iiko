@@ -10,12 +10,15 @@ const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
 const deleteIntegrationBtn = document.getElementById('deleteIntegrationBtn');
 const placeSelect = document.getElementById('placeSelect');
 const placeSearchInput = document.getElementById('placeSearch');
-const placeTableBody = document.getElementById('placeTableBody');
+const placeList = document.getElementById('placeList');
+const placeToggle = document.getElementById('placeToggle');
+const placeToggleLabel = document.getElementById('placeToggleLabel');
+const placePanel = document.getElementById('placePanel');
+const stopListBtn = document.getElementById('stopListBtn');
 const iikoKeyInput = document.getElementById('iikoKey');
 const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
-const cityCount = document.getElementById('cityCount');
 const placeCount = document.getElementById('placeCount');
 const menuCount = document.getElementById('menuCount');
 const menuTableBody = document.getElementById('menuTableBody');
@@ -25,7 +28,6 @@ const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
 const currentPlace = document.getElementById('currentPlace');
 const placeCard = document.getElementById('placeCard');
-const placeIdManual = document.getElementById('placeIdManual');
 const manualBaseInput = document.getElementById('manualBase');
 const manualTokenPathInput = document.getElementById('manualTokenPath');
 const menuTitle = document.getElementById('menuTitle');
@@ -281,7 +283,7 @@ function renderPlaces(places, preserveSource = false) {
   if (!preserveSource) allPlaces = places;
   cachedPlaces = places;
   placeSelect.innerHTML = '<option value="">Выберите точку</option>';
-  placeTableBody.innerHTML = '';
+  placeList.innerHTML = '';
   places.forEach(place => {
     const placeId = place.orgId || place.yandexPlaceId || place.id || place.place_id || '';
     const name = place.name || place.title || place.slug || 'Без названия';
@@ -294,16 +296,18 @@ function renderPlaces(places, preserveSource = false) {
     option.dataset.schedule = JSON.stringify(place.schedule || place.work_time || {});
     placeSelect.appendChild(option);
 
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="px-3 py-2 text-slate-800">${name}</td>
-      <td class="px-3 py-2 text-slate-600 text-xs">${option.dataset.address || '—'}</td>
-      <td class="px-3 py-2"><button class="px-3 py-1.5 text-xs font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition" data-stop-id="${placeId}">Стоп лист</button></td>
-    `;
-    placeTableBody.appendChild(tr);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'picker-item';
+    btn.dataset.placeId = placeId;
+    btn.dataset.address = option.dataset.address;
+    btn.innerHTML = `<div class="flex flex-col">` +
+      `<span class="title">${name}</span>` +
+      `<span class="meta">${option.dataset.address || 'Адрес не указан'}</span>` +
+      `</div><div class="text-[11px] text-slate-500">${placeId}</div>`;
+    placeList.appendChild(btn);
   });
   placeCount.textContent = places.length;
-  cityCount.textContent = '—';
   updateCurrentInfo();
 }
 
@@ -536,7 +540,7 @@ function renderMenuTable(rows) {
     menuTableBody.appendChild(header);
 
     items.forEach(row => {
-      const stopBadge = row.stopList ? '<span class="stop-pill">Стоп-лист</span>' : '';
+      const stopBadge = row.stopList ? '<span class="stop-pill">В стоп-листе</span>' : '';
       const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
       const imageHtml = imageSrc
         ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
@@ -546,14 +550,14 @@ function renderMenuTable(rows) {
       tr.dataset.category = catId;
       tr.innerHTML = `
         <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
-        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge} <button class="text-blue-600 text-[11px]" data-copy="${row.name || ''}">копировать</button></td>
+        <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge} <button class="text-blue-600 text-xs" title="Скопировать" data-copy="${row.name || ''}">📋</button></td>
         <td class="px-3 py-2">${imageHtml}</td>
         <td class="px-3 py-2 text-xs text-slate-500 flex items-center gap-2">${row.id || '—'}
-          <button class="text-blue-600 text-[11px]" data-copy="${row.id || ''}">копировать</button>
+          <button class="text-blue-600 text-xs" title="Скопировать" data-copy="${row.id || ''}">📋</button>
         </td>
         <td class="px-3 py-2 text-xs text-slate-600">${row.modifiers.join(', ') || '—'}</td>
         <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
-        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Стоп-лист</span>'}</td>
+        <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>'}</td>
       `;
       tr.dataset.itemId = row.id;
       tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
@@ -568,15 +572,22 @@ function showDishOverlay(row, fullImg) {
   overlaySku.textContent = row.id || '';
   overlayImage.src = fullImg || row.image || '';
   overlayAvailability.className = `pill ${row.available ? 'green' : 'red'}`;
-  overlayAvailability.textContent = row.available ? 'Доступно' : 'Стоп-лист';
+  overlayAvailability.textContent = row.available ? 'Доступно' : 'В стоп-листе';
   overlayPrice.textContent = row.price || '';
   overlayDescription.textContent = row.description || 'Описание отсутствует';
   overlayModifiers.innerHTML = '';
   (row.modifierGroups || []).forEach(g => {
     const block = document.createElement('div');
+    const modsHtml = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[12px]">
+        <div class="flex flex-col">
+          <span class="font-semibold">${m.name}</span>
+          <span class="text-slate-500">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>
+        </div>
+        <span class="text-slate-600">${m.price || ''}</span>
+      </div>`).join('') || '<div class="text-[11px] text-slate-500">Модификаторы не заданы</div>';
     block.innerHTML = `<div class="font-semibold text-slate-800">${g.name}</div>
       <div class="text-[11px] text-slate-500 mb-1">мин: ${g.min}, макс: ${g.max}${g.required ? ' (обязательно)' : ''}</div>
-      ${(g.modifiers || []).map(m => `<div class="flex justify-between gap-2"><span>${m.name}</span><span class="text-slate-600">${m.price || ''}</span></div>`).join('') || '<div class="text-[11px] text-slate-500">Модификаторы не заданы</div>'}`;
+      ${modsHtml}`;
     block.className = 'border border-slate-200 rounded-md p-2 bg-white';
     overlayModifiers.appendChild(block);
   });
@@ -589,6 +600,7 @@ function updateCurrentInfo() {
   currentPlace.innerHTML = placeSelect.value
     ? `<span class="pill green">${placeName}</span>`
     : '<span class="pill red">Точка не выбрана</span>';
+  if (placeToggleLabel) placeToggleLabel.textContent = placeName || 'Выберите точку';
   if (menuTitle) menuTitle.textContent = placeName ? `Меню «${placeName}»` : 'Меню выбранной точки';
   renderPlaceCard(placeOption);
 }
@@ -596,21 +608,14 @@ function updateCurrentInfo() {
 function renderPlaceCard(placeOption) {
   if (!placeCard) return;
   if (!placeOption || (!placeOption.value && !placeOption.dataset.placeId)) {
-    placeCard.innerHTML = 'Выберите точку, чтобы увидеть название ресторана, город, адрес и график.';
+    placeCard.innerHTML = 'Выберите точку, чтобы увидеть название ресторана и адрес.';
     return;
   }
   const address = placeOption.dataset.address || 'Адрес не указан';
-  const scheduleRaw = cachedSchedule.get(placeOption.dataset.placeId || placeOption.value) || JSON.parse(placeOption.dataset.schedule || '{}');
-  const schedule = Array.isArray(scheduleRaw?.days)
-    ? scheduleRaw.days.map(d => `${d.day || ''}: ${d.from || d.start || ''} — ${d.to || d.end || ''}`).join('<br>')
-    : 'График не указан';
-  const hint = placeOption.dataset.placeId ? '' : '<div class="text-[11px] text-amber-600 mt-1">Для вызовов укажите restaurant_id вручную.</div>';
   placeCard.innerHTML = `
     <div class="space-y-1">
       <div class="text-sm font-semibold text-slate-800">${placeOption.textContent || 'Без названия'}</div>
       <div class="text-xs text-slate-600">Адрес: ${address}</div>
-      ${schedule && schedule !== 'График не указан' ? `<div class="text-xs text-slate-600">График: <br>${schedule}</div>` : ''}
-      ${hint}
     </div>
   `;
 }
@@ -982,11 +987,28 @@ btnLoadRestaurants?.addEventListener('click', runRestaurants);
 saveIntegrationBtn.addEventListener('click', saveIntegration);
 deleteIntegrationBtn.addEventListener('click', deleteIntegration);
 placeSearchInput?.addEventListener('input', () => filterPlaces(placeSearchInput.value));
-placeTableBody?.addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-stop-id]');
+placeToggle?.addEventListener('click', () => {
+  placeToggle.closest('.picker')?.classList.toggle('open');
+});
+placeList?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.picker-item');
   if (!btn) return;
-  const id = btn.dataset.stopId;
-  if (id) runAvailabilityFor(id, true);
+  const id = btn.dataset.placeId;
+  const opt = Array.from(placeSelect.options).find(o => o.value === id);
+  if (opt) {
+    placeSelect.value = id;
+    updateCurrentInfo();
+  }
+  placeToggle.closest('.picker')?.classList.remove('open');
+});
+stopListBtn?.addEventListener('click', () => {
+  if (placeSelect.value) runAvailabilityFor(placeSelect.value, true);
+});
+document.addEventListener('click', (e) => {
+  if (!placeToggle?.closest('.picker')) return;
+  if (!placeToggle.closest('.picker').contains(e.target)) {
+    placeToggle.closest('.picker').classList.remove('open');
+  }
 });
 menuTableBody?.addEventListener('click', (e) => {
   const toggle = e.target.closest('tr[data-toggle]');
