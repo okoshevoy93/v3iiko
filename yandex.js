@@ -27,6 +27,7 @@ const summaryCategories = document.getElementById('summaryCategories');
 const summaryModifiers = document.getElementById('summaryModifiers');
 const summaryItems = document.getElementById('summaryItems');
 const summaryStop = document.getElementById('summaryStop');
+const showStopInlineBtn = document.getElementById('showStopInline');
 const exportYandexBtn = document.getElementById('exportYandexBtn');
 const currentPlace = document.getElementById('currentPlace');
 const manualBaseInput = document.getElementById('manualBase');
@@ -37,6 +38,10 @@ const filterNameInput = document.getElementById('filterName');
 const filterSkuInput = document.getElementById('filterSku');
 const toggleModifiersBtn = document.getElementById('toggleModifiers');
 const toggleDescriptionBtn = document.getElementById('toggleDescription');
+const stopOverlay = document.getElementById('stopOverlay');
+const stopOverlayClose = document.getElementById('stopOverlayClose');
+const stopTableBody = document.getElementById('stopTableBody');
+const stopSearchInput = document.getElementById('stopSearch');
 const overlay = document.getElementById('dishOverlay');
 const overlayClose = document.getElementById('overlayClose');
 const overlayTitle = document.getElementById('overlayTitle');
@@ -79,6 +84,7 @@ let normalizedMenuRows = [];
 let allPlaces = [];
 let selectedPlaceIds = new Set();
 const YANDEX_STATE_KEY = 'yandexPageState';
+let showStopItems = false;
 
 function stripHtml(str) {
   if (!str) return '';
@@ -89,8 +95,9 @@ function stripHtml(str) {
 
 function formatPrice(val) {
   if (val === null || val === undefined || val === '') return '';
-  const s = String(val).trim();
-  return s.includes('₽') ? s : `${s} ₽`;
+  const clean = String(val).replace(/₽/g, '').trim();
+  if (!clean) return '';
+  return `${clean} ₽`;
 }
 let showModifiers = true;
 let showDescription = false;
@@ -367,6 +374,8 @@ function togglePlaceSelection(placeId) {
     opt.selected = selectedPlaceIds.has(opt.value);
   });
   renderPlaces(allPlaces, true);
+  const picker = document.getElementById('placePicker');
+  picker?.classList.add('open');
   persistSession();
 }
 
@@ -570,13 +579,29 @@ function renderMenuAggregate(entries = []) {
 
   rawPayload.textContent = JSON.stringify(entries.map(e => e.payload) || {}, null, 2);
   renderMenuTable(normalizedMenuRows);
-  menuCount.textContent = totalItems;
-  summaryItems.textContent = `Блюд: ${totalItems || 0}`;
-  summaryCategories.textContent = `Категории: ${categorySet.size || 0}`;
-  summaryModifiers.textContent = `Модификаторы: ${totalModifiers || 0}`;
-  const stopText = totalStops ? `Стоп-лист: ${totalStops}` : 'Стоп-лист';
-  summaryStop.textContent = stopText;
-  summaryStop.dataset.count = totalStops || '';
+  updateSummaryFromRows();
+}
+
+function updateSummaryFromRows() {
+  if (!summaryItems || !summaryCategories || !summaryModifiers || !summaryStop) return;
+  const categories = new Set();
+  let modifiers = 0;
+  let stops = 0;
+  normalizedMenuRows.forEach(row => {
+    if (row.category) categories.add(row.category);
+    modifiers += (row.modifierGroups?.length || 0) + (row.modifiers?.length || 0);
+    if (row.stopList) stops += 1;
+  });
+  const totalItems = normalizedMenuRows.length;
+  menuCount.textContent = totalItems || '';
+  summaryItems.textContent = `Блюд: ${totalItems || ''}`;
+  summaryCategories.textContent = `Категории: ${categories.size || ''}`;
+  summaryModifiers.textContent = `Модификаторы: ${modifiers || ''}`;
+  summaryStop.textContent = stops ? `Стоп-лист: ${stops}` : 'Стоп-лист';
+  summaryStop.dataset.count = stops || '';
+  toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
+  toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
+  showStopInlineBtn.textContent = showStopItems ? 'Скрыть стоп-лист' : 'Показать стоп-лист';
 }
 
 function applyMenuFilters() {
@@ -594,7 +619,7 @@ function applyMenuFilters() {
 
 function renderMenuTable(rows) {
   if (!menuTableBody) return;
-  const data = rows || [];
+  const data = (rows || []).filter(r => showStopItems || !r.stopList);
   menuTableBody.innerHTML = '';
   const placeGroups = new Map();
   data.forEach(row => {
@@ -605,8 +630,10 @@ function renderMenuTable(rows) {
 
   placeGroups.forEach((itemsForPlace, placeName) => {
     const placeHeader = document.createElement('tr');
-    placeHeader.className = 'bg-indigo-50 font-semibold';
-    placeHeader.innerHTML = `<td colspan="8" class="px-3 py-2">${placeName}</td>`;
+    const placeClass = `place-${normalizeKey(placeName)}`;
+    placeHeader.className = 'group-city-row cursor-pointer';
+    placeHeader.dataset.toggle = placeClass;
+    placeHeader.innerHTML = `<td colspan="8" class="px-3 py-2 text-left flex items-center gap-2"><span class="text-lg">➖</span><span>${placeName}</span></td>`;
     menuTableBody.appendChild(placeHeader);
 
     const grouped = new Map();
@@ -618,9 +645,9 @@ function renderMenuTable(rows) {
     grouped.forEach((items, category) => {
       const catId = `cat-${normalizeKey(category)}-${normalizeKey(placeName)}`;
       const header = document.createElement('tr');
-      header.className = 'bg-slate-50 cursor-pointer';
+      header.className = 'group-category-row cursor-pointer';
       header.dataset.toggle = catId;
-      header.innerHTML = `<td colspan="8" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2">
+      header.innerHTML = `<td colspan="8" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2"><span class="text-sm">➖</span>
         <span class="pill blue">${category || 'Без категории'}</span>
         <span class="text-xs text-slate-500">${items.length} поз.</span>
       </td>`;
@@ -634,7 +661,7 @@ function renderMenuTable(rows) {
           : `<div class="menu-img placeholder">нет фото</div>`;
         const modifiersHtml = buildModifiersHtml(row);
         const tr = document.createElement('tr');
-        tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId}`;
+        tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass}`;
         tr.dataset.category = catId;
         tr.innerHTML = `
           <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
@@ -652,29 +679,30 @@ function renderMenuTable(rows) {
       });
     });
   });
+  updateSummaryFromRows();
 }
 
 function renderStopListPanel() {
   const stops = normalizedMenuRows.filter(r => r.stopList);
-  if (!stops.length) {
-    setStatus('Стоп-лист пуст.', 'info');
-    extraResult.innerHTML = '';
-    return;
-  }
-  const rows = stops.map(r => `<tr>
-      <td class="px-2 py-1"><img class="menu-img" src="${r.image ? `/img?url=${encodeURIComponent(r.image)}&thumb=1` : ''}" alt=""/></td>
-      <td class="px-2 py-1">${r.name}</td>
-      <td class="px-2 py-1 text-xs text-slate-500">${r.id}</td>
-      <td class="px-2 py-1">${r.price || ''}</td>
-    </tr>`).join('');
-  extraResult.innerHTML = `<div class="overflow-auto">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-xs text-slate-600">
-          <tr><th class="px-2 py-1 text-left">Фото</th><th class="px-2 py-1 text-left">Название</th><th class="px-2 py-1 text-left">SKU</th><th class="px-2 py-1 text-left">Цена</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  if (!stopOverlay || !stopTableBody) return;
+  stopTableBody.innerHTML = '';
+  if (stopSearchInput) stopSearchInput.value = '';
+  const rows = stops.map(r => {
+    const img = r.image ? `<img class="menu-img" src="/img?url=${encodeURIComponent(r.image)}&thumb=1" alt="" />` : '<div class="menu-img placeholder">нет фото</div>';
+    return `<tr class="border-b border-slate-100"><td class="px-2 py-1">${img}</td><td class="px-2 py-1">${r.name}</td><td class="px-2 py-1 text-xs text-slate-500">${r.id || ''}</td><td class="px-2 py-1">${r.price || ''}</td></tr>`;
+  }).join('');
+  stopTableBody.innerHTML = rows || `<tr><td colspan="4" class="px-2 py-2 text-center text-slate-500">Стоп-лист пуст.</td></tr>`;
+  stopOverlay.classList.add('active');
+}
+
+function filterStopList(term) {
+  if (!stopTableBody) return;
+  const value = (term || '').toLowerCase();
+  Array.from(stopTableBody.querySelectorAll('tr')).forEach(row => {
+    if (!value) { row.classList.remove('hidden'); return; }
+    const text = row.textContent?.toLowerCase() || '';
+    row.classList.toggle('hidden', !text.includes(value));
+  });
 }
 
 function buildModifiersHtml(row) {
@@ -714,6 +742,7 @@ function persistSession() {
       },
       showModifiers,
       showDescription,
+      showStopItems,
       normalizedMenuRows
     };
     localStorage.setItem(YANDEX_STATE_KEY, JSON.stringify(state));
@@ -744,11 +773,16 @@ function restoreSession() {
     }
     if (typeof state.showModifiers === 'boolean') showModifiers = state.showModifiers;
     if (typeof state.showDescription === 'boolean') showDescription = state.showDescription;
+    if (typeof state.showStopItems === 'boolean') showStopItems = state.showStopItems;
     if (Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
       normalizedMenuRows = state.normalizedMenuRows;
       renderMenuTable(normalizedMenuRows);
+      updateSummaryFromRows();
     } else if (state.menu) {
       renderMenu(state.menu);
+    }
+    if (!cachedPlaces.length && loadCitiesBtn) {
+      loadCitiesBtn.click();
     }
   } catch (e) {
     console.warn('Cannot restore session', e);
@@ -1196,20 +1230,26 @@ stopListBtn?.addEventListener('click', () => {
   renderStopListPanel();
 });
 summaryStop?.addEventListener('click', renderStopListPanel);
+stopOverlayClose?.addEventListener('click', () => stopOverlay?.classList.remove('active'));
+stopSearchInput?.addEventListener('input', () => filterStopList(stopSearchInput.value));
+stopOverlay?.addEventListener('click', (e) => { if (e.target === stopOverlay) stopOverlay.classList.remove('active'); });
+showStopInlineBtn?.addEventListener('click', () => { showStopItems = !showStopItems; showStopInlineBtn.textContent = showStopItems ? 'Скрыть стоп-лист' : 'Показать стоп-лист'; renderMenuTable(normalizedMenuRows); persistSession(); });
 document.addEventListener('click', (e) => {
   if (!placeToggle?.closest('.picker')) return;
   if (!placeToggle.closest('.picker').contains(e.target)) {
     placeToggle.closest('.picker').classList.remove('open');
   }
 });
-menuTableBody?.addEventListener('click', (e) => {
-  const toggle = e.target.closest('tr[data-toggle]');
-  if (toggle) {
-    const target = toggle.dataset.toggle;
-    const rows = menuTableBody.querySelectorAll(`tr.${target}`);
-    rows.forEach(r => r.classList.toggle('hidden'));
-    return;
-  }
+  menuTableBody?.addEventListener('click', (e) => {
+    const toggle = e.target.closest('tr[data-toggle]');
+    if (toggle) {
+      const target = toggle.dataset.toggle;
+      const rows = menuTableBody.querySelectorAll(`tr.${target}`);
+      rows.forEach(r => r.classList.toggle('hidden'));
+      const icon = toggle.querySelector('span');
+      if (icon) icon.textContent = rows[0]?.classList.contains('hidden') ? '➕' : '➖';
+      return;
+    }
   const img = e.target.closest('.menu-img');
   if (img && img.dataset.full) {
     const index = img.closest('tr')?.dataset?.itemIndex;

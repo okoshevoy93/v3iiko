@@ -73,9 +73,10 @@
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
-    .table-shell table { min-width: 1200px; }
+    .table-shell table { min-width: 1400px; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
     .table-shell td { vertical-align: middle; }
+    .table-shell td, .table-shell th { text-align: center; }
     .pill { padding: 6px 12px; border-radius: 12px; font-weight: 600; border: 1px solid var(--border-soft); }
     .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
@@ -113,7 +114,7 @@
       font-weight: 600;
       box-shadow: 0 1px 3px rgba(15,23,42,0.08);
     }
-    .picker-panel {
+    .picker-panel { 
       position: absolute;
       inset: auto 0 0 0;
       transform: translateY(100%);
@@ -127,6 +128,11 @@
       max-height: 320px;
       overflow: auto;
     }
+    /* Групповые строки как на index */
+    .group-city-row { background: linear-gradient(90deg, #dcfce7, #ecfdf5) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
+    .group-city-row td { color: #065f46; font-weight: 700; }
+    .group-category-row { background: #fefce8 !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
+    .group-category-row td { color: #111827; font-weight: 700; }
     .picker.open .picker-panel { display: block; }
     .picker-search { width: 100%; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 13px; margin-bottom: 8px; }
     .picker-item {
@@ -154,7 +160,7 @@
     Выйти
   </a>
 
-  <div class="w-full mx-auto px-2 md:px-4 py-6 space-y-4">
+  <div class="w-full mx-auto px-2 md:px-3 py-6 space-y-4">
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-center gap-3">
         <input id="iikoKey" type="hidden" />
@@ -196,8 +202,8 @@
       </div>
     </div>
 
-    <div class="grid lg:grid-cols-[320px,1fr] gap-4">
-      <div class="card panel-bg p-4 space-y-3 self-start ml-0" style="margin-left:0">
+    <div class="grid lg:grid-cols-[320px,1fr] gap-4 items-start">
+      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0" style="margin-left:0">
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
           <p class="text-sm text-slate-600">Храните ключи и вебхук рядом с интеграцией.</p>
@@ -252,6 +258,7 @@
               <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
               <span id="summaryItems" class="pill">Блюд: 0</span>
               <span id="summaryStop" class="pill red cursor-pointer">Стоп-лист</span>
+              <button id="showStopInline" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Показать стоп-лист</button>
               <button id="toggleModifiers" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Модификаторы +/−</button>
               <button id="toggleDescription" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Показать описание</button>
               <button id="exportYandexBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-50">Экспорт Excel</button>
@@ -385,6 +392,29 @@
             <div class="text-xs uppercase text-slate-500 mb-1">Модификаторы и группы</div>
             <div id="overlayModifiers" class="space-y-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2"></div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="stopOverlay" class="overlay">
+    <div class="overlay-card p-4 max-w-5xl">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <div class="text-lg font-semibold text-slate-900">Стоп-лист</div>
+          <div class="text-xs text-slate-500">Блюда и модификаторы из стоп-листа. Поиск по имени или артикулу.</div>
+        </div>
+        <button id="stopOverlayClose" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Закрыть</button>
+      </div>
+      <div class="space-y-2">
+        <input id="stopSearch" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Поиск по имени или артикулу" />
+        <div class="overflow-auto max-h-[60vh]">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs text-slate-600">
+              <tr><th class="px-2 py-1 text-left">Фото</th><th class="px-2 py-1 text-left">Название</th><th class="px-2 py-1 text-left">SKU</th><th class="px-2 py-1 text-left">Цена</th></tr>
+            </thead>
+            <tbody id="stopTableBody"></tbody>
+          </table>
         </div>
       </div>
     </div>
