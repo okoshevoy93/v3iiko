@@ -711,7 +711,7 @@ function renderMenuTable(rows) {
     placeHeader.className = 'group-city-row cursor-pointer';
     placeHeader.dataset.toggle = placeClass;
     placeHeader.dataset.place = placeName;
-    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-left text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 border border-slate-300">${placeCollapsed ? '+' : '−'}</span><span>Город: ${placeName}</span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
+    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-left text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[11px] px-1.5 py-0.5 rounded-full bg-white/70 border border-emerald-200 text-emerald-700">${placeCollapsed ? '+' : '−'}</span><span class="flex items-center gap-1">Город: ${placeName}<span class="text-[10px] text-emerald-700">↕</span></span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
     menuTableBody.appendChild(placeHeader);
 
     if (placeCollapsed) return;
@@ -729,8 +729,8 @@ function renderMenuTable(rows) {
       header.className = 'group-category-row cursor-pointer';
       header.dataset.toggle = catId;
       header.dataset.category = catId;
-      header.innerHTML = `<th colspan="${colCount}" class="pl-8 pr-3 py-2 text-[12px] font-semibold text-slate-800 text-left border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 border border-slate-300">${catCollapsed ? '+' : '−'}</span>
-        <span>${category || 'Без категории'}</span>
+      header.innerHTML = `<th colspan="${colCount}" class="pl-8 pr-3 py-2 text-[12px] font-semibold text-slate-800 text-left border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[11px] px-1.5 py-0.5 rounded-full bg-white/80 border border-amber-200 text-amber-700">${catCollapsed ? '+' : '−'}</span>
+        <span class="flex items-center gap-1">${category || 'Без категории'}<span class="text-[10px] text-amber-700">↕</span></span>
         <span class="text-xs text-slate-500">${items.length} поз.</span></div>
       </th>`;
       menuTableBody.appendChild(header);
@@ -749,7 +749,7 @@ function renderMenuTable(rows) {
         tr.dataset.category = catId;
         tr.innerHTML = `
           <td class="px-3 py-2 text-slate-800 font-semibold text-center align-middle">${row.category || 'Без категории'}</td>
-          <td class="px-3 py-2 flex items-center gap-2 justify-center text-center align-middle">${row.name} ${stopBadge}</td>
+          <td class="px-3 py-2 align-middle">${'<div class="flex items-center gap-2 justify-center text-center min-h-[52px]">' + row.name + ' ' + stopBadge + '</div>'}</td>
           <td class="px-3 py-2 text-center align-middle">${imageHtml}</td>
           <td class="px-3 py-2 text-xs text-slate-500 text-center align-middle">${row.id || '—'}</td>
           <td class="px-3 py-2 text-xs text-slate-600 text-center align-middle ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
@@ -766,23 +766,16 @@ function renderMenuTable(rows) {
   updateSummaryFromRows(data);
 }
 
-function renderStopListPanel(term = '') {
-  let stops = normalizedMenuRows.filter(r => r.stopList);
-  if (!stops.length && selectedPlaceIds.size) {
-    selectedPlaceIds.forEach(pid => {
-      const map = availabilityCache.get(pid);
-      if (map?.size) applyAvailabilityToRows(pid, map);
-    });
-    stops = normalizedMenuRows.filter(r => r.stopList);
-  }
+async function renderStopListPanel(term = '') {
   if (!stopOverlay || !stopTableBody) return;
   const search = (term || '').toLowerCase();
-  stopTableBody.innerHTML = '';
   if (stopSearchInput && !term) stopSearchInput.value = '';
+
+  const stops = normalizedMenuRows.filter(r => r.stopList && (!search || `${r.name} ${r.id} ${r.category} ${r.place}`.toLowerCase().includes(search)));
+  stopTableBody.innerHTML = '';
+
   const grouped = new Map();
   stops.forEach(r => {
-    const text = `${r.name} ${r.id} ${r.category} ${r.place}`.toLowerCase();
-    if (search && !text.includes(search)) return;
     const place = r.place || 'Без точки';
     const cat = r.category || 'Без категории';
     if (!grouped.has(place)) grouped.set(place, new Map());
@@ -790,19 +783,28 @@ function renderStopListPanel(term = '') {
     if (!catMap.has(cat)) catMap.set(cat, []);
     catMap.get(cat).push(r);
   });
+
   if (!grouped.size) {
-    stopTableBody.innerHTML = `<tr><td colspan="5" class="px-2 py-2 text-center text-slate-500">Стоп-лист пуст.</td></tr>`;
+    stopTableBody.innerHTML = `<tr><td colspan="6" class="px-2 py-2 text-center text-slate-500">Стоп-лист пуст.</td></tr>`;
     stopOverlay.classList.add('active');
     return;
   }
+
   let html = '';
   grouped.forEach((cats, place) => {
-    html += `<tr class="group-city-row"><th colspan="5" class="px-2 py-1 text-left">${place}</th></tr>`;
+    html += `<tr class="group-city-row"><th colspan="6" class="px-3 py-1 text-left">${place}</th></tr>`;
     cats.forEach((rows, cat) => {
-      html += `<tr class="group-category-row"><th colspan="5" class="px-2 py-1 text-left flex items-center gap-2"><span>${cat}</span><span class="text-xs text-slate-500">${rows.length}</span></th></tr>`;
+      html += `<tr class="group-category-row"><th colspan="6" class="px-3 py-1 text-left flex items-center gap-2"><span class="text-[12px]">${cat}</span><span class="text-[11px] text-slate-500">${rows.length}</span></th></tr>`;
       rows.forEach(r => {
         const img = r.image ? `<img class="menu-img" src="/img?url=${encodeURIComponent(r.image)}&thumb=1" alt="" />` : '<div class="menu-img placeholder">нет фото</div>';
-        html += `<tr class="border-b border-slate-100"><td class="px-2 py-1">${img}</td><td class="px-2 py-1">${r.name}</td><td class="px-2 py-1 text-xs text-slate-500">${r.id || ''}</td><td class="px-2 py-1">${formatPrice(r.price)}</td><td class="px-2 py-1 text-xs text-slate-500">${r.stopDate || '—'}</td></tr>`;
+        html += `<tr class="border-b border-slate-100">` +
+          `<td class="px-2 py-1 text-sm text-slate-700">${r.category || 'Без категории'}</td>` +
+          `<td class="px-2 py-1 text-sm">${r.name}</td>` +
+          `<td class="px-2 py-1">${img}</td>` +
+          `<td class="px-2 py-1 text-xs text-slate-500">${r.id || ''}</td>` +
+          `<td class="px-2 py-1 font-semibold">${formatPrice(r.price)}</td>` +
+          `<td class="px-2 py-1 text-xs text-slate-500">${r.stopDate || '—'}</td>` +
+          `</tr>`;
       });
     });
   });
@@ -812,6 +814,19 @@ function renderStopListPanel(term = '') {
 
 function filterStopList(term) {
   renderStopListPanel(term);
+}
+
+async function openStopListOverlay() {
+  const ids = getSelectedPlaceIds();
+  if (!ids.length) {
+    setStatus('Выберите точку для стоп-листа.', 'err');
+    return;
+  }
+  for (const id of ids) {
+    await runAvailabilityFor(id, { renderList: true, silent: true });
+  }
+  renderStopListPanel(stopSearchInput?.value || '');
+  setStatus('Стоп-лист обновлён.', 'ok');
 }
 
 function buildModifiersHtml(row) {
@@ -925,17 +940,17 @@ function showDishOverlay(row, fullImg) {
   overlayModifiers.innerHTML = '';
   (row.modifierGroups || []).forEach(g => {
     const block = document.createElement('div');
-    const modsHtml = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[12px] items-center border-b border-slate-100 py-1">
-        <div class="flex flex-col text-left">
-          <span class="font-semibold">${m.name}${m.id ? ` (${m.id})` : ''}</span>
-          <span class="text-slate-500 text-[11px]">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>
-        </div>
-        <span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>
-      </div>`).join('') || '<div class="text-[11px] text-slate-500 text-center">Нет модификаторов</div>';
-    block.innerHTML = `<div class="font-semibold text-slate-800 text-center">${g.name}</div>
-      <div class="text-[11px] text-slate-500 mb-1 text-center">мин: ${g.min ?? 0}, макс: ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
-      ${modsHtml}`;
-    block.className = 'border border-slate-200 rounded-md p-2 bg-white text-sm';
+    block.className = 'border border-indigo-100 bg-indigo-50/70 rounded-lg p-2';
+    const modsHtml = (g.modifiers || []).map(m => `<div class="flex items-center justify-between gap-2 px-2 py-1 text-[12px] rounded-md bg-white">` +
+      `<div class="flex flex-col text-left">` +
+      `<span class="font-semibold text-slate-800">${m.name}${m.id ? ` (${m.id})` : ''}</span>` +
+      `<span class="text-slate-500 text-[11px]">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>` +
+      `</div>` +
+      `<span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>` +
+      `</div>`).join('') || '<div class="text-[11px] text-slate-500 text-center py-2">Нет модификаторов</div>';
+    block.innerHTML = `<div class="text-center font-semibold text-indigo-800">${g.name || 'Группа модификаторов'}</div>` +
+      `<div class="text-[11px] text-indigo-700 text-center mb-2">мин: ${g.min ?? 0} · макс: ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>` +
+      `<div class="space-y-1">${modsHtml}</div>`;
     overlayModifiers.appendChild(block);
   });
   if (!(row.modifierGroups || []).length && !(row.modifiers || []).length) {
@@ -1090,7 +1105,7 @@ async function deleteIntegration() {
   }
 }
 
-async function runAvailabilityFor(placeId, renderList = false) {
+async function runAvailabilityFor(placeId, { renderList = false, silent = false } = {}) {
   const restaurantId = placeId || getRestaurantId();
   if (!restaurantId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
@@ -1099,8 +1114,10 @@ async function runAvailabilityFor(placeId, renderList = false) {
     availabilityCache.set(restaurantId, stopItems);
     applyAvailabilityToRows(restaurantId, stopItems);
     renderMenuTable(normalizedMenuRows);
-    renderExtraResult(renderList ? 'Стоп-лист' : 'Недоступные позиции', data);
-    setStatus('Получены данные о недоступных позициях.', 'ok');
+    if (!silent) {
+      renderExtraResult(renderList ? 'Стоп-лист' : 'Недоступные позиции', data);
+      setStatus('Получены данные о недоступных позициях.', 'ok');
+    }
   } catch (e) {
     setStatus(e.message || 'Не удалось получить availability', 'err');
   }
@@ -1362,13 +1379,8 @@ menuTableBody?.addEventListener('click', (e) => {
     renderMenuTable(renderedMenuRows);
   }
 });
-stopListBtn?.addEventListener('click', () => {
-  const ids = getSelectedPlaceIds();
-  if (!ids.length) return setStatus('Выберите точку для стоп-листа.', 'err');
-  ids.forEach(id => runAvailabilityFor(id, true));
-  renderStopListPanel();
-});
-summaryStop?.addEventListener('click', renderStopListPanel);
+stopListBtn?.addEventListener('click', openStopListOverlay);
+summaryStop?.addEventListener('click', openStopListOverlay);
 stopOverlayClose?.addEventListener('click', () => stopOverlay?.classList.remove('active'));
 stopSearchInput?.addEventListener('input', () => filterStopList(stopSearchInput.value));
 stopOverlay?.addEventListener('click', (e) => { if (e.target === stopOverlay) stopOverlay.classList.remove('active'); });

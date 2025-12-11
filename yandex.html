@@ -136,7 +136,7 @@
     /* Групповые строки как на index */
     .group-city-row { background: linear-gradient(90deg, #dcfce7, #ecfdf5) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
     .group-city-row td, .group-city-row th { color: #065f46; font-weight: 700; width: 100%; display: table-cell; padding-left: 12px; padding-right: 12px; }
-    .group-category-row { background: #fefce8 !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
+    .group-category-row { background: linear-gradient(90deg, #fefce8, #fff7ed) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
     .group-category-row td, .group-category-row th { color: #111827; font-weight: 700; width: 100%; display: table-cell; padding-left: 16px; padding-right: 12px; }
     #menuTableBody .menu-data-row:nth-child(odd) { background-color: #ffffff; }
     #menuTableBody .menu-data-row:nth-child(even) { background-color: #f8fafc; }
@@ -159,6 +159,7 @@
     .picker-item.selected { border-color: #a5b4fc; background: #eef2ff; }
     .picker-item .title { font-weight: 700; color: #0f172a; }
     .picker-item .meta { font-size: 12px; color: #6b7280; }
+    .picker-item.selected { background: #ecfdf3; border-color: #86efac; box-shadow: inset 0 0 0 1px #4ade80; }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -414,16 +415,23 @@
       <div class="flex items-start justify-between mb-3">
         <div>
           <div class="text-lg font-semibold text-slate-900">Стоп-лист</div>
-          <div class="text-xs text-slate-500">Блюда и модификаторы из стоп-листа. Поиск по имени или артикулу.</div>
+          <div class="text-xs text-slate-500">Блюда и модификаторы из стоп-листа. Поиск по названию, артикулу или категории.</div>
         </div>
         <button id="stopOverlayClose" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Закрыть</button>
       </div>
       <div class="space-y-2">
-        <input id="stopSearch" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Поиск по имени или артикулу" />
+        <input id="stopSearch" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Поиск по названию, артикулу или категории" />
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-xs text-slate-600">
-              <tr><th class="px-2 py-1 text-left">Фото</th><th class="px-2 py-1 text-left">Название</th><th class="px-2 py-1 text-left">SKU</th><th class="px-2 py-1 text-left">Цена</th><th class="px-2 py-1 text-left">Дата стопа</th></tr>
+              <tr>
+                <th class="px-2 py-1 text-left">Категория</th>
+                <th class="px-2 py-1 text-left">Название</th>
+                <th class="px-2 py-1 text-left">Фото</th>
+                <th class="px-2 py-1 text-left">SKU</th>
+                <th class="px-2 py-1 text-left">Цена</th>
+                <th class="px-2 py-1 text-left">Дата стопа</th>
+              </tr>
             </thead>
             <tbody id="stopTableBody"></tbody>
           </table>
