@@ -77,6 +77,7 @@ const stopTableBody = document.getElementById('stopTableBody');
 const stopSearchInput = document.getElementById('stopSearch');
 const expandAllStopBtn = document.getElementById('expandAllStop');
 const collapseAllStopBtn = document.getElementById('collapseAllStop');
+const stopExportBtn = document.getElementById('stopExportBtn');
 const overlay = document.getElementById('dishOverlay');
 const overlayClose = document.getElementById('overlayClose');
 const overlayTitle = document.getElementById('overlayTitle');
@@ -288,10 +289,12 @@ function syncColumnVisibility() {
   });
 }
 
-try {
-  storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
-} catch (e) {
-  console.warn('localStorage unavailable', e);
+if (!isFreshSession) {
+  try {
+    storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
+  } catch (e) {
+    console.warn('localStorage unavailable', e);
+  }
 }
 
 function syncStoredIikoKey(value) {
@@ -1315,6 +1318,7 @@ function persistSession() {
 }
 
 function restoreSession({ hydrateMenu = true } = {}) {
+  if (isFreshSession) return;
   if (restoredSession) return;
   restoredSession = true;
   try {
@@ -1889,6 +1893,69 @@ stopSearchInput?.addEventListener('input', () => filterStopList(stopSearchInput.
 stopOverlay?.addEventListener('click', (e) => { if (e.target === stopOverlay) stopOverlay.classList.remove('active'); });
 expandAllStopBtn?.addEventListener('click', () => { setStopCollapseAll(stopSearchInput?.value || '', false); renderStopListPanel(stopSearchInput?.value || ''); });
 collapseAllStopBtn?.addEventListener('click', () => { setStopCollapseAll(stopSearchInput?.value || '', true); renderStopListPanel(stopSearchInput?.value || ''); });
+stopExportBtn?.addEventListener('click', async () => {
+  try {
+    const stops = collectStopRows(stopSearchInput?.value || '');
+    if (!stops.length) {
+      setStatus('Нет данных для экспорта стоп-листа.', 'err');
+      return;
+    }
+    const grouped = new Map();
+    stops.forEach(r => {
+      const place = r.place || 'Без точки';
+      if (!grouped.has(place)) grouped.set(place, new Map());
+      const cat = r.category || 'Без категории';
+      const catMap = grouped.get(place);
+      if (!catMap.has(cat)) catMap.set(cat, []);
+      catMap.get(cat).push(r);
+    });
+    const columns = [
+      { key: 'place', title: 'Город/точка' },
+      { key: 'category', title: 'Категория' },
+      { key: 'name', title: 'Название' },
+      { key: 'photo', title: 'Фото' },
+      { key: 'id', title: 'SKU' },
+      { key: 'price', title: 'Цена' },
+      { key: 'stop', title: 'Дата стопа' }
+    ];
+    const table_data = [];
+    grouped.forEach((cats, place) => {
+      table_data.push({ place: `Город: ${place}`, category: '', name: '', photo: '', id: '', price: '', stop: '' });
+      cats.forEach((rows, cat) => {
+        table_data.push({ place: '', category: `Категория: ${cat}`, name: '', photo: '', id: '', price: '', stop: '' });
+        rows.forEach(row => {
+          table_data.push({
+            place: '',
+            category: '',
+            name: row.name || row.id || '',
+            photo: row.image || '',
+            id: row.id || '',
+            price: row.price || '',
+            stop: row.stopDate || ''
+          });
+        });
+      });
+    });
+    const res = await fetch('/api/export_excel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ columns, table_data })
+    });
+    if (!res.ok) throw new Error('Ошибка экспорта стоп-листа');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'yandex_stop_list.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    setStatus('Экспорт стоп-листа завершён.', 'ok');
+  } catch (e) {
+    setStatus(e.message || 'Ошибка экспорта стоп-листа', 'err');
+  }
+});
 stopTableBody?.addEventListener('click', (e) => {
   const place = e.target.closest('tr[data-stop-place]');
   const cat = e.target.closest('tr[data-stop-category]');
@@ -1912,6 +1979,14 @@ document.addEventListener('click', (e) => {
   if (placePickerEl && !placePickerEl.contains(e.target)) placePickerEl.classList.remove('open');
   if (viewPicker && !viewPicker.contains(e.target)) viewPicker.classList.remove('open');
 });
+document.querySelectorAll('.logout-btn').forEach(btn => btn.addEventListener('click', () => {
+  try {
+    sessionStorage.removeItem(SESSION_FLAG_KEY);
+    sessionStorage.removeItem('indexSessionAlive');
+  } catch (e) {
+    console.warn('Не удалось очистить маркеры сессии', e);
+  }
+}));
 menuTableBody?.addEventListener('contextmenu', (e) => {
   const cell = e.target.closest('td');
   if (!cell) return;
@@ -2020,7 +2095,7 @@ overlay?.addEventListener('click', (e) => {
 
 (async () => {
   await bootstrapUserKey();
-  if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
+  if (!isFreshSession && iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
     iikoKeyInput.value = storedIikoKey;
   }
   restoreSession({ hydrateMenu: !isFreshSession });

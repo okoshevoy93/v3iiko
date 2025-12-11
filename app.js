@@ -160,6 +160,16 @@ let showDescriptionColumn = false;
 
 let SESSION_KEY = 'iikoMenuWebSession';
 let currentUserName = '';
+const INDEX_SESSION_FLAG = 'indexSessionAlive';
+const isFreshIndexSession = (() => {
+  try {
+    const seen = sessionStorage.getItem(INDEX_SESSION_FLAG);
+    if (!seen) sessionStorage.setItem(INDEX_SESSION_FLAG, '1');
+    return !seen;
+  } catch (e) {
+    return false;
+  }
+})();
 const DEFAULT_PC_NAME = 'Базовая категория';
 const LAZY_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="8" fill="%23e5e7eb"/%3E%3C/svg%3E';
 const NO_PHOTO_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"%3E%3Crect width="1200" height="800" fill="%232d3748"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23e5e7eb" font-size="64" font-family="Arial, sans-serif"%3EНет фото%3C/text%3E%3C/svg%3E';
@@ -236,7 +246,7 @@ async function bootstrapUserKey() {
   } catch (e) {
     console.warn('Не удалось получить пользователя', e);
   } finally {
-    restoredSession = loadSessionSnapshot();
+    restoredSession = isFreshIndexSession ? null : loadSessionSnapshot();
   }
 }
 
@@ -3175,6 +3185,12 @@ logoutBtn.addEventListener('click', () => {
   } catch (e) {
     console.warn('localStorage unavailable', e);
   }
+  try {
+    sessionStorage.removeItem(INDEX_SESSION_FLAG);
+    sessionStorage.removeItem('yandexSessionAlive');
+  } catch (e) {
+    console.warn('Не удалось очистить маркеры сессии', e);
+  }
   apiKeyInput.value = '';
   setApiStatus(false);
   setStatus('Вы вышли. Введите apiLogin и нажмите «Подключить iiko API».', 'info');
@@ -4090,10 +4106,12 @@ exportBtn.addEventListener('click', async () => {
 // === init ===
 async function init() {
   let savedApiKey = null;
-  try {
-    savedApiKey = localStorage.getItem('iikoApiLogin');
-  } catch (e) {
-    console.warn('localStorage unavailable', e);
+  if (!isFreshIndexSession) {
+    try {
+      savedApiKey = localStorage.getItem('iikoApiLogin');
+    } catch (e) {
+      console.warn('localStorage unavailable', e);
+    }
   }
   if (restoredSession) {
     if (Array.isArray(restoredSession.selectedOrgIds)) {
