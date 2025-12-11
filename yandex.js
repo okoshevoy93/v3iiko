@@ -100,7 +100,6 @@ const btnCancelOrder = document.getElementById('btnCancelOrder');
 const btnMenuFull = document.getElementById('btnMenuFull');
 const selectAllPlacesBtn = document.getElementById('selectAllPlaces');
 const clearAllPlacesBtn = document.getElementById('clearAllPlaces');
-const resetPlaceSearchBtn = document.getElementById('resetPlaceSearch');
 
 let cachedPlaces = [];
 let iikoOrgs = [];
@@ -133,6 +132,10 @@ const headerByKey = {
   price: thPrice,
   availability: thAvailability,
 };
+
+if (loadCitiesBtn) {
+  loadCitiesBtn.dataset.originalLabel = 'Обновить точки';
+}
 const filterCellByKey = {
   category: filterCategoryCell,
   name: filterNameCell,
@@ -591,7 +594,10 @@ function buildAvailabilityMap(data) {
     let available = entry.available ?? entry.is_available ?? entry.in_stock ?? (rawStatus === 'available' ? true : rawStatus === 'unavailable' ? false : undefined);
     if (available === undefined && quantity !== null) available = quantity > 0;
     const date = entry.date || entry.updated_at || entry.updatedAt || entry.timestamp || entry.not_available_from || entry.notAvailableFrom;
-    map.set(id, { available, quantity, date, stock: entry.stock });
+    const title = entry.name || entry.title || entry.itemName || entry.product_name || entry.productName;
+    const category = entry.category || entry.group || entry.parent_group_name || entry.groupName || entry.categoryName;
+    const image = extractImage(entry) || (entry.photo_url || entry.photoUrl || '');
+    map.set(id, { available, quantity, date, stock: entry.stock, name: title, category, image, price: parsePrice(entry) });
   });
   return map;
 }
@@ -874,7 +880,7 @@ function renderMenuTable(rows, highlights = {}) {
           if (col === 'category') cells.push(`<td class="px-3 py-2 text-slate-800 font-semibold text-left align-middle col-category">${highlightValue(row.category || 'Без категории', catNeedles)}</td>`);
           if (col === 'name') cells.push(`<td class="px-3 py-2 align-middle col-name"><div class="flex items-center gap-2 justify-start text-left min-h-[52px] leading-tight">${highlightValue(row.name || '', nameNeedles)} ${stopBadge}</div></td>`);
           if (col === 'photo') cells.push(`<td class="px-3 py-2 text-center align-middle col-photo"><div class="flex items-center justify-center">${imageHtml}</div></td>`);
-          if (col === 'sku') cells.push(`<td class="px-3 py-2 text-xs text-slate-700 text-center align-middle col-sku">${highlightValue(row.id || '—', skuNeedles)}</td>`);
+          if (col === 'sku') cells.push(`<td class="px-3 py-2 text-sm font-semibold text-slate-800 text-center align-middle col-sku">${highlightValue(row.id || '—', skuNeedles)}</td>`);
           if (col === 'description') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-description">${highlightValue(row.description || '', descNeedles)}</td>`);
           if (col === 'modifiers') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-modifiers">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</td>`);
           if (col === 'price') cells.push(`<td class="px-3 py-2 font-semibold text-center align-middle col-price">${formatPrice(row.price)}</td>`);
@@ -926,8 +932,8 @@ function collectStopRows(term = '') {
       const indexKey = `${pid}:::${id}`;
       const matchedRow = menuIndex.get(indexKey) || normalizedMenuRows.find(r => r.id === id && (!selectedSet.size || selectedSet.has(r.placeId)));
       const placeName = matchedRow?.place || meta.placeName || 'Без точки';
-      const cat = matchedRow?.category || 'Без категории';
-      const name = matchedRow?.name || id;
+      const cat = matchedRow?.category || availability?.category || 'Без категории';
+      const name = matchedRow?.name || availability?.name || id;
       const candidate = {
         ...(matchedRow || {}),
         place: placeName,
@@ -935,8 +941,8 @@ function collectStopRows(term = '') {
         category: cat,
         name,
         id,
-        price: matchedRow?.price || '',
-        image: matchedRow?.image || '',
+        price: matchedRow?.price || availability?.price || '',
+        image: matchedRow?.image || availability?.image || '',
         stopDate: availability?.date || matchedRow?.stopDate || '',
         stopList: true,
       };
@@ -982,6 +988,12 @@ function setStopCollapseAll(term = '', collapse = true) {
   catKeys.forEach(k => collapsedStopCategories.add(k));
 }
 
+function showStopLoading(message = 'Готовим стоп-лист...') {
+  if (!stopOverlay || !stopTableBody) return;
+  stopOverlay.classList.add('active');
+  stopTableBody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-slate-600 animate-pulse">${message}</td></tr>`;
+}
+
 async function renderStopListPanel(term = '') {
   if (!stopOverlay || !stopTableBody) return;
   if (stopSearchInput && !term) stopSearchInput.value = '';
@@ -1015,7 +1027,7 @@ async function renderStopListPanel(term = '') {
     cats.forEach((rows, cat) => {
       const catKey = `${placeKey}::${normalizeKey(cat)}`;
       const catCollapsed = collapsedStopCategories.has(catKey);
-      html += `<tr class="group-category-row cursor-pointer" data-stop-category="${catKey}"><th colspan="6" class="px-3 py-1 text-left flex items-center gap-2"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span><span class="text-[12px]">${cat}</span><span class="text-[11px] text-slate-500">${rows.length}</span></th></tr>`;
+      html += `<tr class="group-category-row cursor-pointer" data-stop-category="${catKey}"><th colspan="6" class="px-3 py-1 text-left flex items-center gap-2"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span><span class="text-[12px]">${cat}</span><span class="text-[11px] text-slate-500">(${rows.length})</span></th></tr>`;
       if (catCollapsed) return;
       rows.forEach(r => {
         const img = r.image ? `<img class="menu-img" src="/img?url=${encodeURIComponent(r.image)}&thumb=1" alt="" />` : '<div class="menu-img placeholder">нет фото</div>';
@@ -1044,11 +1056,21 @@ async function openStopListOverlay() {
     setStatus('Выберите точку для стоп-листа.', 'err');
     return;
   }
-  for (const id of ids) {
-    await runAvailabilityFor(id, { renderList: true, silent: true });
+  showStopLoading();
+  buttonLoading(stopListBtn, true, 'Готовим стоп-лист...');
+  setStatus('Обновляем стоп-лист...', 'info');
+  try {
+    for (const id of ids) {
+      await runAvailabilityFor(id, { renderList: true, silent: true });
+    }
+    renderStopListPanel(stopSearchInput?.value || '');
+    setStatus('Стоп-лист обновлён.', 'ok');
+  } catch (e) {
+    showStopLoading('Не удалось обновить стоп-лист');
+    setStatus(e.message || 'Ошибка обновления стоп-листа', 'err');
+  } finally {
+    buttonLoading(stopListBtn, false);
   }
-  renderStopListPanel(stopSearchInput?.value || '');
-  setStatus('Стоп-лист обновлён.', 'ok');
 }
 
 function buildModifiersHtml(row) {
@@ -1056,8 +1078,9 @@ function buildModifiersHtml(row) {
   if (groups.length) {
     return groups.map(g => {
       const mods = (g.modifiers || []).map(m => `<div class="mod-row">
-          <span class="truncate">${m.name}${m.id ? ` <span class=\"text-slate-500\">(${m.id})</span>` : ''}</span>
-          <span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>
+          <span class="mod-name truncate">${m.name || 'Модификатор'}</span>
+          <span class="mod-sku">SKU: ${m.id || '—'}</span>
+          <span class="mod-price">${formatPrice(m.price)}</span>
         </div>`).join('') || '<div class="text-[11px] text-slate-500 text-center">Нет модификаторов</div>';
       return `<div class="modifier-block">
         <div class="mod-header">${g.name || 'Группа модификаторов'}</div>
@@ -1153,7 +1176,7 @@ function restoreSession() {
 function showDishOverlay(row, fullImg) {
   if (!overlay) return;
   overlayTitle.textContent = row.name || '';
-  overlaySku.textContent = row.id || '';
+  overlaySku.textContent = row.id ? `SKU: ${row.id}` : '';
   overlayImage.src = fullImg || row.image || '';
   overlayAvailability.className = `pill ${row.available ? 'green' : 'red'}`;
   overlayAvailability.textContent = row.available ? 'Доступно' : 'В стоп-листе';
@@ -1163,16 +1186,29 @@ function showDishOverlay(row, fullImg) {
   (row.modifierGroups || []).forEach(g => {
     const block = document.createElement('div');
     block.className = 'modifier-block';
-    const modsHtml = (g.modifiers || []).map(m => `<div class="mod-row">` +
-      `<div class="flex flex-col text-left">` +
-      `<span class="font-semibold text-slate-800">${m.name}${m.id ? ` (${m.id})` : ''}</span>` +
-      `<span class="text-slate-500 text-[11px]">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>` +
-      `</div>` +
-      `<span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>` +
-      `</div>`).join('') || '<div class="text-[11px] text-slate-500 text-center py-2">Нет модификаторов</div>';
-    block.innerHTML = `<div class="mod-header">${g.name || 'Группа модификаторов'}</div>` +
-      `<div class="mod-meta">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>` +
-      `<div class="space-y-1">${modsHtml}</div>`;
+    const header = document.createElement('div');
+    header.className = 'mod-header';
+    header.textContent = g.name || 'Группа модификаторов';
+    const meta = document.createElement('div');
+    meta.className = 'mod-meta';
+    meta.textContent = `мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}`;
+    block.appendChild(header);
+    block.appendChild(meta);
+    const list = document.createElement('div');
+    if (g.modifiers && g.modifiers.length) {
+      g.modifiers.forEach(m => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'mod-row';
+        rowEl.innerHTML = `<span class="mod-name truncate">${m.name || 'Модификатор'}</span><span class="mod-sku">SKU: ${m.id || '—'}</span><span class="mod-price">${formatPrice(m.price)}</span>`;
+        list.appendChild(rowEl);
+      });
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'text-[11px] text-slate-500 text-center py-2';
+      empty.textContent = 'Нет модификаторов';
+      list.appendChild(empty);
+    }
+    block.appendChild(list);
     overlayModifiers.appendChild(block);
   });
   if (!(row.modifierGroups || []).length && !(row.modifiers || []).length) {
@@ -1577,7 +1613,6 @@ placeToggle?.addEventListener('click', () => {
 });
 selectAllPlacesBtn?.addEventListener('click', (e) => { e.preventDefault(); selectAllPlaces(); });
 clearAllPlacesBtn?.addEventListener('click', (e) => { e.preventDefault(); clearAllPlaces(); });
-resetPlaceSearchBtn?.addEventListener('click', (e) => { e.preventDefault(); if (placeSearchInput) placeSearchInput.value = ''; filterPlaces(''); });
 togglePlacesBtn?.addEventListener('click', () => {
   const collapse = collapsedPlaces.size === 0;
   setAllPlaceCollapse(collapse);
@@ -1675,15 +1710,6 @@ toggleDescriptionBtn?.addEventListener('click', () => {
   persistSession();
 });
 
-document.querySelectorAll('.sort-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const field = btn.dataset.sort;
-    if (!field) return;
-    if (sortField === field) sortDir = -sortDir; else { sortField = field; sortDir = 1; }
-    renderMenuTable(normalizedMenuRows);
-    persistSession();
-  });
-});
 exportYandexBtn?.addEventListener('click', async () => {
   try {
     if (!normalizedMenuRows.length) {
@@ -1701,16 +1727,35 @@ exportYandexBtn?.addEventListener('click', async () => {
       { key: 'available', title: 'Доступность' }
     ];
     const source = renderedMenuRows && renderedMenuRows.length ? renderedMenuRows : normalizedMenuRows;
-    const table_data = source.map(row => ({
-      place: row.place || '',
-      category: row.category || '',
-      name: row.name || '',
-      id: row.id || '',
-      description: showDescription ? (row.description || '') : '',
-      modifiers: showModifiers ? (stripHtml(buildModifiersHtml(row)) || '') : '',
-      price: row.price || '',
-      available: row.stopList ? 'В стоп-листе' : (row.available ? 'Доступно' : 'Недоступно')
-    }));
+    const grouped = new Map();
+    source.forEach(row => {
+      const place = row.place || 'Без точки';
+      if (!grouped.has(place)) grouped.set(place, new Map());
+      const catMap = grouped.get(place);
+      const cat = row.category || 'Без категории';
+      if (!catMap.has(cat)) catMap.set(cat, []);
+      catMap.get(cat).push(row);
+    });
+
+    const table_data = [];
+    grouped.forEach((cats, place) => {
+      table_data.push({ place: `Город: ${place}`, category: '', name: '', id: '', description: '', modifiers: '', price: '', available: '' });
+      cats.forEach((items, cat) => {
+        table_data.push({ place: '', category: `Категория: ${cat}`, name: '', id: '', description: '', modifiers: '', price: '', available: '' });
+        items.forEach(row => {
+          table_data.push({
+            place: '',
+            category: '',
+            name: row.name || '',
+            id: row.id || '',
+            description: showDescription ? (row.description || '') : '',
+            modifiers: showModifiers ? (stripHtml(buildModifiersHtml(row)) || '') : '',
+            price: row.price || '',
+            available: row.stopList ? 'В стоп-листе' : (row.available ? 'Доступно' : 'Недоступно')
+          });
+        });
+      });
+    });
     const res = await fetch('/api/export_excel', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},

@@ -74,7 +74,7 @@
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
     .table-shell table { min-width: 1200px; width: 100%; table-layout: auto; border-collapse: collapse; }
-    .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
+    .table-shell thead th { position: sticky; top: 0; background: #eef2ff; z-index: 5; }
     .table-shell td { vertical-align: middle; }
     .table-shell td, .table-shell th { text-align: center; vertical-align: middle; }
     .table-header-main { background: #e5e7eb; }
@@ -87,7 +87,7 @@
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
     .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
     .filter-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 12px; }
-    .menu-img { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; }
+    .menu-img { width: 72px; height: 72px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; }
     .menu-img.placeholder { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; }
     .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
     .overlay.active { display: flex; }
@@ -182,17 +182,25 @@
     .modifier-block { border: 1px solid #c7d2fe; background: #eef2ff; border-radius: 10px; padding: 6px; margin-bottom: 6px; }
     .modifier-block .mod-header { font-weight: 700; color: #312e81; text-align: center; }
     .modifier-block .mod-meta { font-size: 11px; color: #4338ca; text-align: center; margin-bottom: 4px; }
-    .modifier-block .mod-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff; padding: 4px 6px; border-radius: 8px; word-break: break-word; }
     .col-category { width: 170px; text-align: left !important; }
     .col-name { width: 240px; text-align: left !important; }
-    .col-photo { width: 120px; }
-    .col-sku { width: 190px; word-break: break-word; }
-    .col-description { width: 240px; }
-    .col-modifiers { width: 260px; }
+    .col-photo { width: 140px; }
+    .col-sku { width: 210px; word-break: break-word; font-size: 13px; font-weight: 700; color: #0f172a; }
+    .col-description { width: 260px; }
+    .col-modifiers { width: 280px; }
     .col-price { width: 120px; }
-    .col-availability { width: 120px; }
+    .col-availability { width: 110px; }
     .highlight { background: #fde68a; border-radius: 4px; padding: 1px 2px; }
-    .chevron-toggle { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; border: 1px solid rgba(0,0,0,0.12); background: #fff; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .chevron-toggle { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; border: 1px solid rgba(0,0,0,0.12); background: #fff; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .stop-table-head th { position: sticky; top: 0; background: #f8fafc; z-index: 10; }
+    .sticky-mobile { position: sticky; top: 0; z-index: 10; }
+    .summary-chip { background: linear-gradient(135deg,#eef2ff,#e0e7ff); color: #1e1b4b; border-color: #c7d2fe; }
+    .summary-chip.red { background: linear-gradient(135deg,#fee2e2,#fecdd3); color: #7f1d1d; border-color: #fecdd3; }
+    .summary-chip.green { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: #14532d; border-color: #86efac; }
+    .mod-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: #fff; border: 1px dashed #c7d2fe; }
+    .mod-row .mod-name { font-weight: 700; color: #1f2937; }
+    .mod-row .mod-sku { font-size: 12px; color: #4338ca; font-weight: 600; }
+    .mod-row .mod-price { font-weight: 700; color: #0f172a; white-space: nowrap; }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -287,7 +295,6 @@
                   <div class="flex flex-wrap gap-2 mb-2 text-xs">
                     <button id="selectAllPlaces" class="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100">Выбрать все</button>
                     <button id="clearAllPlaces" class="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100">Сбросить все</button>
-                    <button id="resetPlaceSearch" class="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100">Сброс</button>
                   </div>
                   <input id="placeSearch" type="text" class="picker-search" placeholder="Поиск по названию, адресу или placeId" />
                   <div id="placeList" class="space-y-2"></div>
@@ -296,10 +303,10 @@
               </div>
             </div>
             <div class="flex flex-wrap gap-2 text-sm text-slate-500 items-center justify-end">
-              <span id="summaryCategories" class="pill blue">Категории: 0</span>
-              <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
-              <span id="summaryItems" class="pill">Блюд: 0</span>
-              <span id="summaryStop" class="pill red cursor-pointer">Стоп-лист</span>
+              <span id="summaryCategories" class="pill summary-chip">Категории: 0</span>
+              <span id="summaryModifiers" class="pill summary-chip green">Модификаторы: 0</span>
+              <span id="summaryItems" class="pill summary-chip">Блюд: 0</span>
+              <span id="summaryStop" class="pill summary-chip red cursor-pointer">Стоп-лист</span>
               <span id="menuCount" class="hidden"></span>
               <button id="showStopInline" class="btn-chip">Показать стоп-лист</button>
               <button id="toggleModifiers" class="btn-chip">Модификаторы +/−</button>
@@ -314,8 +321,8 @@
             <table class="w-full text-sm" id="menuTable">
               <thead class="uppercase text-[11px] text-slate-600">
                 <tr class="table-header-main">
-                  <th id="thCategory" class="text-center px-3 py-2 border-b border-soft col-category"><span class="inline-flex items-center gap-2"><span>Категория</span><span class="text-[10px] sort-btn" data-sort="category">⇅</span><button id="toggleCategories" class="chevron-toggle" type="button">▾</button></span></th>
-                  <th id="thName" class="text-center px-3 py-2 border-b border-soft col-name"><span class="inline-flex items-center gap-2"><span>Блюдо / товар</span><span class="text-[10px] sort-btn" data-sort="name">⇅</span><button id="togglePlaces" class="chevron-toggle" type="button">▾</button></span></th>
+                  <th id="thCategory" class="text-center px-3 py-2 border-b border-soft col-category"><span class="inline-flex items-center gap-2"><span>Категория</span><button id="toggleCategories" class="chevron-toggle" type="button" aria-label="Свернуть/развернуть категории">▾</button></span></th>
+                  <th id="thName" class="text-center px-3 py-2 border-b border-soft col-name"><span class="inline-flex items-center gap-2"><span>Блюдо / товар</span><button id="togglePlaces" class="chevron-toggle" type="button" aria-label="Свернуть/развернуть города">▾</button></span></th>
                   <th id="thPhoto" class="text-center px-3 py-2 border-b border-soft col-photo">Фото</th>
                   <th id="thSku" class="text-center px-3 py-2 border-b border-soft col-sku">ID / SKU</th>
                   <th id="thDescription" class="text-center px-3 py-2 border-b border-soft col-description">Описание</th>
@@ -460,7 +467,7 @@
         </div>
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-xs text-slate-600">
+            <thead class="bg-slate-50 text-xs text-slate-600 stop-table-head">
               <tr>
                 <th class="px-2 py-1 text-left">Категория</th>
                 <th class="px-2 py-1 text-left">Название</th>
