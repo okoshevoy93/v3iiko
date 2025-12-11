@@ -36,6 +36,11 @@ const menuTitle = document.getElementById('menuTitle');
 const filterCategoryInput = document.getElementById('filterCategory');
 const filterNameInput = document.getElementById('filterName');
 const filterSkuInput = document.getElementById('filterSku');
+const filterDescriptionInput = document.getElementById('filterDescription');
+const filterModifiersInput = document.getElementById('filterModifiers');
+const filterPriceInput = document.getElementById('filterPrice');
+const filterAvailabilityInput = document.getElementById('filterAvailability');
+const filterSearchInput = document.getElementById('filterSearch');
 const toggleModifiersBtn = document.getElementById('toggleModifiers');
 const toggleDescriptionBtn = document.getElementById('toggleDescription');
 const stopOverlay = document.getElementById('stopOverlay');
@@ -81,6 +86,7 @@ let integrations = [];
 let cachedSchedule = new Map();
 let storedIikoKey = '';
 let normalizedMenuRows = [];
+let renderedMenuRows = [];
 let allPlaces = [];
 let selectedPlaceIds = new Set();
 const YANDEX_STATE_KEY = 'yandexPageState';
@@ -580,23 +586,27 @@ function renderMenuAggregate(entries = []) {
   rawPayload.textContent = JSON.stringify(entries.map(e => e.payload) || {}, null, 2);
   renderMenuTable(normalizedMenuRows);
   updateSummaryFromRows();
+  if ((filterCategoryInput?.value || filterNameInput?.value || filterSkuInput?.value || filterDescriptionInput?.value || filterModifiersInput?.value || filterPriceInput?.value || filterAvailabilityInput?.value || filterSearchInput?.value)) {
+    applyMenuFilters();
+  }
 }
 
-function updateSummaryFromRows() {
+function updateSummaryFromRows(currentRows = null) {
   if (!summaryItems || !summaryCategories || !summaryModifiers || !summaryStop) return;
+  const source = currentRows || renderedMenuRows || normalizedMenuRows || [];
   const categories = new Set();
   let modifiers = 0;
   let stops = 0;
-  normalizedMenuRows.forEach(row => {
+  source.forEach(row => {
     if (row.category) categories.add(row.category);
     modifiers += (row.modifierGroups?.length || 0) + (row.modifiers?.length || 0);
     if (row.stopList) stops += 1;
   });
-  const totalItems = normalizedMenuRows.length;
+  const totalItems = source.length;
   menuCount.textContent = totalItems || '';
-  summaryItems.textContent = `Блюд: ${totalItems || ''}`;
-  summaryCategories.textContent = `Категории: ${categories.size || ''}`;
-  summaryModifiers.textContent = `Модификаторы: ${modifiers || ''}`;
+  summaryItems.textContent = totalItems ? `Блюд: ${totalItems}` : 'Блюд:';
+  summaryCategories.textContent = categories.size ? `Категории: ${categories.size}` : 'Категории:';
+  summaryModifiers.textContent = modifiers ? `Модификаторы: ${modifiers}` : 'Модификаторы:';
   summaryStop.textContent = stops ? `Стоп-лист: ${stops}` : 'Стоп-лист';
   summaryStop.dataset.count = stops || '';
   toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
@@ -608,11 +618,23 @@ function applyMenuFilters() {
   const cat = (filterCategoryInput?.value || '').toLowerCase();
   const name = (filterNameInput?.value || '').toLowerCase();
   const sku = (filterSkuInput?.value || '').toLowerCase();
+  const desc = (filterDescriptionInput?.value || '').toLowerCase();
+  const mods = (filterModifiersInput?.value || '').toLowerCase();
+  const price = (filterPriceInput?.value || '').toLowerCase();
+  const avail = (filterAvailabilityInput?.value || '').toLowerCase();
+  const search = (filterSearchInput?.value || '').toLowerCase();
   const filtered = normalizedMenuRows.filter(row => {
+    const modText = stripHtml(buildModifiersHtml(row)).toLowerCase();
+    const availabilityText = row.stopList ? 'в стопе' : (row.available ? 'доступно' : 'недоступно');
     const byCat = !cat || (row.category || '').toLowerCase().includes(cat);
     const byName = !name || (row.name || '').toLowerCase().includes(name);
     const bySku = !sku || (row.id || '').toLowerCase().includes(sku);
-    return byCat && byName && bySku;
+    const byDesc = !desc || (row.description || '').toLowerCase().includes(desc);
+    const byMods = !mods || modText.includes(mods);
+    const byPrice = !price || String(row.price || '').toLowerCase().includes(price);
+    const byAvail = !avail || availabilityText.includes(avail);
+    const bySearch = !search || [row.name, row.id, row.category, modText].some(v => (v || '').toLowerCase().includes(search));
+    return byCat && byName && bySku && byDesc && byMods && byPrice && byAvail && bySearch;
   });
   renderMenuTable(filtered);
 }
@@ -620,6 +642,7 @@ function applyMenuFilters() {
 function renderMenuTable(rows) {
   if (!menuTableBody) return;
   const data = (rows || []).filter(r => showStopItems || !r.stopList);
+  renderedMenuRows = data;
   menuTableBody.innerHTML = '';
   const placeGroups = new Map();
   data.forEach(row => {
@@ -666,12 +689,12 @@ function renderMenuTable(rows) {
         tr.innerHTML = `
           <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
           <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
-          <td class="px-3 py-2">${imageHtml}</td>
-          <td class="px-3 py-2 text-xs text-slate-500">${row.id || '—'}</td>
+          <td class="px-3 py-2 text-center">${imageHtml}</td>
+          <td class="px-3 py-2 text-xs text-slate-500 text-center">${row.id || '—'}</td>
           <td class="px-3 py-2 text-xs text-slate-600 ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
           <td class="px-3 py-2 text-xs text-slate-600 ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
-          <td class="px-3 py-2 font-semibold">${row.price || '—'}</td>
-          <td class="px-3 py-2">${row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>'}</td>
+          <td class="px-3 py-2 font-semibold text-center">${formatPrice(row.price)}</td>
+          <td class="px-3 py-2 text-center">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>
         `;
         tr.dataset.itemId = row.id;
         tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
@@ -679,7 +702,7 @@ function renderMenuTable(rows) {
       });
     });
   });
-  updateSummaryFromRows();
+  updateSummaryFromRows(data);
 }
 
 function renderStopListPanel() {
@@ -738,7 +761,12 @@ function persistSession() {
       filters: {
         category: filterCategoryInput?.value || '',
         name: filterNameInput?.value || '',
-        sku: filterSkuInput?.value || ''
+        sku: filterSkuInput?.value || '',
+        description: filterDescriptionInput?.value || '',
+        modifiers: filterModifiersInput?.value || '',
+        price: filterPriceInput?.value || '',
+        availability: filterAvailabilityInput?.value || '',
+        search: filterSearchInput?.value || ''
       },
       showModifiers,
       showDescription,
@@ -770,6 +798,11 @@ function restoreSession() {
       if (filterCategoryInput) filterCategoryInput.value = state.filters.category || '';
       if (filterNameInput) filterNameInput.value = state.filters.name || '';
       if (filterSkuInput) filterSkuInput.value = state.filters.sku || '';
+      if (filterDescriptionInput) filterDescriptionInput.value = state.filters.description || '';
+      if (filterModifiersInput) filterModifiersInput.value = state.filters.modifiers || '';
+      if (filterPriceInput) filterPriceInput.value = state.filters.price || '';
+      if (filterAvailabilityInput) filterAvailabilityInput.value = state.filters.availability || '';
+      if (filterSearchInput) filterSearchInput.value = state.filters.search || '';
     }
     if (typeof state.showModifiers === 'boolean') showModifiers = state.showModifiers;
     if (typeof state.showDescription === 'boolean') showDescription = state.showDescription;
@@ -777,6 +810,7 @@ function restoreSession() {
     if (Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
       normalizedMenuRows = state.normalizedMenuRows;
       renderMenuTable(normalizedMenuRows);
+      applyMenuFilters();
       updateSummaryFromRows();
     } else if (state.menu) {
       renderMenu(state.menu);
@@ -1221,7 +1255,6 @@ placeList?.addEventListener('click', (e) => {
     placeSelect.value = id;
     updateCurrentInfo();
   }
-  placeToggle.closest('.picker')?.classList.remove('open');
 });
 stopListBtn?.addEventListener('click', () => {
   const ids = getSelectedPlaceIds();
@@ -1295,7 +1328,8 @@ exportYandexBtn?.addEventListener('click', async () => {
       { key: 'price', title: 'Цена' },
       { key: 'available', title: 'Доступность' }
     ];
-    const table_data = normalizedMenuRows.map(row => ({
+    const source = renderedMenuRows && renderedMenuRows.length ? renderedMenuRows : normalizedMenuRows;
+    const table_data = source.map(row => ({
       place: row.place || '',
       category: row.category || '',
       name: row.name || '',
@@ -1331,6 +1365,11 @@ exportYandexBtn?.addEventListener('click', async () => {
 filterCategoryInput?.addEventListener('input', applyMenuFilters);
 filterNameInput?.addEventListener('input', applyMenuFilters);
 filterSkuInput?.addEventListener('input', applyMenuFilters);
+filterDescriptionInput?.addEventListener('input', applyMenuFilters);
+filterModifiersInput?.addEventListener('input', applyMenuFilters);
+filterPriceInput?.addEventListener('input', applyMenuFilters);
+filterAvailabilityInput?.addEventListener('input', applyMenuFilters);
+filterSearchInput?.addEventListener('input', applyMenuFilters);
 overlayClose?.addEventListener('click', () => overlay?.classList.remove('active'));
 overlay?.addEventListener('click', (e) => {
   if (e.target === overlay) overlay.classList.remove('active');

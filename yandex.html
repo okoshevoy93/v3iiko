@@ -78,6 +78,8 @@
     .table-shell td { vertical-align: middle; }
     .table-shell td, .table-shell th { text-align: center; }
     .pill { padding: 6px 12px; border-radius: 12px; font-weight: 600; border: 1px solid var(--border-soft); }
+    .btn-chip { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-soft); background: #ffffff; font-weight: 600; font-size: 12px; height: 36px; min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 2px rgba(15,23,42,0.12); }
+    .btn-chip:hover { background: #f8fafc; border-color: #cbd5e1; }
     .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
     .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
@@ -253,19 +255,22 @@
               <h2 id="menuTitle" class="text-lg font-semibold text-slate-800">Меню выбранной точки</h2>
               <p class="text-sm text-slate-500">Все блюда, модификаторы, цены и остатки из Yandex Еды.</p>
             </div>
-            <div class="flex gap-2 text-sm text-slate-500 flex-wrap items-center justify-end">
+            <div class="flex flex-wrap gap-2 text-sm text-slate-500 items-center justify-end">
               <span id="summaryCategories" class="pill blue">Категории: 0</span>
               <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
               <span id="summaryItems" class="pill">Блюд: 0</span>
               <span id="summaryStop" class="pill red cursor-pointer">Стоп-лист</span>
-              <button id="showStopInline" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Показать стоп-лист</button>
-              <button id="toggleModifiers" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Модификаторы +/−</button>
-              <button id="toggleDescription" class="px-2 py-1 text-xs rounded-md border border-slate-300 bg-white">Показать описание</button>
-              <button id="exportYandexBtn" class="px-3 py-2 text-xs font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-50">Экспорт Excel</button>
+              <button id="showStopInline" class="btn-chip">Показать стоп-лист</button>
+              <button id="toggleModifiers" class="btn-chip">Модификаторы +/−</button>
+              <button id="toggleDescription" class="btn-chip">Показать описание</button>
+              <button id="exportYandexBtn" class="btn-chip">Экспорт Excel</button>
             </div>
           </div>
-          <div class="table-shell border border-soft rounded-xl bg-white">
-            <table class="w-full text-sm">
+          <div class="table-shell border border-soft rounded-xl bg-white head-sticky">
+            <div class="px-3 pt-2 pb-1 flex flex-wrap gap-2 items-center">
+              <input id="filterSearch" class="filter-input w-52" placeholder="Поиск по названию, SKU, модификаторам" />
+            </div>
+            <table class="w-full text-sm" id="menuTable">
               <thead class="uppercase text-[11px] text-slate-600">
                 <tr>
                   <th class="text-left px-3 py-2 border-b border-soft">Категория</th>
@@ -282,10 +287,10 @@
                   <th class="px-2 py-1"><input id="filterName" class="filter-input" placeholder="Фильтр" /></th>
                   <th class="px-2 py-1"></th>
                   <th class="px-2 py-1"><input id="filterSku" class="filter-input" placeholder="Фильтр" /></th>
-                  <th class="px-2 py-1"></th>
-                  <th class="px-2 py-1"></th>
-                  <th class="px-2 py-1"></th>
-                  <th class="px-2 py-1"></th>
+                  <th class="px-2 py-1"><input id="filterDescription" class="filter-input" placeholder="Фильтр" /></th>
+                  <th class="px-2 py-1"><input id="filterModifiers" class="filter-input" placeholder="Фильтр" /></th>
+                  <th class="px-2 py-1"><input id="filterPrice" class="filter-input" placeholder="Фильтр" /></th>
+                  <th class="px-2 py-1"><input id="filterAvailability" class="filter-input" placeholder="Фильтр" /></th>
                 </tr>
               </thead>
               <tbody id="menuTableBody" class="divide-y divide-slate-100"></tbody>
