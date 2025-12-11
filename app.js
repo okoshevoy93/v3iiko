@@ -55,6 +55,7 @@ const cityModalFooter      = document.getElementById('cityModalFooter');
 const cityModalSelectAll   = document.getElementById('cityModalSelectAll');
 const cityModalClear       = document.getElementById('cityModalClear');
 const resetAllBtn          = document.getElementById('resetAllBtn');
+const clearApiKeysBtn      = document.getElementById('clearApiKeysBtn');
 
 const imageModal           = document.getElementById('imageModal');
 const imageModalImg        = document.getElementById('imageModalImg');
@@ -161,6 +162,7 @@ let showDescriptionColumn = false;
 let SESSION_KEY = 'iikoMenuWebSession';
 let currentUserName = '';
 const INDEX_SESSION_FLAG = 'indexSessionAlive';
+const ENC_SALT = 'iiko-enc-v1';
 const isFreshIndexSession = (() => {
   try {
     const seen = sessionStorage.getItem(INDEX_SESSION_FLAG);
@@ -176,6 +178,24 @@ const NO_PHOTO_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org
 let lazyObserver = null;
 let restoredSession = null;
 let horizontalDrag = { active: false, startX: 0, scrollLeft: 0, target: null };
+
+function encodeSecret(str = '') {
+  try {
+    const salted = Array.from(str).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ ENC_SALT.charCodeAt(idx % ENC_SALT.length))).join('');
+    return btoa(salted);
+  } catch (e) {
+    return str;
+  }
+}
+
+function decodeSecret(str = '') {
+  try {
+    const decoded = atob(str);
+    return Array.from(decoded).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ ENC_SALT.charCodeAt(idx % ENC_SALT.length))).join('');
+  } catch (e) {
+    return str;
+  }
+}
 
 function getCurrentPriceCategoryName() {
   if (!currentPriceCategoryId) return '';
@@ -335,7 +355,8 @@ function loadSessionSnapshot() {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const decoded = decodeSecret(raw) || raw;
+    return JSON.parse(decoded);
   } catch (e) {
     console.warn('Не удалось восстановить сессию', e);
     return null;
@@ -418,7 +439,7 @@ function saveSessionSnapshot() {
         collapsedCategories: Array.from(collapsedCategories)
       }
     };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(snapshot));
+    localStorage.setItem(SESSION_KEY, encodeSecret(JSON.stringify(snapshot)));
   } catch (e) {
     console.warn('Не удалось сохранить сессию', e);
   }
@@ -501,7 +522,7 @@ async function callBackend(endpoint, version, payload = {}) {
   const apiKey = apiKeyInput.value.trim();
   if (!apiKey) throw new Error('Укажите apiLogin (ключ iiko)');
   try {
-    localStorage.setItem('iikoApiLogin', apiKey);
+    localStorage.setItem('iikoApiLogin', encodeSecret(apiKey));
   } catch (e) {
     console.warn('localStorage unavailable', e);
   }
@@ -3241,6 +3262,19 @@ logoutBtn.addEventListener('click', () => {
   window.location.reload();
 });
 
+clearApiKeysBtn?.addEventListener('click', () => {
+  try {
+    localStorage.removeItem('iikoApiLogin');
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('yandexPageState');
+  } catch (e) {
+    console.warn('Не удалось очистить сохранённые ключи', e);
+  }
+  apiKeyInput.value = '';
+  setApiStatus(false);
+  setStatus('API ключи очищены. Введите apiLogin заново.', 'info');
+});
+
 function resetAllState() {
   filterCategoryActive = '';
   filterNameActive = '';
@@ -4108,7 +4142,8 @@ async function init() {
   let savedApiKey = null;
   if (!isFreshIndexSession) {
     try {
-      savedApiKey = localStorage.getItem('iikoApiLogin');
+      const rawKey = localStorage.getItem('iikoApiLogin');
+      savedApiKey = decodeSecret(rawKey || '') || rawKey;
     } catch (e) {
       console.warn('localStorage unavailable', e);
     }

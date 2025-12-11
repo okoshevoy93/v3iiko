@@ -145,6 +145,7 @@ const availabilityCache = new Map();
 let sortField = 'place';
 let sortDir = 1;
 const columnOrder = ['category', 'name', 'photo', 'sku', 'description', 'modifiers', 'price', 'availability'];
+const ENC_SALT = 'iiko-enc-v1';
 const headerByKey = {
   category: thCategory,
   name: thName,
@@ -257,6 +258,24 @@ function setViewMode(mode) {
   persistSession();
 }
 
+function encodeSecret(str = '') {
+  try {
+    const salted = Array.from(str).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ ENC_SALT.charCodeAt(idx % ENC_SALT.length))).join('');
+    return btoa(salted);
+  } catch (e) {
+    return str;
+  }
+}
+
+function decodeSecret(str = '') {
+  try {
+    const decoded = atob(str);
+    return Array.from(decoded).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ ENC_SALT.charCodeAt(idx % ENC_SALT.length))).join('');
+  } catch (e) {
+    return str;
+  }
+}
+
 function formatPrice(val) {
   if (val === null || val === undefined || val === '') return '';
   const clean = String(val).replace(/₽/g, '').replace(/\s+/g, '').trim();
@@ -274,6 +293,7 @@ let restorePlaceId = '';
 
 function getVisibleColumns() {
   return columnOrder.filter(key => {
+    if (key === 'availability' && viewMode === 'list') return false;
     if (key === 'description') return showDescription;
     if (key === 'modifiers') return showModifiers;
     return true;
@@ -291,7 +311,8 @@ function syncColumnVisibility() {
 
 if (!isFreshSession) {
   try {
-    storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
+    const rawKey = localStorage.getItem('iikoApiLogin') || '';
+    storedIikoKey = decodeSecret(rawKey) || rawKey || '';
   } catch (e) {
     console.warn('localStorage unavailable', e);
   }
@@ -300,7 +321,7 @@ if (!isFreshSession) {
 function syncStoredIikoKey(value) {
   storedIikoKey = value || storedIikoKey || '';
   try {
-    if (storedIikoKey) localStorage.setItem('iikoApiLogin', storedIikoKey);
+    if (storedIikoKey) localStorage.setItem('iikoApiLogin', encodeSecret(storedIikoKey));
   } catch (e) {
     console.warn('localStorage unavailable', e);
   }
@@ -974,9 +995,10 @@ function renderMenuTable(rows, highlights = {}, prepared = false) {
 
       items.forEach(row => {
         const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
-        const imageHtml = imageSrc
+        const availabilityBadge = row.stopList ? '<span class="photo-badge red">В стопе</span>' : (row.available ? '<span class="photo-badge green">Доступно</span>' : '<span class="photo-badge red">Нет</span>');
+        const imageHtml = `<div class="photo-wrap">${imageSrc
           ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
-          : `<div class="menu-img placeholder">нет фото</div>`;
+          : `<div class="menu-img placeholder">нет фото</div>`}${availabilityBadge}</div>`;
         const modifiersHtml = buildModifiersHtml(row);
         const tr = document.createElement('tr');
         tr.className = `menu-data-row hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass} border-b border-slate-200`;
@@ -1046,9 +1068,10 @@ function renderMenuCards(rows, highlights = {}, prepared = false) {
         const modNeedles = [...(highlights.modifiers || []), ...(highlights.search || [])];
         const catNeedles = [...(highlights.category || []), ...(highlights.search || [])];
         const modifiersHtml = buildModifiersHtml(row);
+        const availabilityBadge = row.stopList ? '<span class="photo-badge red">В стопе</span>' : (row.available ? '<span class="photo-badge green">Доступно</span>' : '<span class="photo-badge red">Нет</span>');
         const imgHtml = row.image
-          ? `<img class="card-photo" src="/img?url=${encodeURIComponent(row.image)}&thumb=1" alt="${row.name}" loading="lazy" decoding="async" />`
-          : '<div class="card-photo placeholder">нет фото</div>';
+          ? `<div class="photo-wrap"><img class="card-photo" src="/img?url=${encodeURIComponent(row.image)}&thumb=1" alt="${row.name}" loading="lazy" decoding="async" />${availabilityBadge}</div>`
+          : `<div class="photo-wrap"><div class="card-photo placeholder">нет фото</div>${availabilityBadge}</div>`;
         const card = document.createElement('div');
         card.className = `menu-card ${row.stopList ? 'bg-rose-50/60 border-rose-100' : ''}`;
         card.dataset.category = catId;
@@ -1058,7 +1081,7 @@ function renderMenuCards(rows, highlights = {}, prepared = false) {
           <h4 title="${escapeHtml(row.name || '')}">${highlightValue(row.name || '', nameNeedles)}</h4>
           ${imgHtml}
           <div class="meta-line"><span class="font-semibold">SKU:</span> ${highlightValue(row.id || '—', skuNeedles)}</div>
-          <div class="meta-line">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</div>
+          <div class="card-modifiers">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</div>
           <div class="card-footer">
             <span class="font-semibold">${formatPrice(row.price)}</span>
             ${row.stopList ? '<span class="pill red">Стоп</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Нет</span>')}
@@ -1311,7 +1334,7 @@ function persistSession() {
       sortField,
       sortDir
     };
-    localStorage.setItem(YANDEX_STATE_KEY, JSON.stringify(state));
+    localStorage.setItem(YANDEX_STATE_KEY, encodeSecret(JSON.stringify(state)));
   } catch (e) {
     console.warn('Cannot persist session', e);
   }
@@ -1324,7 +1347,8 @@ function restoreSession({ hydrateMenu = true } = {}) {
   try {
     const raw = localStorage.getItem(YANDEX_STATE_KEY);
     if (!raw) return;
-    const state = JSON.parse(raw);
+    const decoded = decodeSecret(raw) || raw;
+    const state = JSON.parse(decoded);
     if (state.client_id) clientIdInput.value = state.client_id;
     if (state.client_secret) clientSecretInput.value = state.client_secret;
     if (state.webhook_url) webhookUrlInput.value = state.webhook_url;

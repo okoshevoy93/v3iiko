@@ -306,18 +306,27 @@ def authenticate():
     resp = Response('Доступ запрещён', 401,
                     {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
     resp.headers["Cache-Control"] = "no-store"
+    resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax')
     return resp
 
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
+        if request.cookies.get('session') != str(AUTH_REALM_VERSION):
+            return authenticate()
         if not auth or not check_auth(auth.username, auth.password):
             return authenticate()
         required_tab = required_tab_from_path(request.path)
         if required_tab and not has_tab_access(required_tab):
             return Response('Доступ запрещён', 403)
-        return f(*args, **kwargs)
+        resp = f(*args, **kwargs)
+        if isinstance(resp, Response):
+            resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax')
+            return resp
+        wrapped = Response(resp)
+        wrapped.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax')
+        return wrapped
     return decorated
 
 # ==================== iiko ЛОГИКА ====================
