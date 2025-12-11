@@ -183,11 +183,11 @@
     .modifier-block .mod-header { font-weight: 700; color: #312e81; text-align: center; }
     .modifier-block .mod-meta { font-size: 11px; color: #4338ca; text-align: center; margin-bottom: 4px; }
     .col-category { width: 170px; text-align: left !important; }
-    .col-name { width: 240px; text-align: left !important; }
+    .col-name { width: 260px; text-align: left !important; }
     .col-photo { width: 140px; }
     .col-sku { width: 210px; word-break: break-word; font-size: 13px; font-weight: 700; color: #0f172a; }
     .col-description { width: 260px; }
-    .col-modifiers { width: 280px; }
+    .col-modifiers { width: 340px; }
     .col-price { width: 120px; }
     .col-availability { width: 110px; }
     .highlight { background: #fde68a; border-radius: 4px; padding: 1px 2px; }
@@ -197,13 +197,27 @@
     .summary-chip { background: linear-gradient(135deg,#eef2ff,#e0e7ff); color: #1e1b4b; border-color: #c7d2fe; }
     .summary-chip.red { background: linear-gradient(135deg,#fee2e2,#fecdd3); color: #7f1d1d; border-color: #fecdd3; }
     .summary-chip.green { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: #14532d; border-color: #86efac; }
-    .mod-row { display: grid; grid-template-columns: 1fr 170px 90px; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: #fff; border: 1px dashed #c7d2fe; }
-    .mod-name { text-align: left; font-weight: 700; color: #0f172a; }
-    .mod-sku { text-align: left; font-size: 12px; color: #475569; word-break: break-word; }
+    .mod-row { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(160px, 1fr) 80px; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: #fff; border: 1px dashed #c7d2fe; }
+    .mod-name { text-align: left; font-weight: 700; color: #0f172a; white-space: normal; }
+    .mod-sku { text-align: left; font-size: 13px; color: #1d4ed8; font-weight: 700; word-break: break-word; }
     .mod-price { text-align: right; font-weight: 700; color: #0f172a; }
     .mod-row .mod-name { font-weight: 700; color: #1f2937; }
-    .mod-row .mod-sku { font-size: 12px; color: #4338ca; font-weight: 600; }
+    .mod-row .mod-sku { font-size: 13px; color: #4338ca; font-weight: 700; }
     .mod-row .mod-price { font-weight: 700; color: #0f172a; white-space: nowrap; }
+    .btn-chip { background: linear-gradient(135deg,#e0f2fe,#dbeafe); color: #1d4ed8; border-color: #bfdbfe; }
+    .btn-chip.danger { background: linear-gradient(135deg,#fee2e2,#fecdd3); color: #991b1b; border-color: #fecdd3; }
+    .btn-chip.neutral { background: linear-gradient(135deg,#f1f5f9,#e2e8f0); color: #0f172a; border-color: #cbd5e1; }
+    .view-select { min-width: 140px; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .menu-card { border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+    .menu-card h4 { font-weight: 700; font-size: 15px; color: #0f172a; }
+    .menu-card .meta-line { font-size: 12px; color: #475569; display: flex; flex-wrap: wrap; gap: 6px; }
+    .menu-card .card-photo { width: 100%; height: 210px; object-fit: cover; border-radius: 10px; border: 1px solid #e2e8f0; background: #f8fafc; }
+    .menu-card .card-photo.placeholder { display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; }
+    .menu-card .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .menu-card .pill { align-self: flex-start; }
+    .cards-wrapper { display: none; }
+    .cards-wrapper.active { display: block; }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -315,15 +329,19 @@
               <span id="summaryItems" class="pill summary-chip">Блюд: 0</span>
               <span id="summaryStop" class="pill summary-chip red cursor-pointer">Стоп-лист</span>
               <span id="menuCount" class="hidden"></span>
-              <button id="showStopInline" class="btn-chip">Показать стоп-лист</button>
+              <button id="showStopInline" class="btn-chip danger">Показать стоп-лист</button>
               <button id="toggleModifiers" class="btn-chip">Модификаторы +/−</button>
-              <button id="toggleDescription" class="btn-chip">Показать описание</button>
+              <button id="toggleDescription" class="btn-chip neutral">Показать описание</button>
               <button id="exportYandexBtn" class="btn-chip">Экспорт Excel</button>
             </div>
           </div>
           <div class="table-shell border border-soft rounded-xl bg-white head-sticky">
             <div class="px-3 pt-2 pb-1 flex flex-wrap gap-2 items-center">
               <input id="filterSearch" class="filter-input w-52" placeholder="Поиск по названию, SKU, модификаторам" />
+              <select id="viewMode" class="filter-input view-select">
+                <option value="list">Список</option>
+                <option value="cards">Карточки</option>
+              </select>
             </div>
             <table class="w-full text-sm" id="menuTable">
               <thead class="uppercase text-[11px] text-slate-600">
@@ -350,6 +368,7 @@
               </thead>
               <tbody id="menuTableBody" class="divide-y divide-slate-100"></tbody>
             </table>
+            <div id="cardsContainer" class="cards-wrapper px-3 pb-3"></div>
           </div>
           <details class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-700">
             <summary class="cursor-pointer font-semibold text-slate-800">Сырой ответ Yandex Еда</summary>

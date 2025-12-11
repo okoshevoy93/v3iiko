@@ -44,6 +44,9 @@ const filterModifiersInput = document.getElementById('filterModifiers');
 const filterPriceInput = document.getElementById('filterPrice');
 const filterAvailabilityInput = document.getElementById('filterAvailability');
 const filterSearchInput = document.getElementById('filterSearch');
+const viewModeSelect = document.getElementById('viewMode');
+const cardsContainer = document.getElementById('cardsContainer');
+const menuTable = document.getElementById('menuTable');
 const toggleCategoriesBtn = document.getElementById('toggleCategories');
 const togglePlacesBtn = document.getElementById('togglePlaces');
 const thCategory = document.getElementById('thCategory');
@@ -102,6 +105,17 @@ const btnCancelOrder = document.getElementById('btnCancelOrder');
 const btnMenuFull = document.getElementById('btnMenuFull');
 const selectAllPlacesBtn = document.getElementById('selectAllPlaces');
 const clearAllPlacesBtn = document.getElementById('clearAllPlaces');
+
+const SESSION_FLAG_KEY = 'yandexSessionAlive';
+const isFreshSession = (() => {
+  try {
+    const seen = sessionStorage.getItem(SESSION_FLAG_KEY);
+    if (!seen) sessionStorage.setItem(SESSION_FLAG_KEY, '1');
+    return !seen;
+  } catch (e) {
+    return false;
+  }
+})();
 
 let cachedPlaces = [];
 let iikoOrgs = [];
@@ -791,8 +805,7 @@ function renderMenuAggregate(entries = []) {
   });
 
   rawPayload.textContent = JSON.stringify(entries.map(e => e.payload) || {}, null, 2);
-  renderMenuTable(normalizedMenuRows);
-  updateSummaryFromRows();
+  renderMenuView(normalizedMenuRows);
   if ((filterCategoryInput?.value || filterNameInput?.value || filterSkuInput?.value || filterDescriptionInput?.value || filterModifiersInput?.value || filterPriceInput?.value || filterAvailabilityInput?.value || filterSearchInput?.value)) {
     applyMenuFilters();
   }
@@ -853,15 +866,10 @@ function applyMenuFilters() {
     availability: avail ? [avail] : [],
     search: search ? [search] : [],
   };
-  renderMenuTable(filtered, highlights);
-  updateSummaryFromRows(filtered);
+  renderMenuView(filtered, highlights);
 }
 
-function renderMenuTable(rows, highlights = {}) {
-  if (!menuTableBody) return;
-  syncColumnVisibility();
-  const visibleColumns = getVisibleColumns();
-  const colCount = visibleColumns.length;
+function prepareMenuData(rows) {
   let data = (rows || []).filter(r => showStopItems || !r.stopList);
   if (sortField) {
     data = [...data].sort((a, b) => {
@@ -873,6 +881,15 @@ function renderMenuTable(rows, highlights = {}) {
     });
   }
   renderedMenuRows = data;
+  return data;
+}
+
+function renderMenuTable(rows, highlights = {}, prepared = false) {
+  if (!menuTableBody) return;
+  syncColumnVisibility();
+  const visibleColumns = getVisibleColumns();
+  const colCount = visibleColumns.length;
+  const data = prepared ? (rows || []) : prepareMenuData(rows);
   menuTableBody.innerHTML = '';
   const placeGroups = new Map();
   data.forEach(row => {
@@ -915,7 +932,6 @@ function renderMenuTable(rows, highlights = {}) {
       if (catCollapsed) return;
 
       items.forEach(row => {
-        const stopBadge = row.stopList ? '<span class="stop-pill">Стоп</span>' : '';
         const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
         const imageHtml = imageSrc
           ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
@@ -932,7 +948,7 @@ function renderMenuTable(rows, highlights = {}) {
         const modNeedles = [...(highlights.modifiers || []), ...(highlights.search || [])];
         visibleColumns.forEach(col => {
           if (col === 'category') cells.push(`<td class="px-3 py-2 text-slate-800 font-semibold text-left align-middle col-category">${highlightValue(row.category || 'Без категории', catNeedles)}</td>`);
-          if (col === 'name') cells.push(`<td class="px-3 py-2 align-middle col-name"><div class="flex items-center gap-2 justify-start text-left min-h-[52px] leading-tight">${highlightValue(row.name || '', nameNeedles)} ${stopBadge}</div></td>`);
+          if (col === 'name') cells.push(`<td class="px-3 py-2 align-middle col-name"><div class="flex items-center gap-2 justify-start text-left min-h-[52px] leading-tight">${highlightValue(row.name || '', nameNeedles)}</div></td>`);
           if (col === 'photo') cells.push(`<td class="px-3 py-2 text-center align-middle col-photo"><div class="flex items-center justify-center">${imageHtml}</div></td>`);
           if (col === 'sku') cells.push(`<td class="px-3 py-2 text-sm font-semibold text-slate-800 text-center align-middle col-sku">${highlightValue(row.id || '—', skuNeedles)}</td>`);
           if (col === 'description') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-description">${highlightValue(row.description || '', descNeedles)}</td>`);
@@ -947,6 +963,84 @@ function renderMenuTable(rows, highlights = {}) {
       });
     });
   });
+}
+
+function renderMenuCards(rows, highlights = {}, prepared = false) {
+  if (!cardsContainer) return;
+  const data = prepared ? (rows || []) : prepareMenuData(rows);
+  cardsContainer.innerHTML = '';
+  const placeGroups = new Map();
+  data.forEach(row => {
+    const key = row.place || 'Без точки';
+    if (!placeGroups.has(key)) placeGroups.set(key, []);
+    placeGroups.get(key).push(row);
+  });
+  placeGroups.forEach((itemsForPlace, placeName) => {
+    const placeCollapsed = collapsedPlaces.has(placeName);
+    const placeWrap = document.createElement('div');
+    placeWrap.className = 'mb-3';
+    placeWrap.innerHTML = `<div class="group-city-row cursor-pointer px-3 py-2 text-[12px] font-semibold border border-slate-200 rounded-lg bg-slate-50 flex items-center gap-3" data-toggle="${normalizeKey(placeName)}" data-place="${placeName}"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="font-semibold">Город: ${placeName}</span><span class="text-slate-500 text-[11px]">(${itemsForPlace.length})</span></div>`;
+    cardsContainer.appendChild(placeWrap);
+    if (placeCollapsed) return;
+    const grouped = new Map();
+    itemsForPlace.forEach(row => {
+      const catKey = row.category || 'Без категории';
+      if (!grouped.has(catKey)) grouped.set(catKey, []);
+      grouped.get(catKey).push(row);
+    });
+    grouped.forEach((items, category) => {
+      const catId = `cat-${normalizeKey(category)}-${normalizeKey(placeName)}`;
+      const catCollapsed = collapsedCategories.has(catId);
+      const catBlock = document.createElement('div');
+      catBlock.className = 'mb-2';
+      catBlock.innerHTML = `<div class="group-category-row cursor-pointer px-3 py-2 border border-slate-200 rounded-md bg-white flex items-center gap-3" data-toggle="${catId}" data-category="${catId}"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span><span class="flex flex-col leading-tight">${category || 'Без категории'}</span><span class="text-xs text-slate-500">(${items.length} поз.)</span></div>`;
+      cardsContainer.appendChild(catBlock);
+      if (catCollapsed) return;
+      const grid = document.createElement('div');
+      grid.className = 'card-grid';
+      items.forEach(row => {
+        const nameNeedles = [...(highlights.name || []), ...(highlights.search || [])];
+        const skuNeedles = [...(highlights.sku || []), ...(highlights.search || [])];
+        const descNeedles = [...(highlights.description || []), ...(highlights.search || [])];
+        const modNeedles = [...(highlights.modifiers || []), ...(highlights.search || [])];
+        const catNeedles = [...(highlights.category || []), ...(highlights.search || [])];
+        const modifiersHtml = buildModifiersHtml(row);
+        const imgHtml = row.image
+          ? `<img class="card-photo" src="/img?url=${encodeURIComponent(row.image)}&thumb=1" alt="${row.name}" loading="lazy" decoding="async" />`
+          : '<div class="card-photo placeholder">нет фото</div>';
+        const card = document.createElement('div');
+        card.className = `menu-card ${row.stopList ? 'bg-rose-50/60 border-rose-100' : ''}`;
+        card.dataset.category = catId;
+        card.dataset.itemIndex = normalizedMenuRows.indexOf(row);
+        card.innerHTML = `
+          <div class="text-xs text-slate-500">${highlightValue(row.category || 'Без категории', catNeedles)}</div>
+          <h4 title="${escapeHtml(row.name || '')}">${highlightValue(row.name || '', nameNeedles)}</h4>
+          ${imgHtml}
+          <div class="meta-line"><span class="font-semibold">SKU:</span> ${highlightValue(row.id || '—', skuNeedles)}</div>
+          <div class="meta-line">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</div>
+          <div class="card-footer">
+            <span class="font-semibold">${formatPrice(row.price)}</span>
+            ${row.stopList ? '<span class="pill red">Стоп</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Нет</span>')}
+          </div>
+          <div class="text-xs text-slate-600">${highlightValue(row.description || '', descNeedles)}</div>
+        `;
+        grid.appendChild(card);
+      });
+      cardsContainer.appendChild(grid);
+    });
+  });
+}
+
+function renderMenuView(rows, highlights = {}) {
+  const mode = viewModeSelect?.value || 'list';
+  const data = prepareMenuData(rows);
+  if (menuTable) menuTable.style.display = mode === 'list' ? 'table' : 'none';
+  if (cardsContainer) cardsContainer.classList.toggle('active', mode === 'cards');
+  if (mode === 'cards') {
+    renderMenuCards(data, highlights, true);
+  } else {
+    renderMenuTable(data, highlights, true);
+  }
   updateSummaryFromRows(data);
 }
 
@@ -1132,7 +1226,7 @@ function buildModifiersHtml(row) {
   if (groups.length) {
     return groups.map(g => {
       const mods = (g.modifiers || []).map(m => `<div class="mod-row">
-          <span class="mod-name truncate">${m.name || 'Модификатор'}</span>
+          <span class="mod-name">${m.name || 'Модификатор'}</span>
           <span class="mod-sku">SKU: ${m.id || '—'}</span>
           <span class="mod-price">${formatPrice(m.price)}</span>
         </div>`).join('') || '<div class="text-[11px] text-slate-500 text-center">Нет модификаторов</div>';
@@ -1181,7 +1275,7 @@ function persistSession() {
   }
 }
 
-function restoreSession() {
+function restoreSession({ hydrateMenu = true } = {}) {
   if (restoredSession) return;
   restoredSession = true;
   try {
@@ -1211,15 +1305,14 @@ function restoreSession() {
     if (typeof state.showStopItems === 'boolean') showStopItems = state.showStopItems;
     if (state.sortField) sortField = state.sortField;
     if (state.sortDir) sortDir = state.sortDir;
-    if (Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
+    if (hydrateMenu && Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
       normalizedMenuRows = state.normalizedMenuRows;
-      renderMenuTable(normalizedMenuRows);
+      renderMenuView(normalizedMenuRows);
       applyMenuFilters();
-      updateSummaryFromRows();
-    } else if (state.menu) {
+    } else if (hydrateMenu && state.menu) {
       renderMenu(state.menu);
     }
-    if (!cachedPlaces.length && loadCitiesBtn) {
+    if (hydrateMenu && !cachedPlaces.length && loadCitiesBtn) {
       loadCitiesBtn.click();
     }
   } catch (e) {
@@ -1253,7 +1346,7 @@ function showDishOverlay(row, fullImg) {
       g.modifiers.forEach(m => {
         const rowEl = document.createElement('div');
         rowEl.className = 'mod-row';
-        rowEl.innerHTML = `<span class="mod-name truncate">${m.name || 'Модификатор'}</span><span class="mod-sku">SKU: ${m.id || '—'}</span><span class="mod-price">${formatPrice(m.price)}</span>`;
+        rowEl.innerHTML = `<span class="mod-name">${m.name || 'Модификатор'}</span><span class="mod-sku">SKU: ${m.id || '—'}</span><span class="mod-price">${formatPrice(m.price)}</span>`;
         list.appendChild(rowEl);
       });
     } else {
@@ -1430,7 +1523,7 @@ async function runAvailabilityFor(placeId, { renderList = false, silent = false 
     const stopItems = buildAvailabilityMap(data);
     availabilityCache.set(restaurantId, stopItems);
     applyAvailabilityToRows(restaurantId, stopItems);
-    renderMenuTable(normalizedMenuRows);
+    renderMenuView(normalizedMenuRows);
     if (!silent) {
       renderExtraResult(renderList ? 'Стоп-лист' : 'Недоступные позиции', data);
       setStatus('Получены данные о недоступных позициях.', 'ok');
@@ -1683,14 +1776,14 @@ togglePlacesBtn?.addEventListener('click', () => {
   const collapse = collapsedPlaces.size === 0;
   setAllPlaceCollapse(collapse);
   togglePlacesBtn.textContent = collapse ? '▴' : '▾';
-  renderMenuTable(renderedMenuRows);
+  renderMenuView(renderedMenuRows);
   persistSession();
 });
 toggleCategoriesBtn?.addEventListener('click', () => {
   const collapse = collapsedCategories.size === 0;
   setAllCategoryCollapse(collapse);
   toggleCategoriesBtn.textContent = collapse ? '▴' : '▾';
-  renderMenuTable(renderedMenuRows);
+  renderMenuView(renderedMenuRows);
   persistSession();
 });
 placeList?.addEventListener('click', (e) => {
@@ -1704,28 +1797,51 @@ placeList?.addEventListener('click', (e) => {
   }
 });
 
-  menuTableBody?.addEventListener('click', (e) => {
-    const cityRow = e.target.closest('tr.group-city-row');
-    if (cityRow?.dataset.place) {
-      const placeName = cityRow.dataset.place;
-      if (collapsedPlaces.has(placeName)) collapsedPlaces.delete(placeName); else collapsedPlaces.add(placeName);
-      renderMenuTable(renderedMenuRows);
-      return;
-    }
-    const catRow = e.target.closest('tr.group-category-row');
-    if (catRow?.dataset.category) {
-      const catId = catRow.dataset.category;
-      if (collapsedCategories.has(catId)) collapsedCategories.delete(catId); else collapsedCategories.add(catId);
-      renderMenuTable(renderedMenuRows);
-      return;
-    }
-    const img = e.target.closest('.menu-img');
-    if (img && img.dataset.full) {
-      const index = img.closest('tr')?.dataset?.itemIndex;
-      const row = normalizedMenuRows[Number(index)] || null;
-      if (row) showDishOverlay(row, img.dataset.full);
-    }
-  });
+menuTableBody?.addEventListener('click', (e) => {
+  const cityRow = e.target.closest('tr.group-city-row');
+  if (cityRow?.dataset.place) {
+    const placeName = cityRow.dataset.place;
+    if (collapsedPlaces.has(placeName)) collapsedPlaces.delete(placeName); else collapsedPlaces.add(placeName);
+    renderMenuView(renderedMenuRows);
+    return;
+  }
+  const catRow = e.target.closest('tr.group-category-row');
+  if (catRow?.dataset.category) {
+    const catId = catRow.dataset.category;
+    if (collapsedCategories.has(catId)) collapsedCategories.delete(catId); else collapsedCategories.add(catId);
+    renderMenuView(renderedMenuRows);
+    return;
+  }
+  const img = e.target.closest('.menu-img');
+  if (img && img.dataset.full) {
+    const index = img.closest('tr')?.dataset?.itemIndex;
+    const row = normalizedMenuRows[Number(index)] || null;
+    if (row) showDishOverlay(row, img.dataset.full);
+  }
+});
+cardsContainer?.addEventListener('click', (e) => {
+  const cityRow = e.target.closest('.group-city-row');
+  if (cityRow?.dataset.place) {
+    const placeName = cityRow.dataset.place;
+    if (collapsedPlaces.has(placeName)) collapsedPlaces.delete(placeName); else collapsedPlaces.add(placeName);
+    renderMenuView(renderedMenuRows);
+    return;
+  }
+  const catRow = e.target.closest('.group-category-row');
+  if (catRow?.dataset.category) {
+    const catId = catRow.dataset.category;
+    if (collapsedCategories.has(catId)) collapsedCategories.delete(catId); else collapsedCategories.add(catId);
+    renderMenuView(renderedMenuRows);
+    return;
+  }
+  const img = e.target.closest('.card-photo');
+  if (img) {
+    const card = img.closest('.menu-card');
+    const index = card?.dataset?.itemIndex;
+    const row = normalizedMenuRows[Number(index)] || null;
+    if (row) showDishOverlay(row, img.dataset.full || row.image);
+  }
+});
 stopListBtn?.addEventListener('click', openStopListOverlay);
 summaryStop?.addEventListener('click', openStopListOverlay);
 stopOverlayClose?.addEventListener('click', () => stopOverlay?.classList.remove('active'));
@@ -1746,7 +1862,7 @@ stopTableBody?.addEventListener('click', (e) => {
     renderStopListPanel(stopSearchInput?.value || '');
   }
 });
-showStopInlineBtn?.addEventListener('click', () => { showStopItems = !showStopItems; showStopInlineBtn.textContent = showStopItems ? 'Скрыть стоп-лист' : 'Показать стоп-лист'; renderMenuTable(normalizedMenuRows); persistSession(); });
+showStopInlineBtn?.addEventListener('click', () => { showStopItems = !showStopItems; showStopInlineBtn.textContent = showStopItems ? 'Скрыть стоп-лист' : 'Показать стоп-лист'; renderMenuView(normalizedMenuRows); persistSession(); });
 document.addEventListener('click', (e) => {
   if (!placeToggle?.closest('.picker')) return;
   if (!placeToggle.closest('.picker').contains(e.target)) {
@@ -1765,14 +1881,14 @@ menuTableBody?.addEventListener('contextmenu', (e) => {
 toggleModifiersBtn?.addEventListener('click', () => {
   showModifiers = !showModifiers;
   toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
-  renderMenuTable(normalizedMenuRows);
+  renderMenuView(normalizedMenuRows);
   persistSession();
 });
 
 toggleDescriptionBtn?.addEventListener('click', () => {
   showDescription = !showDescription;
   toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
-  renderMenuTable(normalizedMenuRows);
+  renderMenuView(normalizedMenuRows);
   persistSession();
 });
 
@@ -1853,6 +1969,7 @@ filterModifiersInput?.addEventListener('input', applyMenuFilters);
 filterPriceInput?.addEventListener('input', applyMenuFilters);
 filterAvailabilityInput?.addEventListener('input', applyMenuFilters);
 filterSearchInput?.addEventListener('input', applyMenuFilters);
+viewModeSelect?.addEventListener('change', applyMenuFilters);
 overlayClose?.addEventListener('click', () => overlay?.classList.remove('active'));
 overlay?.addEventListener('click', (e) => {
   if (e.target === overlay) overlay.classList.remove('active');
@@ -1863,12 +1980,12 @@ overlay?.addEventListener('click', (e) => {
   if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
     iikoKeyInput.value = storedIikoKey;
   }
-  restoreSession();
+  restoreSession({ hydrateMenu: !isFreshSession });
   if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
   if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
   setStatus('Введите client_id и client_secret для подключения.');
   await loadIntegrationsList();
-  if (webhookUrlInput.value && clientIdInput.value && clientSecretInput.value) {
+  if (!isFreshSession && webhookUrlInput.value && clientIdInput.value && clientSecretInput.value) {
     loadCities();
   }
 })();
