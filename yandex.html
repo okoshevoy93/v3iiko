@@ -73,10 +73,13 @@
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
-    .table-shell table { min-width: 1400px; table-layout: fixed; }
+    .table-shell table { min-width: 1400px; width: 100%; table-layout: fixed; border-collapse: collapse; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
     .table-shell td { vertical-align: middle; }
     .table-shell td, .table-shell th { text-align: center; }
+    .table-header-main { background: #e5e7eb; }
+    .table-header-filters { background: #f9fafb; }
+    .table-header-main th, .table-header-filters th { border-bottom: 1px solid var(--border-soft); color: #374151; }
     .pill { padding: 6px 12px; border-radius: 12px; font-weight: 600; border: 1px solid var(--border-soft); }
     .btn-chip { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border-soft); background: #ffffff; font-weight: 600; font-size: 12px; height: 36px; min-width: 140px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 1px 2px rgba(15,23,42,0.12); }
     .btn-chip:hover { background: #f8fafc; border-color: #cbd5e1; }
@@ -132,9 +135,12 @@
     }
     /* Групповые строки как на index */
     .group-city-row { background: linear-gradient(90deg, #dcfce7, #ecfdf5) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
-    .group-city-row td, .group-city-row th { color: #065f46; font-weight: 700; width: 100%; }
+    .group-city-row td, .group-city-row th { color: #065f46; font-weight: 700; width: 100%; display: table-cell; padding-left: 12px; padding-right: 12px; }
     .group-category-row { background: #fefce8 !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
-    .group-category-row td, .group-category-row th { color: #111827; font-weight: 700; width: 100%; }
+    .group-category-row td, .group-category-row th { color: #111827; font-weight: 700; width: 100%; display: table-cell; padding-left: 16px; padding-right: 12px; }
+    #menuTableBody .menu-data-row:nth-child(odd) { background-color: #ffffff; }
+    #menuTableBody .menu-data-row:nth-child(even) { background-color: #f8fafc; }
+    #menuTableBody .menu-data-row td { border-bottom: 1px solid var(--border-soft); }
     .picker.open .picker-panel { display: block; }
     .picker-search { width: 100%; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 13px; margin-bottom: 8px; }
     .picker-item {
@@ -150,6 +156,7 @@
       background: #f9fafb;
     }
     .picker-item:hover { border-color: #c7d2fe; background: #eef2ff; }
+    .picker-item.selected { border-color: #a5b4fc; background: #eef2ff; }
     .picker-item .title { font-weight: 700; color: #0f172a; }
     .picker-item .meta { font-size: 12px; color: #6b7280; }
   </style>
@@ -175,7 +182,7 @@
           <span>Yandex Еда</span>
         </a>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-3">
         <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
         <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить точки</span></button>
         <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
@@ -195,7 +202,6 @@
               <div id="placeList" class="space-y-2"></div>
             </div>
             <select id="placeSelect" class="hidden" multiple></select>
-            <div id="currentPlace" class="text-xs text-slate-600"></div>
           </div>
         </div>
       </div>
@@ -273,9 +279,9 @@
             </div>
             <table class="w-full text-sm" id="menuTable">
               <thead class="uppercase text-[11px] text-slate-600">
-                <tr>
-                  <th class="text-left px-3 py-2 border-b border-soft">Категория</th>
-                  <th class="text-left px-3 py-2 border-b border-soft">Блюдо / товар</th>
+                <tr class="table-header-main">
+                  <th class="text-left px-3 py-2 border-b border-soft"><span class="inline-flex items-center gap-1">Категория <span class="text-[10px] sort-btn" data-sort="category">⇅</span></span></th>
+                  <th class="text-left px-3 py-2 border-b border-soft"><span class="inline-flex items-center gap-1">Блюдо / товар <span class="text-[10px] sort-btn" data-sort="name">⇅</span></span></th>
                   <th class="text-left px-3 py-2 border-b border-soft">Фото</th>
                   <th class="text-left px-3 py-2 border-b border-soft">ID / SKU</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Описание</th>
@@ -283,7 +289,7 @@
                   <th class="text-left px-3 py-2 border-b border-soft">Цена</th>
                   <th class="text-left px-3 py-2 border-b border-soft">Доступность</th>
                 </tr>
-                <tr class="bg-slate-50 text-[11px]">
+                <tr class="table-header-filters text-[11px]">
                   <th class="px-2 py-1"><input id="filterCategory" class="filter-input" placeholder="Фильтр" /></th>
                   <th class="px-2 py-1"><input id="filterName" class="filter-input" placeholder="Фильтр" /></th>
                   <th class="px-2 py-1"></th>
@@ -417,7 +423,7 @@
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-xs text-slate-600">
-              <tr><th class="px-2 py-1 text-left">Фото</th><th class="px-2 py-1 text-left">Название</th><th class="px-2 py-1 text-left">SKU</th><th class="px-2 py-1 text-left">Цена</th></tr>
+              <tr><th class="px-2 py-1 text-left">Фото</th><th class="px-2 py-1 text-left">Название</th><th class="px-2 py-1 text-left">SKU</th><th class="px-2 py-1 text-left">Цена</th><th class="px-2 py-1 text-left">Дата стопа</th></tr>
             </thead>
             <tbody id="stopTableBody"></tbody>
           </table>

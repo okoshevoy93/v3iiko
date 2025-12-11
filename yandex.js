@@ -93,6 +93,9 @@ let collapsedPlaces = new Set();
 let collapsedCategories = new Set();
 const YANDEX_STATE_KEY = 'yandexPageState';
 let showStopItems = false;
+const availabilityCache = new Map();
+let sortField = 'place';
+let sortDir = 1;
 
 function stripHtml(str) {
   if (!str) return '';
@@ -356,16 +359,19 @@ function renderPlaces(places, preserveSource = false) {
     placeSelect.appendChild(option);
 
     const btn = document.createElement('button');
+    const selected = selectedPlaceIds.has(placeId);
     btn.type = 'button';
-    btn.className = 'picker-item';
+    btn.className = `picker-item ${selected ? 'selected' : ''}`;
     btn.dataset.placeId = placeId;
     btn.dataset.address = option.dataset.address;
-    const checked = selectedPlaceIds.has(placeId) ? '☑' : '☐';
     btn.innerHTML = `<div class="flex flex-col">` +
       `<span class="title">${name}</span>` +
       `<span class="meta">${option.dataset.address || 'Адрес не указан'}</span>` +
-      `</div><div class="text-[11px] text-slate-500 flex items-center gap-1">${checked}<span>${placeId}</span></div>`;
-    btn.addEventListener('click', () => togglePlaceSelection(placeId));
+      `</div><div class="text-[11px] text-slate-500 flex items-center gap-1">${placeId}</div>`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePlaceSelection(placeId);
+    });
     placeList.appendChild(btn);
   });
   if (restorePlaceId) {
@@ -468,13 +474,38 @@ function buildAvailabilityMap(data) {
           ? data.result.items
           : []);
   items.forEach(entry => {
-    const id = entry.id || entry.item_id || entry.product_id || entry.sku || entry.code;
+    const id = entry.id
+      || entry.item_id
+      || entry.itemId
+      || entry.product_id
+      || entry.productId
+      || entry.sku
+      || entry.code;
     if (!id) return;
-    const available = entry.available ?? entry.is_available ?? entry.in_stock;
+    const rawStatus = entry.status || entry.state;
+    const available = entry.available ?? entry.is_available ?? entry.in_stock ?? (rawStatus === 'available' ? true : rawStatus === 'unavailable' ? false : undefined);
     const quantity = entry.balance ?? entry.quantity ?? entry.count ?? entry.stock ?? null;
-    map.set(id, { available, quantity });
+    const date = entry.date || entry.updated_at || entry.updatedAt || entry.timestamp || entry.not_available_from || entry.notAvailableFrom;
+    map.set(id, { available, quantity, date });
   });
   return map;
+}
+
+function applyAvailabilityToRows(placeId, availabilityMap) {
+  if (!availabilityMap || !availabilityMap.size || !normalizedMenuRows.length) return;
+  normalizedMenuRows = normalizedMenuRows.map(row => {
+    if (placeId && row.placeId && row.placeId !== placeId) return row;
+    const availability = availabilityMap.get(row.id);
+    if (!availability) return row;
+    const stop = availability.available === false;
+    return {
+      ...row,
+      stopList: stop || row.stopList,
+      available: availability.available ?? row.available,
+      stopDate: availability.date || row.stopDate,
+      quantity: availability.quantity ?? row.quantity
+    };
+  });
 }
 
 function normalizeMenuItems(menuName, menuData, availabilityMap, meta = {}) {
@@ -500,6 +531,7 @@ function normalizeMenuItems(menuName, menuData, availabilityMap, meta = {}) {
       quantity: qtyOverride ?? parseQuantity(item),
       available: availabilityFlag ?? (item.available ?? item.is_available ?? item.in_stock ?? true),
       stopList: availabilityFlag === false || item.available === false || item.is_available === false || item.in_stock === false,
+      stopDate: availability?.date || '',
       modifiers,
       modifierGroups,
       modifierCount,
@@ -574,11 +606,15 @@ function renderMenuAggregate(entries = []) {
   let totalStops = 0;
   const categorySet = new Set();
   entries.forEach(entry => {
-    const { payload, availabilityMap, meta } = entry;
+    const { payload, availabilityMap, meta, placeId } = entry;
     lastMenuPayload = payload;
     const menus = collectMenus(payload);
     menus.forEach(menu => {
       const rows = normalizeMenuItems(menu.name, menu.data || {}, availabilityMap, meta);
+      if (availabilityMap?.size) {
+        availabilityCache.set(placeId || meta?.placeId, availabilityMap);
+        applyAvailabilityToRows(placeId || meta?.placeId, availabilityMap);
+      }
       normalizedMenuRows.push(...rows);
       rows.forEach(row => {
         categorySet.add(row.category);
@@ -609,7 +645,7 @@ function updateSummaryFromRows(currentRows = null) {
     if (row.stopList) stops += 1;
   });
   const totalItems = source.length;
-  menuCount.textContent = totalItems || '';
+  if (menuCount) menuCount.textContent = totalItems || '';
   summaryItems.textContent = totalItems ? `Блюд: ${totalItems}` : 'Блюд:';
   summaryCategories.textContent = categories.size ? `Категории: ${categories.size}` : 'Категории:';
   summaryModifiers.textContent = modifiers ? `Модификаторы: ${modifiers}` : 'Модификаторы:';
@@ -643,11 +679,22 @@ function applyMenuFilters() {
     return byCat && byName && bySku && byDesc && byMods && byPrice && byAvail && bySearch;
   });
   renderMenuTable(filtered);
+  updateSummaryFromRows(filtered);
 }
 
 function renderMenuTable(rows) {
   if (!menuTableBody) return;
-  const data = (rows || []).filter(r => showStopItems || !r.stopList);
+  let data = (rows || []).filter(r => showStopItems || !r.stopList);
+  const colCount = 8;
+  if (sortField) {
+    data = [...data].sort((a, b) => {
+      const av = (a[sortField] || '').toString().toLowerCase();
+      const bv = (b[sortField] || '').toString().toLowerCase();
+      if (av < bv) return -1 * sortDir;
+      if (av > bv) return 1 * sortDir;
+      return 0;
+    });
+  }
   renderedMenuRows = data;
   menuTableBody.innerHTML = '';
   const placeGroups = new Map();
@@ -664,7 +711,7 @@ function renderMenuTable(rows) {
     placeHeader.className = 'group-city-row cursor-pointer';
     placeHeader.dataset.toggle = placeClass;
     placeHeader.dataset.place = placeName;
-    placeHeader.innerHTML = `<th colspan="8" class="px-3 py-2 text-left flex items-center gap-3"><span class="text-lg">${placeCollapsed ? '➕' : '➖'}</span><span>${placeName}</span></th>`;
+    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-left text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 border border-slate-300">${placeCollapsed ? '+' : '−'}</span><span>Город: ${placeName}</span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
     menuTableBody.appendChild(placeHeader);
 
     if (placeCollapsed) return;
@@ -682,9 +729,9 @@ function renderMenuTable(rows) {
       header.className = 'group-category-row cursor-pointer';
       header.dataset.toggle = catId;
       header.dataset.category = catId;
-      header.innerHTML = `<th colspan="8" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2"><span class="text-sm">${catCollapsed ? '➕' : '➖'}</span>
-        <span class="pill blue">${category || 'Без категории'}</span>
-        <span class="text-xs text-slate-500">${items.length} поз.</span>
+      header.innerHTML = `<th colspan="${colCount}" class="pl-8 pr-3 py-2 text-[12px] font-semibold text-slate-800 text-left border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 border border-slate-300">${catCollapsed ? '+' : '−'}</span>
+        <span>${category || 'Без категории'}</span>
+        <span class="text-xs text-slate-500">${items.length} поз.</span></div>
       </th>`;
       menuTableBody.appendChild(header);
 
@@ -698,17 +745,17 @@ function renderMenuTable(rows) {
           : `<div class="menu-img placeholder">нет фото</div>`;
         const modifiersHtml = buildModifiersHtml(row);
         const tr = document.createElement('tr');
-        tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass}`;
+        tr.className = `menu-data-row hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass} border-b border-slate-200`;
         tr.dataset.category = catId;
         tr.innerHTML = `
-          <td class="px-3 py-2 text-slate-800 font-semibold text-center">${row.category || 'Без категории'}</td>
-          <td class="px-3 py-2 flex items-center gap-2 justify-center">${row.name} ${stopBadge}</td>
-          <td class="px-3 py-2 text-center">${imageHtml}</td>
-          <td class="px-3 py-2 text-xs text-slate-500 text-center">${row.id || '—'}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 text-center ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 text-left ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
-          <td class="px-3 py-2 font-semibold text-center">${formatPrice(row.price)}</td>
-          <td class="px-3 py-2 text-center">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>
+          <td class="px-3 py-2 text-slate-800 font-semibold text-center align-middle">${row.category || 'Без категории'}</td>
+          <td class="px-3 py-2 flex items-center gap-2 justify-center text-center align-middle">${row.name} ${stopBadge}</td>
+          <td class="px-3 py-2 text-center align-middle">${imageHtml}</td>
+          <td class="px-3 py-2 text-xs text-slate-500 text-center align-middle">${row.id || '—'}</td>
+          <td class="px-3 py-2 text-xs text-slate-600 text-center align-middle ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
+          <td class="px-3 py-2 text-xs text-slate-600 text-left align-middle ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
+          <td class="px-3 py-2 font-semibold text-center align-middle">${formatPrice(row.price)}</td>
+          <td class="px-3 py-2 text-center align-middle">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>
         `;
         tr.dataset.itemId = row.id;
         tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
@@ -719,40 +766,65 @@ function renderMenuTable(rows) {
   updateSummaryFromRows(data);
 }
 
-function renderStopListPanel() {
-  const stops = normalizedMenuRows.filter(r => r.stopList);
+function renderStopListPanel(term = '') {
+  let stops = normalizedMenuRows.filter(r => r.stopList);
+  if (!stops.length && selectedPlaceIds.size) {
+    selectedPlaceIds.forEach(pid => {
+      const map = availabilityCache.get(pid);
+      if (map?.size) applyAvailabilityToRows(pid, map);
+    });
+    stops = normalizedMenuRows.filter(r => r.stopList);
+  }
   if (!stopOverlay || !stopTableBody) return;
+  const search = (term || '').toLowerCase();
   stopTableBody.innerHTML = '';
-  if (stopSearchInput) stopSearchInput.value = '';
-  const rows = stops.map(r => {
-    const img = r.image ? `<img class="menu-img" src="/img?url=${encodeURIComponent(r.image)}&thumb=1" alt="" />` : '<div class="menu-img placeholder">нет фото</div>';
-    return `<tr class="border-b border-slate-100"><td class="px-2 py-1">${img}</td><td class="px-2 py-1">${r.name}</td><td class="px-2 py-1 text-xs text-slate-500">${r.id || ''}</td><td class="px-2 py-1">${r.price || ''}</td></tr>`;
-  }).join('');
-  stopTableBody.innerHTML = rows || `<tr><td colspan="4" class="px-2 py-2 text-center text-slate-500">Стоп-лист пуст.</td></tr>`;
+  if (stopSearchInput && !term) stopSearchInput.value = '';
+  const grouped = new Map();
+  stops.forEach(r => {
+    const text = `${r.name} ${r.id} ${r.category} ${r.place}`.toLowerCase();
+    if (search && !text.includes(search)) return;
+    const place = r.place || 'Без точки';
+    const cat = r.category || 'Без категории';
+    if (!grouped.has(place)) grouped.set(place, new Map());
+    const catMap = grouped.get(place);
+    if (!catMap.has(cat)) catMap.set(cat, []);
+    catMap.get(cat).push(r);
+  });
+  if (!grouped.size) {
+    stopTableBody.innerHTML = `<tr><td colspan="5" class="px-2 py-2 text-center text-slate-500">Стоп-лист пуст.</td></tr>`;
+    stopOverlay.classList.add('active');
+    return;
+  }
+  let html = '';
+  grouped.forEach((cats, place) => {
+    html += `<tr class="group-city-row"><th colspan="5" class="px-2 py-1 text-left">${place}</th></tr>`;
+    cats.forEach((rows, cat) => {
+      html += `<tr class="group-category-row"><th colspan="5" class="px-2 py-1 text-left flex items-center gap-2"><span>${cat}</span><span class="text-xs text-slate-500">${rows.length}</span></th></tr>`;
+      rows.forEach(r => {
+        const img = r.image ? `<img class="menu-img" src="/img?url=${encodeURIComponent(r.image)}&thumb=1" alt="" />` : '<div class="menu-img placeholder">нет фото</div>';
+        html += `<tr class="border-b border-slate-100"><td class="px-2 py-1">${img}</td><td class="px-2 py-1">${r.name}</td><td class="px-2 py-1 text-xs text-slate-500">${r.id || ''}</td><td class="px-2 py-1">${formatPrice(r.price)}</td><td class="px-2 py-1 text-xs text-slate-500">${r.stopDate || '—'}</td></tr>`;
+      });
+    });
+  });
+  stopTableBody.innerHTML = html;
   stopOverlay.classList.add('active');
 }
 
 function filterStopList(term) {
-  if (!stopTableBody) return;
-  const value = (term || '').toLowerCase();
-  Array.from(stopTableBody.querySelectorAll('tr')).forEach(row => {
-    if (!value) { row.classList.remove('hidden'); return; }
-    const text = row.textContent?.toLowerCase() || '';
-    row.classList.toggle('hidden', !text.includes(value));
-  });
+  renderStopListPanel(term);
 }
 
 function buildModifiersHtml(row) {
   const groups = row.modifierGroups || [];
   if (groups.length) {
-  return groups.map(g => {
+    return groups.map(g => {
       const mods = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[11px] items-center">
-          <span class="truncate"><span class="font-semibold">${m.name}</span>${m.id ? ` <span class="text-slate-500">(${m.id})</span>` : ''}</span>
+          <span class="truncate">${m.name}${m.id ? ` <span class=\"text-slate-500\">(${m.id})</span>` : ''}</span>
           <span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>
         </div>`).join('') || '<div class="text-[11px] text-slate-500">Нет модификаторов</div>';
       return `<div class="mb-2">
-        <div class="font-semibold text-[12px] text-indigo-700">${g.name || 'Группа модификаторов'}</div>
-        <div class="text-[11px] text-slate-500">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
+        <div class="font-semibold text-[12px] text-indigo-700 text-center">${g.name || 'Группа модификаторов'}</div>
+        <div class="text-[11px] text-slate-500 text-center">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
         ${mods}
       </div>`;
     }).join('');
@@ -785,7 +857,9 @@ function persistSession() {
       showModifiers,
       showDescription,
       showStopItems,
-      normalizedMenuRows
+      normalizedMenuRows,
+      sortField,
+      sortDir
     };
     localStorage.setItem(YANDEX_STATE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -821,6 +895,8 @@ function restoreSession() {
     if (typeof state.showModifiers === 'boolean') showModifiers = state.showModifiers;
     if (typeof state.showDescription === 'boolean') showDescription = state.showDescription;
     if (typeof state.showStopItems === 'boolean') showStopItems = state.showStopItems;
+    if (state.sortField) sortField = state.sortField;
+    if (state.sortDir) sortDir = state.sortDir;
     if (Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
       normalizedMenuRows = state.normalizedMenuRows;
       renderMenuTable(normalizedMenuRows);
@@ -849,17 +925,17 @@ function showDishOverlay(row, fullImg) {
   overlayModifiers.innerHTML = '';
   (row.modifierGroups || []).forEach(g => {
     const block = document.createElement('div');
-    const modsHtml = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[12px] items-center">
-        <div class="flex flex-col">
+    const modsHtml = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[12px] items-center border-b border-slate-100 py-1">
+        <div class="flex flex-col text-left">
           <span class="font-semibold">${m.name}${m.id ? ` (${m.id})` : ''}</span>
-          <span class="text-slate-500">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>
+          <span class="text-slate-500 text-[11px]">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>
         </div>
-        <span class="text-slate-600 whitespace-nowrap">${formatPrice(m.price)}</span>
-      </div>`).join('') || '<div class="text-[11px] text-slate-500">Модификаторы не заданы</div>';
-    block.innerHTML = `<div class="font-semibold text-slate-800">${g.name}</div>
-      <div class="text-[11px] text-slate-500 mb-1">мин: ${g.min}, макс: ${g.max}${g.required ? ' (обязательно)' : ''}</div>
+        <span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>
+      </div>`).join('') || '<div class="text-[11px] text-slate-500 text-center">Нет модификаторов</div>';
+    block.innerHTML = `<div class="font-semibold text-slate-800 text-center">${g.name}</div>
+      <div class="text-[11px] text-slate-500 mb-1 text-center">мин: ${g.min ?? 0}, макс: ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
       ${modsHtml}`;
-    block.className = 'border border-slate-200 rounded-md p-2 bg-white';
+    block.className = 'border border-slate-200 rounded-md p-2 bg-white text-sm';
     overlayModifiers.appendChild(block);
   });
   if (!(row.modifierGroups || []).length && !(row.modifiers || []).length) {
@@ -878,9 +954,11 @@ function updateCurrentInfo() {
     return opt ? opt.textContent : id;
   });
   const labelText = labels.length ? labels.join(', ') : 'Выберите точку';
-  currentPlace.innerHTML = labels.length
-    ? `<span class="pill green">${labelText}</span>`
-    : '<span class="pill red">Точка не выбрана</span>';
+  if (currentPlace) {
+    currentPlace.innerHTML = labels.length
+      ? `<span class="pill green">${labelText}</span>`
+      : '<span class="pill red">Точка не выбрана</span>';
+  }
   if (placeToggleLabel) placeToggleLabel.textContent = labelText;
   if (menuTitle) menuTitle.textContent = labels.length ? `Меню «${labels.join(', ')}»` : 'Меню выбранной точки';
   persistSession();
@@ -928,11 +1006,12 @@ async function loadMenu() {
       try {
         const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: pid } });
         availabilityMap = buildAvailabilityMap(availability);
+        availabilityCache.set(pid, availabilityMap);
       } catch (err) {
         console.warn('Availability request failed', err);
       }
       const placeMeta = getPlaceMeta(pid);
-      entries.push({ payload: data, availabilityMap, meta: placeMeta });
+      entries.push({ payload: data, availabilityMap, meta: placeMeta, placeId: pid });
     }
     renderMenuAggregate(entries);
     setStatus('Меню и стоп-лист загружены.', 'ok');
@@ -1016,14 +1095,11 @@ async function runAvailabilityFor(placeId, renderList = false) {
   if (!restaurantId) return setStatus('Укажите restaurant_id (выберите точку или заполните поле).', 'err');
   try {
     const data = await callYandex('/api/yandex/availability', { params: { restaurant_id: restaurantId } });
-    if (renderList && Array.isArray(normalizedMenuRows) && normalizedMenuRows.length) {
-      const stopItems = buildAvailabilityMap(data);
-      const items = normalizedMenuRows.filter(row => stopItems.has(row.id) && stopItems.get(row.id)?.available === false);
-      const list = items.map(item => `- ${item.category} — ${item.name} (${item.id}) ${item.price || ''}`).join('\n');
-      renderExtraResult('Стоп-лист', list || data);
-    } else {
-      renderExtraResult('Недоступные позиции', data);
-    }
+    const stopItems = buildAvailabilityMap(data);
+    availabilityCache.set(restaurantId, stopItems);
+    applyAvailabilityToRows(restaurantId, stopItems);
+    renderMenuTable(normalizedMenuRows);
+    renderExtraResult(renderList ? 'Стоп-лист' : 'Недоступные позиции', data);
     setStatus('Получены данные о недоступных позициях.', 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось получить availability', 'err');
@@ -1341,6 +1417,16 @@ toggleDescriptionBtn?.addEventListener('click', () => {
   toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
   renderMenuTable(normalizedMenuRows);
   persistSession();
+});
+
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const field = btn.dataset.sort;
+    if (!field) return;
+    if (sortField === field) sortDir = -sortDir; else { sortField = field; sortDir = 1; }
+    renderMenuTable(normalizedMenuRows);
+    persistSession();
+  });
 });
 exportYandexBtn?.addEventListener('click', async () => {
   try {
