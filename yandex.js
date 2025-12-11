@@ -44,7 +44,11 @@ const filterModifiersInput = document.getElementById('filterModifiers');
 const filterPriceInput = document.getElementById('filterPrice');
 const filterAvailabilityInput = document.getElementById('filterAvailability');
 const filterSearchInput = document.getElementById('filterSearch');
-const viewModeSelect = document.getElementById('viewMode');
+const viewPicker = document.getElementById('viewPicker');
+const viewToggle = document.getElementById('viewToggle');
+const viewToggleLabel = document.getElementById('viewToggleLabel');
+const viewPanel = document.getElementById('viewPanel');
+const viewOptions = document.getElementById('viewOptions');
 const cardsContainer = document.getElementById('cardsContainer');
 const menuTable = document.getElementById('menuTable');
 const toggleCategoriesBtn = document.getElementById('toggleCategories');
@@ -135,6 +139,7 @@ const collapsedStopCategories = new Set();
 let YANDEX_STATE_KEY = 'yandexPageState';
 let currentUserName = '';
 let showStopItems = false;
+let viewMode = 'list';
 const availabilityCache = new Map();
 let sortField = 'place';
 let sortDir = 1;
@@ -216,6 +221,39 @@ function highlightValue(text, needles = [], { rawHtml = false } = {}) {
     result = result.replace(pattern, '<span class="highlight">$1</span>');
   });
   return result;
+}
+
+const VIEW_OPTIONS = [
+  { value: 'list', label: 'Список' },
+  { value: 'cards', label: 'Карточки' },
+];
+
+function syncViewPickerLabel() {
+  if (viewToggleLabel) viewToggleLabel.textContent = viewMode === 'cards' ? 'Карточки' : 'Список';
+}
+
+function renderViewOptions() {
+  if (!viewOptions) return;
+  viewOptions.innerHTML = '';
+  VIEW_OPTIONS.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `picker-item ${viewMode === opt.value ? 'selected' : ''}`;
+    btn.innerHTML = `<span class="title">${opt.label}</span>`;
+    btn.addEventListener('click', () => setViewMode(opt.value));
+    viewOptions.appendChild(btn);
+  });
+  syncViewPickerLabel();
+}
+
+function setViewMode(mode) {
+  if (!VIEW_OPTIONS.find(o => o.value === mode)) mode = 'list';
+  viewMode = mode;
+  syncViewPickerLabel();
+  if (viewPicker) viewPicker.classList.remove('open');
+  renderViewOptions();
+  applyMenuFilters();
+  persistSession();
 }
 
 function formatPrice(val) {
@@ -1032,7 +1070,7 @@ function renderMenuCards(rows, highlights = {}, prepared = false) {
 }
 
 function renderMenuView(rows, highlights = {}) {
-  const mode = viewModeSelect?.value || 'list';
+  const mode = viewMode || 'list';
   const data = prepareMenuData(rows);
   if (menuTable) menuTable.style.display = mode === 'list' ? 'table' : 'none';
   if (cardsContainer) cardsContainer.classList.toggle('active', mode === 'cards');
@@ -1265,6 +1303,7 @@ function persistSession() {
       showModifiers,
       showDescription,
       showStopItems,
+      viewMode,
       normalizedMenuRows,
       sortField,
       sortDir
@@ -1303,6 +1342,7 @@ function restoreSession({ hydrateMenu = true } = {}) {
     if (typeof state.showModifiers === 'boolean') showModifiers = state.showModifiers;
     if (typeof state.showDescription === 'boolean') showDescription = state.showDescription;
     if (typeof state.showStopItems === 'boolean') showStopItems = state.showStopItems;
+    if (state.viewMode) viewMode = state.viewMode;
     if (state.sortField) sortField = state.sortField;
     if (state.sortDir) sortDir = state.sortDir;
     if (hydrateMenu && Array.isArray(state.normalizedMenuRows) && state.normalizedMenuRows.length) {
@@ -1863,11 +1903,14 @@ stopTableBody?.addEventListener('click', (e) => {
   }
 });
 showStopInlineBtn?.addEventListener('click', () => { showStopItems = !showStopItems; showStopInlineBtn.textContent = showStopItems ? 'Скрыть стоп-лист' : 'Показать стоп-лист'; renderMenuView(normalizedMenuRows); persistSession(); });
+viewToggle?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  viewPicker?.classList.toggle('open');
+});
 document.addEventListener('click', (e) => {
-  if (!placeToggle?.closest('.picker')) return;
-  if (!placeToggle.closest('.picker').contains(e.target)) {
-    placeToggle.closest('.picker').classList.remove('open');
-  }
+  const placePickerEl = placeToggle?.closest('.picker');
+  if (placePickerEl && !placePickerEl.contains(e.target)) placePickerEl.classList.remove('open');
+  if (viewPicker && !viewPicker.contains(e.target)) viewPicker.classList.remove('open');
 });
 menuTableBody?.addEventListener('contextmenu', (e) => {
   const cell = e.target.closest('td');
@@ -1969,7 +2012,7 @@ filterModifiersInput?.addEventListener('input', applyMenuFilters);
 filterPriceInput?.addEventListener('input', applyMenuFilters);
 filterAvailabilityInput?.addEventListener('input', applyMenuFilters);
 filterSearchInput?.addEventListener('input', applyMenuFilters);
-viewModeSelect?.addEventListener('change', applyMenuFilters);
+renderViewOptions();
 overlayClose?.addEventListener('click', () => overlay?.classList.remove('active'));
 overlay?.addEventListener('click', (e) => {
   if (e.target === overlay) overlay.classList.remove('active');
@@ -1981,6 +2024,7 @@ overlay?.addEventListener('click', (e) => {
     iikoKeyInput.value = storedIikoKey;
   }
   restoreSession({ hydrateMenu: !isFreshSession });
+  renderViewOptions();
   if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
   if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
   setStatus('Введите client_id и client_secret для подключения.');

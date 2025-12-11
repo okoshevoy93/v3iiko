@@ -162,6 +162,7 @@ def save_users():
 load_users()
 
 WEBHOOKS_DB: dict[str, dict] = {}
+AUTH_REALM_VERSION = int(time.time())
 
 
 def load_webhooks():
@@ -171,7 +172,12 @@ def load_webhooks():
             WEBHOOKS_FILE.write_text("{}", encoding="utf-8")
         with open(WEBHOOKS_FILE, "r", encoding="utf-8") as f:
             content = f.read().strip() or "{}"
-            WEBHOOKS_DB = json.loads(content)
+            raw = json.loads(content)
+            # Поддержка старого формата {"name": {...}}
+            if raw and all(isinstance(v, dict) and "webhook_url" in v for v in raw.values()):
+                WEBHOOKS_DB = {"_legacy": raw}
+            else:
+                WEBHOOKS_DB = raw
     except Exception as e:
         logger.error(f"Ошибка загрузки webhooks.json: {e}")
 
@@ -261,6 +267,11 @@ def check_auth(username, password):
     user = USERS_DB.get(username)
     return user and bcrypt.checkpw(password.encode("utf-8"), user["hash"])
 
+
+def current_username() -> str:
+    auth = request.authorization
+    return auth.username if auth else ""
+
 def is_admin():
     auth = request.authorization
     if not auth:
@@ -287,9 +298,15 @@ def required_tab_from_path(path: str) -> str:
         return "users"
     return "index"
 
+def current_realm() -> str:
+    return f"iiko-menu v2 session-{AUTH_REALM_VERSION}"
+
+
 def authenticate():
-    return Response('Доступ запрещён', 401,
-                    {'WWW-Authenticate': 'Basic realm="iiko-menu v2"'})
+    resp = Response('Доступ запрещён', 401,
+                    {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 def require_auth(f):
     @wraps(f)
@@ -960,6 +977,8 @@ def yandex_order_cancel():
 @app.route("/api/webhooks", methods=["GET"])
 @require_auth
 def webhooks_list():
+    user = current_username() or "_shared"
+    items_map = WEBHOOKS_DB.get(user) or WEBHOOKS_DB.get("_legacy") or {}
     items = sorted(({
         "name": name,
         "webhook_url": data.get("webhook_url", ""),
@@ -967,7 +986,7 @@ def webhooks_list():
         "client_secret": data.get("client_secret", ""),
         "provider": data.get("provider", "yandex"),
         "iiko_key": data.get("iiko_key", ""),
-    } for name, data in WEBHOOKS_DB.items()), key=lambda x: x["name"].lower())
+    } for name, data in items_map.items()), key=lambda x: x["name"].lower())
     return jsonify({"items": items})
 
 
@@ -983,7 +1002,9 @@ def webhooks_save():
     iiko_key = (data.get("iiko_key") or "").strip()
     if not name or not webhook_url:
         return jsonify({"error": "name and webhook_url required"}), 400
-    WEBHOOKS_DB[name] = {
+    user = current_username() or "_shared"
+    WEBHOOKS_DB.setdefault(user, {})
+    WEBHOOKS_DB[user][name] = {
         "name": name,
         "webhook_url": webhook_url,
         "client_id": client_id,
@@ -992,15 +1013,18 @@ def webhooks_save():
         "iiko_key": iiko_key,
     }
     save_webhooks()
-    return jsonify({"ok": True, "item": WEBHOOKS_DB[name]})
+    return jsonify({"ok": True, "item": WEBHOOKS_DB[user][name]})
 
 
 @app.route("/api/webhooks/<name>", methods=["DELETE"])
 @require_auth
 def webhooks_delete(name):
     key = name.strip()
-    if key in WEBHOOKS_DB:
-        WEBHOOKS_DB.pop(key)
+    user = current_username() or "_shared"
+    bucket = WEBHOOKS_DB.get(user) or {}
+    if key in bucket:
+        bucket.pop(key)
+        WEBHOOKS_DB[user] = bucket
         save_webhooks()
         return jsonify({"ok": True})
     return jsonify({"error": "not found"}), 404
@@ -1117,8 +1141,13 @@ def export_excel():
 
 @app.route("/logout")
 def logout():
-    return Response('Вы вышли', 401,
-                    {'WWW-Authenticate': 'Basic realm="iiko-menu-logout-temp"'})
+    global AUTH_REALM_VERSION
+    AUTH_REALM_VERSION = int(time.time())
+    resp = Response('Вы вышли', 401,
+                    {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.set_cookie('session', '', expires=0)
+    return resp
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9000)
