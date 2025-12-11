@@ -87,7 +87,7 @@
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
     .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
     .filter-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 12px; }
-    .menu-img { width: 72px; height: 72px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; }
+    .menu-img { width: 144px; height: 144px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; }
     .menu-img.placeholder { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; }
     .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
     .overlay.active { display: flex; }
@@ -197,7 +197,10 @@
     .summary-chip { background: linear-gradient(135deg,#eef2ff,#e0e7ff); color: #1e1b4b; border-color: #c7d2fe; }
     .summary-chip.red { background: linear-gradient(135deg,#fee2e2,#fecdd3); color: #7f1d1d; border-color: #fecdd3; }
     .summary-chip.green { background: linear-gradient(135deg,#dcfce7,#bbf7d0); color: #14532d; border-color: #86efac; }
-    .mod-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: #fff; border: 1px dashed #c7d2fe; }
+    .mod-row { display: grid; grid-template-columns: 1fr 170px 90px; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: #fff; border: 1px dashed #c7d2fe; }
+    .mod-name { text-align: left; font-weight: 700; color: #0f172a; }
+    .mod-sku { text-align: left; font-size: 12px; color: #475569; word-break: break-word; }
+    .mod-price { text-align: right; font-weight: 700; color: #0f172a; }
     .mod-row .mod-name { font-weight: 700; color: #1f2937; }
     .mod-row .mod-sku { font-size: 12px; color: #4338ca; font-weight: 600; }
     .mod-row .mod-price { font-weight: 700; color: #0f172a; white-space: nowrap; }
@@ -226,7 +229,7 @@
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
-        <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить точки</span></button>
+        <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить рестораны</span></button>
         <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
       </div>
       <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
@@ -284,9 +287,12 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-2">
               <div class="card card-bg p-3 space-y-2 picker" id="placePicker">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs text-slate-500 uppercase tracking-wide">Точка (по названию iiko)</span>
-                  <span class="badge" id="placeCount">0</span>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs text-slate-500 uppercase tracking-wide">Выберите ресторан</span>
+                  <div class="flex items-center gap-2">
+                    <span class="badge" id="placeSelectedCount" style="background:#dcfce7;color:#166534;">0</span>
+                    <span class="badge" id="placeCount">0</span>
+                  </div>
                 </div>
                 <button id="placeToggle" class="picker-toggle">
                   <span id="placeToggleLabel" class="truncate">Выберите точку</span>

@@ -22,6 +22,7 @@ const statusEl = document.getElementById('status');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
 const placeCount = document.getElementById('placeCount');
+const placeSelectedCount = document.getElementById('placeSelectedCount');
 const menuCount = document.getElementById('menuCount');
 const menuTableBody = document.getElementById('menuTableBody');
 const rawPayload = document.getElementById('rawPayload');
@@ -154,7 +155,7 @@ function resetMenuState() {
 }
 
 if (loadCitiesBtn) {
-  loadCitiesBtn.dataset.originalLabel = 'Обновить точки';
+  loadCitiesBtn.dataset.originalLabel = 'Обновить рестораны';
 }
 const filterCellByKey = {
   category: filterCategoryCell,
@@ -262,7 +263,7 @@ function setStatus(message, tone = 'info') {
 
 function buttonLoading(btn, isLoading, label) {
   if (!btn) return;
-  if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent || 'Обновить точки';
+  if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent || 'Обновить рестораны';
   btn.disabled = isLoading;
   if (isLoading) {
     btn.textContent = label || 'Загрузка...';
@@ -503,6 +504,7 @@ function renderPlaces(places, preserveSource = false) {
     if (!selectedPlaceIds.size) selectedPlaceIds = new Set([restorePlaceId]);
   }
   placeCount.textContent = places.length;
+  if (placeSelectedCount) placeSelectedCount.textContent = selectedPlaceIds.size;
   if (placePicker && maxLabelLen) {
     const widthPx = Math.min(Math.max(maxLabelLen * 8, 240), 520);
     placePicker.style.minWidth = `${widthPx}px`;

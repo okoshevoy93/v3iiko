@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import io
 import csv
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(Path(__file__).resolve().parent))
 CORS(app)
 app.secret_key = "iiko-menu-secret-2025"
 
