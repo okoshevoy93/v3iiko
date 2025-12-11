@@ -89,6 +89,8 @@ let normalizedMenuRows = [];
 let renderedMenuRows = [];
 let allPlaces = [];
 let selectedPlaceIds = new Set();
+let collapsedPlaces = new Set();
+let collapsedCategories = new Set();
 const YANDEX_STATE_KEY = 'yandexPageState';
 let showStopItems = false;
 
@@ -101,8 +103,12 @@ function stripHtml(str) {
 
 function formatPrice(val) {
   if (val === null || val === undefined || val === '') return '';
-  const clean = String(val).replace(/₽/g, '').trim();
+  const clean = String(val).replace(/₽/g, '').replace(/\s+/g, '').trim();
   if (!clean) return '';
+  const num = Number(clean);
+  if (!Number.isNaN(num)) {
+    return `${num.toLocaleString('ru-RU')} ₽`;
+  }
   return `${clean} ₽`;
 }
 let showModifiers = true;
@@ -652,12 +658,16 @@ function renderMenuTable(rows) {
   });
 
   placeGroups.forEach((itemsForPlace, placeName) => {
+    const placeCollapsed = collapsedPlaces.has(placeName);
     const placeHeader = document.createElement('tr');
     const placeClass = `place-${normalizeKey(placeName)}`;
     placeHeader.className = 'group-city-row cursor-pointer';
     placeHeader.dataset.toggle = placeClass;
-    placeHeader.innerHTML = `<td colspan="8" class="px-3 py-2 text-left flex items-center gap-2"><span class="text-lg">➖</span><span>${placeName}</span></td>`;
+    placeHeader.dataset.place = placeName;
+    placeHeader.innerHTML = `<th colspan="8" class="px-3 py-2 text-left flex items-center gap-3"><span class="text-lg">${placeCollapsed ? '➕' : '➖'}</span><span>${placeName}</span></th>`;
     menuTableBody.appendChild(placeHeader);
+
+    if (placeCollapsed) return;
 
     const grouped = new Map();
     itemsForPlace.forEach(row => {
@@ -667,14 +677,18 @@ function renderMenuTable(rows) {
 
     grouped.forEach((items, category) => {
       const catId = `cat-${normalizeKey(category)}-${normalizeKey(placeName)}`;
+      const catCollapsed = collapsedCategories.has(catId);
       const header = document.createElement('tr');
       header.className = 'group-category-row cursor-pointer';
       header.dataset.toggle = catId;
-      header.innerHTML = `<td colspan="8" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2"><span class="text-sm">➖</span>
+      header.dataset.category = catId;
+      header.innerHTML = `<th colspan="8" class="px-3 py-2 font-semibold text-slate-800 flex items-center gap-2"><span class="text-sm">${catCollapsed ? '➕' : '➖'}</span>
         <span class="pill blue">${category || 'Без категории'}</span>
         <span class="text-xs text-slate-500">${items.length} поз.</span>
-      </td>`;
+      </th>`;
       menuTableBody.appendChild(header);
+
+      if (catCollapsed) return;
 
       items.forEach(row => {
         const stopBadge = row.stopList ? '<span class="stop-pill">В стоп-листе</span>' : '';
@@ -687,12 +701,12 @@ function renderMenuTable(rows) {
         tr.className = `hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass}`;
         tr.dataset.category = catId;
         tr.innerHTML = `
-          <td class="px-3 py-2 text-slate-800 font-semibold">${row.category || 'Без категории'}</td>
-          <td class="px-3 py-2 flex items-center gap-2">${row.name} ${stopBadge}</td>
+          <td class="px-3 py-2 text-slate-800 font-semibold text-center">${row.category || 'Без категории'}</td>
+          <td class="px-3 py-2 flex items-center gap-2 justify-center">${row.name} ${stopBadge}</td>
           <td class="px-3 py-2 text-center">${imageHtml}</td>
           <td class="px-3 py-2 text-xs text-slate-500 text-center">${row.id || '—'}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
+          <td class="px-3 py-2 text-xs text-slate-600 text-center ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
+          <td class="px-3 py-2 text-xs text-slate-600 text-left ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
           <td class="px-3 py-2 font-semibold text-center">${formatPrice(row.price)}</td>
           <td class="px-3 py-2 text-center">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>
         `;
@@ -830,7 +844,7 @@ function showDishOverlay(row, fullImg) {
   overlayImage.src = fullImg || row.image || '';
   overlayAvailability.className = `pill ${row.available ? 'green' : 'red'}`;
   overlayAvailability.textContent = row.available ? 'Доступно' : 'В стоп-листе';
-  overlayPrice.textContent = row.price || '';
+  overlayPrice.textContent = formatPrice(row.price) || '';
   overlayDescription.textContent = row.description || 'Описание отсутствует';
   overlayModifiers.innerHTML = '';
   (row.modifierGroups || []).forEach(g => {
@@ -840,7 +854,7 @@ function showDishOverlay(row, fullImg) {
           <span class="font-semibold">${m.name}${m.id ? ` (${m.id})` : ''}</span>
           <span class="text-slate-500">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>
         </div>
-        <span class="text-slate-600 whitespace-nowrap">${m.price ? `${m.price} ₽` : ''}</span>
+        <span class="text-slate-600 whitespace-nowrap">${formatPrice(m.price)}</span>
       </div>`).join('') || '<div class="text-[11px] text-slate-500">Модификаторы не заданы</div>';
     block.innerHTML = `<div class="font-semibold text-slate-800">${g.name}</div>
       <div class="text-[11px] text-slate-500 mb-1">мин: ${g.min}, макс: ${g.max}${g.required ? ' (обязательно)' : ''}</div>
@@ -1254,6 +1268,22 @@ placeList?.addEventListener('click', (e) => {
   if (opt) {
     placeSelect.value = id;
     updateCurrentInfo();
+  }
+});
+
+menuTableBody?.addEventListener('click', (e) => {
+  const cityRow = e.target.closest('tr.group-city-row');
+  if (cityRow?.dataset.place) {
+    const placeName = cityRow.dataset.place;
+    if (collapsedPlaces.has(placeName)) collapsedPlaces.delete(placeName); else collapsedPlaces.add(placeName);
+    renderMenuTable(renderedMenuRows);
+    return;
+  }
+  const catRow = e.target.closest('tr.group-category-row');
+  if (catRow?.dataset.category) {
+    const catId = catRow.dataset.category;
+    if (collapsedCategories.has(catId)) collapsedCategories.delete(catId); else collapsedCategories.add(catId);
+    renderMenuTable(renderedMenuRows);
   }
 });
 stopListBtn?.addEventListener('click', () => {

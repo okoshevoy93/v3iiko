@@ -73,7 +73,7 @@
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
-    .table-shell table { min-width: 1400px; }
+    .table-shell table { min-width: 1400px; table-layout: fixed; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
     .table-shell td { vertical-align: middle; }
     .table-shell td, .table-shell th { text-align: center; }
@@ -132,9 +132,9 @@
     }
     /* Групповые строки как на index */
     .group-city-row { background: linear-gradient(90deg, #dcfce7, #ecfdf5) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
-    .group-city-row td { color: #065f46; font-weight: 700; }
+    .group-city-row td, .group-city-row th { color: #065f46; font-weight: 700; width: 100%; }
     .group-category-row { background: #fefce8 !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
-    .group-category-row td { color: #111827; font-weight: 700; }
+    .group-category-row td, .group-category-row th { color: #111827; font-weight: 700; width: 100%; }
     .picker.open .picker-panel { display: block; }
     .picker-search { width: 100%; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 13px; margin-bottom: 8px; }
     .picker-item {
@@ -260,6 +260,7 @@
               <span id="summaryModifiers" class="pill green">Модификаторы: 0</span>
               <span id="summaryItems" class="pill">Блюд: 0</span>
               <span id="summaryStop" class="pill red cursor-pointer">Стоп-лист</span>
+              <span id="menuCount" class="hidden"></span>
               <button id="showStopInline" class="btn-chip">Показать стоп-лист</button>
               <button id="toggleModifiers" class="btn-chip">Модификаторы +/−</button>
               <button id="toggleDescription" class="btn-chip">Показать описание</button>
