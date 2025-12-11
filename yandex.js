@@ -14,6 +14,7 @@ const placeList = document.getElementById('placeList');
 const placeToggle = document.getElementById('placeToggle');
 const placeToggleLabel = document.getElementById('placeToggleLabel');
 const placePanel = document.getElementById('placePanel');
+const placePicker = document.getElementById('placePicker');
 const stopListBtn = document.getElementById('stopListBtn');
 const iikoKeyInput = document.getElementById('iikoKey');
 const statusEl = document.getElementById('status');
@@ -41,6 +42,22 @@ const filterModifiersInput = document.getElementById('filterModifiers');
 const filterPriceInput = document.getElementById('filterPrice');
 const filterAvailabilityInput = document.getElementById('filterAvailability');
 const filterSearchInput = document.getElementById('filterSearch');
+const thCategory = document.getElementById('thCategory');
+const thName = document.getElementById('thName');
+const thPhoto = document.getElementById('thPhoto');
+const thSku = document.getElementById('thSku');
+const thPrice = document.getElementById('thPrice');
+const thAvailability = document.getElementById('thAvailability');
+const thDescription = document.getElementById('thDescription');
+const thModifiers = document.getElementById('thModifiers');
+const filterDescriptionCell = document.getElementById('filterDescriptionCell');
+const filterModifiersCell = document.getElementById('filterModifiersCell');
+const filterCategoryCell = document.getElementById('filterCategoryCell');
+const filterNameCell = document.getElementById('filterNameCell');
+const filterPhotoCell = document.getElementById('filterPhotoCell');
+const filterSkuCell = document.getElementById('filterSkuCell');
+const filterPriceCell = document.getElementById('filterPriceCell');
+const filterAvailabilityCell = document.getElementById('filterAvailabilityCell');
 const toggleModifiersBtn = document.getElementById('toggleModifiers');
 const toggleDescriptionBtn = document.getElementById('toggleDescription');
 const stopOverlay = document.getElementById('stopOverlay');
@@ -96,6 +113,27 @@ let showStopItems = false;
 const availabilityCache = new Map();
 let sortField = 'place';
 let sortDir = 1;
+const columnOrder = ['category', 'name', 'photo', 'sku', 'description', 'modifiers', 'price', 'availability'];
+const headerByKey = {
+  category: thCategory,
+  name: thName,
+  photo: thPhoto,
+  sku: thSku,
+  description: thDescription,
+  modifiers: thModifiers,
+  price: thPrice,
+  availability: thAvailability,
+};
+const filterCellByKey = {
+  category: filterCategoryCell,
+  name: filterNameCell,
+  photo: filterPhotoCell,
+  sku: filterSkuCell,
+  description: filterDescriptionCell,
+  modifiers: filterModifiersCell,
+  price: filterPriceCell,
+  availability: filterAvailabilityCell,
+};
 
 function stripHtml(str) {
   if (!str) return '';
@@ -118,6 +156,23 @@ let showModifiers = true;
 let showDescription = false;
 let restoredSession = false;
 let restorePlaceId = '';
+
+function getVisibleColumns() {
+  return columnOrder.filter(key => {
+    if (key === 'description') return showDescription;
+    if (key === 'modifiers') return showModifiers;
+    return true;
+  });
+}
+
+function syncColumnVisibility() {
+  const visible = new Set(getVisibleColumns());
+  columnOrder.forEach(key => {
+    const isVisible = visible.has(key);
+    headerByKey[key]?.classList.toggle('hidden', !isVisible);
+    filterCellByKey[key]?.classList.toggle('hidden', !isVisible);
+  });
+}
 
 try {
   storedIikoKey = localStorage.getItem('iikoApiLogin') || '';
@@ -146,13 +201,13 @@ function setStatus(message, tone = 'info') {
 
 function buttonLoading(btn, isLoading, label) {
   if (!btn) return;
+  if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent;
   btn.disabled = isLoading;
   if (isLoading) {
-    btn.dataset.label = btn.textContent;
     btn.textContent = label || 'Загрузка...';
     btn.classList.add('opacity-70', 'cursor-wait');
   } else {
-    btn.textContent = btn.dataset.label || btn.textContent;
+    btn.textContent = btn.dataset.originalLabel || btn.textContent;
     btn.classList.remove('opacity-70', 'cursor-wait');
   }
 }
@@ -345,9 +400,12 @@ function renderPlaces(places, preserveSource = false) {
   cachedPlaces = places;
   placeSelect.innerHTML = '';
   placeList.innerHTML = '';
+  let maxLabelLen = 0;
   places.forEach(place => {
     const placeId = place.orgId || place.yandexPlaceId || place.id || place.place_id || '';
     const name = place.name || place.title || place.slug || 'Без названия';
+    const titleWithId = `${name}${placeId ? ` · ${placeId}` : ''}`;
+    maxLabelLen = Math.max(maxLabelLen, titleWithId.length);
     const option = document.createElement('option');
     option.value = placeId;
     option.textContent = name;
@@ -365,9 +423,9 @@ function renderPlaces(places, preserveSource = false) {
     btn.dataset.placeId = placeId;
     btn.dataset.address = option.dataset.address;
     btn.innerHTML = `<div class="flex flex-col">` +
-      `<span class="title">${name}</span>` +
+      `<span class="title flex flex-wrap items-center gap-1">${name}${placeId ? `<span class="pill-id">· ${placeId}</span>` : ''}</span>` +
       `<span class="meta">${option.dataset.address || 'Адрес не указан'}</span>` +
-      `</div><div class="text-[11px] text-slate-500 flex items-center gap-1">${placeId}</div>`;
+      `</div>`;
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       togglePlaceSelection(placeId);
@@ -378,6 +436,11 @@ function renderPlaces(places, preserveSource = false) {
     if (!selectedPlaceIds.size) selectedPlaceIds = new Set([restorePlaceId]);
   }
   placeCount.textContent = places.length;
+  if (placePicker && maxLabelLen) {
+    const widthPx = Math.min(Math.max(maxLabelLen * 8, 240), 520);
+    placePicker.style.minWidth = `${widthPx}px`;
+    placePicker.style.maxWidth = `${widthPx}px`;
+  }
   updateCurrentInfo();
 }
 
@@ -483,10 +546,12 @@ function buildAvailabilityMap(data) {
       || entry.code;
     if (!id) return;
     const rawStatus = entry.status || entry.state;
-    const available = entry.available ?? entry.is_available ?? entry.in_stock ?? (rawStatus === 'available' ? true : rawStatus === 'unavailable' ? false : undefined);
-    const quantity = entry.balance ?? entry.quantity ?? entry.count ?? entry.stock ?? null;
+    const quantityRaw = entry.balance ?? entry.quantity ?? entry.count ?? entry.stock;
+    const quantity = typeof quantityRaw === 'number' ? quantityRaw : null;
+    let available = entry.available ?? entry.is_available ?? entry.in_stock ?? (rawStatus === 'available' ? true : rawStatus === 'unavailable' ? false : undefined);
+    if (available === undefined && quantity !== null) available = quantity > 0;
     const date = entry.date || entry.updated_at || entry.updatedAt || entry.timestamp || entry.not_available_from || entry.notAvailableFrom;
-    map.set(id, { available, quantity, date });
+    map.set(id, { available, quantity, date, stock: entry.stock });
   });
   return map;
 }
@@ -684,8 +749,10 @@ function applyMenuFilters() {
 
 function renderMenuTable(rows) {
   if (!menuTableBody) return;
+  syncColumnVisibility();
+  const visibleColumns = getVisibleColumns();
+  const colCount = visibleColumns.length;
   let data = (rows || []).filter(r => showStopItems || !r.stopList);
-  const colCount = 8;
   if (sortField) {
     data = [...data].sort((a, b) => {
       const av = (a[sortField] || '').toString().toLowerCase();
@@ -711,7 +778,7 @@ function renderMenuTable(rows) {
     placeHeader.className = 'group-city-row cursor-pointer';
     placeHeader.dataset.toggle = placeClass;
     placeHeader.dataset.place = placeName;
-    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-left text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[11px] px-1.5 py-0.5 rounded-full bg-white/70 border border-emerald-200 text-emerald-700">${placeCollapsed ? '+' : '−'}</span><span class="flex items-center gap-1">Город: ${placeName}<span class="text-[10px] text-emerald-700">↕</span></span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
+    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-center text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-center"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="flex flex-col leading-tight text-left md:text-center"><span class="font-semibold">Город: ${placeName}</span><span class="text-[10px] text-emerald-700">↕</span></span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
     menuTableBody.appendChild(placeHeader);
 
     if (placeCollapsed) return;
@@ -729,8 +796,8 @@ function renderMenuTable(rows) {
       header.className = 'group-category-row cursor-pointer';
       header.dataset.toggle = catId;
       header.dataset.category = catId;
-      header.innerHTML = `<th colspan="${colCount}" class="pl-8 pr-3 py-2 text-[12px] font-semibold text-slate-800 text-left border-t border-b border-slate-200"><div class="flex items-center gap-2"><span class="text-[11px] px-1.5 py-0.5 rounded-full bg-white/80 border border-amber-200 text-amber-700">${catCollapsed ? '+' : '−'}</span>
-        <span class="flex items-center gap-1">${category || 'Без категории'}<span class="text-[10px] text-amber-700">↕</span></span>
+      header.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-[12px] font-semibold text-slate-800 text-center border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-center"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span>
+        <span class="flex flex-col leading-tight">${category || 'Без категории'}<span class="text-[10px] text-amber-700">↕</span></span>
         <span class="text-xs text-slate-500">${items.length} поз.</span></div>
       </th>`;
       menuTableBody.appendChild(header);
@@ -747,16 +814,18 @@ function renderMenuTable(rows) {
         const tr = document.createElement('tr');
         tr.className = `menu-data-row hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass} border-b border-slate-200`;
         tr.dataset.category = catId;
-        tr.innerHTML = `
-          <td class="px-3 py-2 text-slate-800 font-semibold text-center align-middle">${row.category || 'Без категории'}</td>
-          <td class="px-3 py-2 align-middle">${'<div class="flex items-center gap-2 justify-center text-center min-h-[52px]">' + row.name + ' ' + stopBadge + '</div>'}</td>
-          <td class="px-3 py-2 text-center align-middle">${imageHtml}</td>
-          <td class="px-3 py-2 text-xs text-slate-500 text-center align-middle">${row.id || '—'}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 text-center align-middle ${showDescription ? '' : 'hidden'}">${row.description || ''}</td>
-          <td class="px-3 py-2 text-xs text-slate-600 text-left align-middle ${showModifiers ? '' : 'hidden'}">${modifiersHtml}</td>
-          <td class="px-3 py-2 font-semibold text-center align-middle">${formatPrice(row.price)}</td>
-          <td class="px-3 py-2 text-center align-middle">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>
-        `;
+        const cells = [];
+        visibleColumns.forEach(col => {
+          if (col === 'category') cells.push(`<td class="px-3 py-2 text-slate-800 font-semibold text-center align-middle">${row.category || 'Без категории'}</td>`);
+          if (col === 'name') cells.push(`<td class="px-3 py-2 align-middle"><div class="flex items-center gap-2 justify-center text-center min-h-[52px] leading-tight">${row.name || ''} ${stopBadge}</div></td>`);
+          if (col === 'photo') cells.push(`<td class="px-3 py-2 text-center align-middle"><div class="flex items-center justify-center">${imageHtml}</div></td>`);
+          if (col === 'sku') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-center align-middle">${row.id || '—'}</td>`);
+          if (col === 'description') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-center align-middle">${row.description || ''}</td>`);
+          if (col === 'modifiers') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle">${modifiersHtml}</td>`);
+          if (col === 'price') cells.push(`<td class="px-3 py-2 font-semibold text-center align-middle">${formatPrice(row.price)}</td>`);
+          if (col === 'availability') cells.push(`<td class="px-3 py-2 text-center align-middle">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>`);
+        });
+        tr.innerHTML = cells.join('');
         tr.dataset.itemId = row.id;
         tr.dataset.itemIndex = normalizedMenuRows.indexOf(row);
         menuTableBody.appendChild(tr);
@@ -766,12 +835,70 @@ function renderMenuTable(rows) {
   updateSummaryFromRows(data);
 }
 
+function collectStopRows(term = '') {
+  const search = (term || '').toLowerCase();
+  const selectedIds = getSelectedPlaceIds();
+  const selectedSet = new Set(selectedIds);
+  const seen = new Set();
+  const menuIndex = new Map();
+  normalizedMenuRows.forEach(r => {
+    if (!r.id) return;
+    const key = `${r.placeId || r.place || ''}:::${r.id}`;
+    menuIndex.set(key, r);
+  });
+
+  const rows = [];
+  const availabilityPlaces = selectedIds.length ? selectedIds : Array.from(availabilityCache.keys());
+  availabilityPlaces.forEach(pid => {
+    const map = availabilityCache.get(pid);
+    if (!map) return;
+    const meta = getPlaceMeta(pid);
+    map.forEach((availability, id) => {
+      const inStop = availability?.available === false || availability?.quantity === 0 || availability?.stock === 0;
+      if (!inStop) return;
+      const indexKey = `${pid}:::${id}`;
+      const matchedRow = menuIndex.get(indexKey) || normalizedMenuRows.find(r => r.id === id && (!selectedSet.size || selectedSet.has(r.placeId)));
+      const placeName = matchedRow?.place || meta.placeName || 'Без точки';
+      const cat = matchedRow?.category || 'Без категории';
+      const name = matchedRow?.name || id;
+      const candidate = {
+        ...(matchedRow || {}),
+        place: placeName,
+        placeId: matchedRow?.placeId || pid,
+        category: cat,
+        name,
+        id,
+        price: matchedRow?.price || '',
+        image: matchedRow?.image || '',
+        stopDate: availability?.date || matchedRow?.stopDate || '',
+        stopList: true,
+      };
+      const key = `${candidate.placeId || candidate.place}:::${candidate.id}`;
+      if (!seen.has(key)) {
+        rows.push(candidate);
+        seen.add(key);
+      }
+    });
+  });
+
+  normalizedMenuRows.forEach(row => {
+    if (!row.stopList) return;
+    if (selectedSet.size && !selectedSet.has(row.placeId)) return;
+    const key = `${row.placeId || row.place}:::${row.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push(row);
+  });
+
+  if (!search) return rows;
+  return rows.filter(r => `${r.name} ${r.id} ${r.category} ${r.place}`.toLowerCase().includes(search));
+}
+
 async function renderStopListPanel(term = '') {
   if (!stopOverlay || !stopTableBody) return;
-  const search = (term || '').toLowerCase();
   if (stopSearchInput && !term) stopSearchInput.value = '';
 
-  const stops = normalizedMenuRows.filter(r => r.stopList && (!search || `${r.name} ${r.id} ${r.category} ${r.place}`.toLowerCase().includes(search)));
+  const stops = collectStopRows(term);
   stopTableBody.innerHTML = '';
 
   const grouped = new Map();
@@ -800,10 +927,10 @@ async function renderStopListPanel(term = '') {
         html += `<tr class="border-b border-slate-100">` +
           `<td class="px-2 py-1 text-sm text-slate-700">${r.category || 'Без категории'}</td>` +
           `<td class="px-2 py-1 text-sm">${r.name}</td>` +
-          `<td class="px-2 py-1">${img}</td>` +
-          `<td class="px-2 py-1 text-xs text-slate-500">${r.id || ''}</td>` +
-          `<td class="px-2 py-1 font-semibold">${formatPrice(r.price)}</td>` +
-          `<td class="px-2 py-1 text-xs text-slate-500">${r.stopDate || '—'}</td>` +
+          `<td class="px-2 py-1 text-center">${img}</td>` +
+          `<td class="px-2 py-1 text-xs text-slate-500 text-center">${r.id || ''}</td>` +
+          `<td class="px-2 py-1 font-semibold text-center">${formatPrice(r.price)}</td>` +
+          `<td class="px-2 py-1 text-xs text-slate-500 text-center">${r.stopDate || '—'}</td>` +
           `</tr>`;
       });
     });
@@ -833,13 +960,13 @@ function buildModifiersHtml(row) {
   const groups = row.modifierGroups || [];
   if (groups.length) {
     return groups.map(g => {
-      const mods = (g.modifiers || []).map(m => `<div class="flex justify-between gap-2 text-[11px] items-center">
+      const mods = (g.modifiers || []).map(m => `<div class="mod-row">
           <span class="truncate">${m.name}${m.id ? ` <span class=\"text-slate-500\">(${m.id})</span>` : ''}</span>
           <span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>
-        </div>`).join('') || '<div class="text-[11px] text-slate-500">Нет модификаторов</div>';
-      return `<div class="mb-2">
-        <div class="font-semibold text-[12px] text-indigo-700 text-center">${g.name || 'Группа модификаторов'}</div>
-        <div class="text-[11px] text-slate-500 text-center">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
+        </div>`).join('') || '<div class="text-[11px] text-slate-500 text-center">Нет модификаторов</div>';
+      return `<div class="modifier-block">
+        <div class="mod-header">${g.name || 'Группа модификаторов'}</div>
+        <div class="mod-meta">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>
         ${mods}
       </div>`;
     }).join('');
@@ -940,16 +1067,16 @@ function showDishOverlay(row, fullImg) {
   overlayModifiers.innerHTML = '';
   (row.modifierGroups || []).forEach(g => {
     const block = document.createElement('div');
-    block.className = 'border border-indigo-100 bg-indigo-50/70 rounded-lg p-2';
-    const modsHtml = (g.modifiers || []).map(m => `<div class="flex items-center justify-between gap-2 px-2 py-1 text-[12px] rounded-md bg-white">` +
+    block.className = 'modifier-block';
+    const modsHtml = (g.modifiers || []).map(m => `<div class="mod-row">` +
       `<div class="flex flex-col text-left">` +
       `<span class="font-semibold text-slate-800">${m.name}${m.id ? ` (${m.id})` : ''}</span>` +
       `<span class="text-slate-500 text-[11px]">мин ${m.min ?? 0} / макс ${m.max ?? 0}</span>` +
       `</div>` +
       `<span class="text-slate-700 whitespace-nowrap">${formatPrice(m.price)}</span>` +
       `</div>`).join('') || '<div class="text-[11px] text-slate-500 text-center py-2">Нет модификаторов</div>';
-    block.innerHTML = `<div class="text-center font-semibold text-indigo-800">${g.name || 'Группа модификаторов'}</div>` +
-      `<div class="text-[11px] text-indigo-700 text-center mb-2">мин: ${g.min ?? 0} · макс: ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>` +
+    block.innerHTML = `<div class="mod-header">${g.name || 'Группа модификаторов'}</div>` +
+      `<div class="mod-meta">мин ${g.min ?? 0} / макс ${g.max ?? 0}${g.required ? ' (обязательно)' : ''}</div>` +
       `<div class="space-y-1">${modsHtml}</div>`;
     overlayModifiers.appendChild(block);
   });
@@ -1394,11 +1521,14 @@ document.addEventListener('click', (e) => {
   menuTableBody?.addEventListener('click', (e) => {
     const toggle = e.target.closest('tr[data-toggle]');
     if (toggle) {
-      const target = toggle.dataset.toggle;
-      const rows = menuTableBody.querySelectorAll(`tr.${target}`);
-      rows.forEach(r => r.classList.toggle('hidden'));
-      const icon = toggle.querySelector('span');
-      if (icon) icon.textContent = rows[0]?.classList.contains('hidden') ? '➕' : '➖';
+      if (toggle.dataset.place) {
+        if (collapsedPlaces.has(toggle.dataset.place)) collapsedPlaces.delete(toggle.dataset.place); else collapsedPlaces.add(toggle.dataset.place);
+      }
+      if (toggle.dataset.category) {
+        if (collapsedCategories.has(toggle.dataset.category)) collapsedCategories.delete(toggle.dataset.category); else collapsedCategories.add(toggle.dataset.category);
+      }
+      renderMenuTable(renderedMenuRows);
+      persistSession();
       return;
     }
   const img = e.target.closest('.menu-img');

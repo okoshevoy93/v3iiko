@@ -1026,6 +1026,7 @@ def export_excel():
             headers = [f"Колонка {i+1}" for i in range(len(sample))]
 
     output = io.StringIO()
+    output.write('\ufeff')
     writer = csv.writer(output, delimiter=';')
     if headers:
         writer.writerow(headers)
@@ -1040,7 +1041,7 @@ def export_excel():
 
     output.seek(0)
     filename = f"export_{int(time.time())}.csv"
-    return Response(output.getvalue(), mimetype="text/csv",
+    return Response(output.getvalue(), mimetype="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @app.route("/logout")
