@@ -135,16 +135,25 @@ def load_users():
             with open(USERS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 for login, info in data.items():
+                    default_tabs = ["index", "yandex", "users"] if info.get("role") == "admin" else ["index", "yandex"]
                     USERS_DB[login] = {
                         "hash": info["hash"].encode(),
-                        "role": info.get("role", "user")
+                        "role": info.get("role", "user"),
+                        "tabs": info.get("tabs") or default_tabs,
                     }
     except Exception as e:
         logger.error(f"Ошибка загрузки users.json: {e}")
 
 def save_users():
     try:
-        data = {login: {"hash": info["hash"].decode(), "role": info["role"]} for login, info in USERS_DB.items()}
+        data = {}
+        for login, info in USERS_DB.items():
+            default_tabs = ["index", "yandex", "users"] if info.get("role") == "admin" else ["index", "yandex"]
+            data[login] = {
+                "hash": info["hash"].decode(),
+                "role": info.get("role", "user"),
+                "tabs": info.get("tabs") or default_tabs,
+            }
         with open(USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
     except Exception as e:
@@ -259,6 +268,25 @@ def is_admin():
     user = USERS_DB.get(auth.username)
     return user and user.get("role") == "admin" and check_auth(auth.username, auth.password)
 
+
+def has_tab_access(tab: str) -> bool:
+    auth = request.authorization
+    if not auth:
+        return False
+    user = USERS_DB.get(auth.username)
+    if not user:
+        return False
+    tabs = user.get("tabs") or []
+    return tab in tabs or user.get("role") == "admin"
+
+
+def required_tab_from_path(path: str) -> str:
+    if path.startswith("/yandex") or path.startswith("/api/yandex"):
+        return "yandex"
+    if path.startswith("/users"):
+        return "users"
+    return "index"
+
 def authenticate():
     return Response('Доступ запрещён', 401,
                     {'WWW-Authenticate': 'Basic realm="iiko-menu v2"'})
@@ -269,6 +297,9 @@ def require_auth(f):
         auth = request.authorization
         if not auth or not check_auth(auth.username, auth.password):
             return authenticate()
+        required_tab = required_tab_from_path(request.path)
+        if required_tab and not has_tab_access(required_tab):
+            return Response('Доступ запрещён', 403)
         return f(*args, **kwargs)
     return decorated
 
@@ -427,6 +458,18 @@ def app_js():
 @require_auth
 def yandex_js():
     return send_file(BASE_DIR / "yandex.js")
+
+
+@app.route("/api/me")
+@require_auth
+def api_me():
+    auth = request.authorization
+    user = USERS_DB.get(auth.username) or {}
+    return jsonify({
+        "user": auth.username,
+        "role": user.get("role", "user"),
+        "tabs": user.get("tabs") or ["index", "yandex", "users"],
+    })
 
 @app.route("/api/proxy", methods=["POST"])
 @require_auth
@@ -985,12 +1028,14 @@ def admin_save():
         password = request.form.get("password", "").strip()
         if action == "add" and not password:
             return redirect("/users?msg=Пароль+обязателен")
+        tabs = request.form.getlist("tabs") or ["index", "yandex"]
         if password:
             hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12))
-            USERS_DB[username] = {"hash": hashed, "role": request.form.get("role", "user")}
+            USERS_DB[username] = {"hash": hashed, "role": request.form.get("role", "user"), "tabs": tabs}
         else:
             if username in USERS_DB:
                 USERS_DB[username]["role"] = request.form.get("role", "user")
+                USERS_DB[username]["tabs"] = tabs
     elif action == "delete":
         if username in USERS_DB and USERS_DB[username]["role"] == "admin" and len([u for u, d in USERS_DB.items() if d["role"] == "admin"]) == 1:
             return redirect("/users?msg=Нельзя+удалить+последнего+админа")

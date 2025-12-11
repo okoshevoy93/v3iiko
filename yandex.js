@@ -4,6 +4,7 @@ const connectBtn = document.getElementById('connectBtn');
 const loadCitiesBtn = document.getElementById('loadCitiesBtn');
 const loadMenuBtn = document.getElementById('loadMenuBtn');
 const integrationSelect = document.getElementById('integrationSelect');
+const addIntegrationBtn = document.getElementById('addIntegrationBtn');
 const webhookUrlInput = document.getElementById('webhookUrl');
 const integrationNameInput = document.getElementById('integrationName');
 const saveIntegrationBtn = document.getElementById('saveIntegrationBtn');
@@ -116,7 +117,8 @@ let collapsedPlaces = new Set();
 let collapsedCategories = new Set();
 const collapsedStopPlaces = new Set();
 const collapsedStopCategories = new Set();
-const YANDEX_STATE_KEY = 'yandexPageState';
+let YANDEX_STATE_KEY = 'yandexPageState';
+let currentUserName = '';
 let showStopItems = false;
 const availabilityCache = new Map();
 let sortField = 'place';
@@ -132,6 +134,24 @@ const headerByKey = {
   price: thPrice,
   availability: thAvailability,
 };
+
+function resetMenuState() {
+  normalizedMenuRows = [];
+  renderedMenuRows = [];
+  menuTableBody.innerHTML = '';
+  stopTableBody.innerHTML = '';
+  rawPayload.textContent = '';
+  collapsedPlaces = new Set();
+  collapsedCategories = new Set();
+  collapsedStopPlaces.clear();
+  collapsedStopCategories.clear();
+  selectedPlaceIds = new Set();
+  placeList.innerHTML = '';
+  placeToggleLabel.textContent = 'Выберите точку';
+  placeCount.textContent = '0';
+  updateSummaryFromRows([]);
+  updateCurrentInfo();
+}
 
 if (loadCitiesBtn) {
   loadCitiesBtn.dataset.originalLabel = 'Обновить точки';
@@ -152,6 +172,18 @@ function stripHtml(str) {
   const d = document.createElement('div');
   d.innerHTML = str;
   return d.textContent || d.innerText || '';
+}
+
+async function bootstrapUserKey() {
+  try {
+    const data = await apiFetch('/api/me');
+    currentUserName = data.user || '';
+    if (currentUserName) {
+      YANDEX_STATE_KEY = `yandexPageState_${currentUserName}`;
+    }
+  } catch (e) {
+    console.warn('Не удалось получить данные пользователя', e);
+  }
 }
 
 function escapeHtml(str = '') {
@@ -299,7 +331,13 @@ function getRestaurantId() {
 
 async function apiFetch(url, options = {}) {
   const resp = await fetch(url, options);
-  const data = await resp.json().catch(() => ({}));
+  let data = {};
+  try {
+    data = await resp.json();
+  } catch (e) {
+    const text = await resp.text().catch(() => '');
+    if (text) data = { error: text.slice(0, 500) };
+  }
   if (!resp.ok) {
     throw new Error(data.error || `Ошибка запроса (${resp.status})`);
   }
@@ -699,6 +737,7 @@ function renderIntegrations(list) {
 function applyIntegration(name) {
   const found = integrations.find(i => i.name === name);
   if (!found) return;
+  resetMenuState();
   webhookUrlInput.value = found.webhook_url || '';
   clientIdInput.value = found.client_id || '';
   clientSecretInput.value = found.client_secret || '';
@@ -708,6 +747,19 @@ function applyIntegration(name) {
   syncStoredIikoKey(iikoKey);
   setStatus(`Интеграция «${found.name}» подставлена. Нажмите «Проверить доступ» и обновите города.`, 'info');
   loadCities();
+}
+
+function startNewIntegration() {
+  resetMenuState();
+  integrationSelect.value = '';
+  integrationNameInput.value = '';
+  webhookUrlInput.value = '';
+  clientIdInput.value = '';
+  clientSecretInput.value = '';
+  manualBaseInput.value = '';
+  manualTokenPathInput.value = '';
+  if (iikoKeyInput) iikoKeyInput.value = '';
+  setStatus('Введите данные новой интеграции и сохраните.', 'info');
 }
 
 function renderMenuAggregate(entries = []) {
@@ -1274,17 +1326,22 @@ async function loadMenu() {
   const entries = [];
   try {
     for (const pid of placeIds) {
-      const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: pid } });
-      let availabilityMap;
       try {
-        const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: pid } });
-        availabilityMap = buildAvailabilityMap(availability);
-        availabilityCache.set(pid, availabilityMap);
+        const data = await callYandex('/api/yandex/menu', { params: { restaurant_id: pid } });
+        let availabilityMap;
+        try {
+          const availability = await callYandex('/api/yandex/availability', { params: { restaurant_id: pid } });
+          availabilityMap = buildAvailabilityMap(availability);
+          availabilityCache.set(pid, availabilityMap);
+        } catch (err) {
+          console.warn('Availability request failed', err);
+        }
+        const placeMeta = getPlaceMeta(pid);
+        entries.push({ payload: data, availabilityMap, meta: placeMeta, placeId: pid });
       } catch (err) {
-        console.warn('Availability request failed', err);
+        console.error('Ошибка меню по точке', pid, err);
+        setStatus(`Ошибка по точке ${pid}: ${err.message || err}`, 'err');
       }
-      const placeMeta = getPlaceMeta(pid);
-      entries.push({ payload: data, availabilityMap, meta: placeMeta, placeId: pid });
     }
     renderMenuAggregate(entries);
     setStatus('Меню и стоп-лист загружены.', 'ok');
@@ -1589,7 +1646,14 @@ placeSelect.addEventListener('change', () => {
 integrationSelect.addEventListener('change', () => {
   if (integrationSelect.value) {
     applyIntegration(integrationSelect.value);
+  } else {
+    resetMenuState();
   }
+});
+
+addIntegrationBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  startNewIntegration();
 });
 btnAvailability?.addEventListener('click', () => runAvailabilityFor());
 btnPromos?.addEventListener('click', runPromos);
@@ -1792,15 +1856,17 @@ overlay?.addEventListener('click', (e) => {
   if (e.target === overlay) overlay.classList.remove('active');
 });
 
-if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
-  iikoKeyInput.value = storedIikoKey;
-}
-
-restoreSession();
-if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
-if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
-setStatus('Введите client_id и client_secret для подключения.');
-loadIntegrationsList();
-if (webhookUrlInput.value && clientIdInput.value && clientSecretInput.value) {
-  loadCities();
-}
+(async () => {
+  await bootstrapUserKey();
+  if (iikoKeyInput && storedIikoKey && !iikoKeyInput.value) {
+    iikoKeyInput.value = storedIikoKey;
+  }
+  restoreSession();
+  if (toggleModifiersBtn) toggleModifiersBtn.textContent = showModifiers ? 'Модификаторы −' : 'Модификаторы +';
+  if (toggleDescriptionBtn) toggleDescriptionBtn.textContent = showDescription ? 'Скрыть описание' : 'Показать описание';
+  setStatus('Введите client_id и client_secret для подключения.');
+  await loadIntegrationsList();
+  if (webhookUrlInput.value && clientIdInput.value && clientSecretInput.value) {
+    loadCities();
+  }
+})();

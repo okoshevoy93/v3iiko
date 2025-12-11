@@ -158,7 +158,8 @@ let lastSelectedRowKey = null;
 let theadControlsBound = false;
 let showDescriptionColumn = false;
 
-const SESSION_KEY = 'iikoMenuWebSession';
+let SESSION_KEY = 'iikoMenuWebSession';
+let currentUserName = '';
 const DEFAULT_PC_NAME = 'Базовая категория';
 const LAZY_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="8" fill="%23e5e7eb"/%3E%3C/svg%3E';
 const NO_PHOTO_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"%3E%3Crect width="1200" height="800" fill="%232d3748"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23e5e7eb" font-size="64" font-family="Arial, sans-serif"%3EНет фото%3C/text%3E%3C/svg%3E';
@@ -198,8 +199,6 @@ function syncTableHeaderOffset() {
 let imageModalState = { list: [], index: 0 };
 let imageIndexMap = new Map();
 
-restoredSession = loadSessionSnapshot();
-
 // === Утилиты ===
 function escapeHtml(str) {
   return (str || '').toString()
@@ -223,6 +222,22 @@ function highlightMatch(text, query) {
     re,
     m => `<mark class="bg-amber-500/40 text-amber-900">${m}</mark>`
   );
+}
+
+async function bootstrapUserKey() {
+  try {
+    const resp = await fetch('/api/me');
+    if (!resp.ok) throw new Error('auth');
+    const data = await resp.json();
+    currentUserName = data.user || '';
+    if (currentUserName) {
+      SESSION_KEY = `iikoMenuWebSession_${currentUserName}`;
+    }
+  } catch (e) {
+    console.warn('Не удалось получить пользователя', e);
+  } finally {
+    restoredSession = loadSessionSnapshot();
+  }
 }
 
 function keysInOrder(mapObj) {
@@ -4073,7 +4088,7 @@ exportBtn.addEventListener('click', async () => {
 });
 
 // === init ===
-(function init() {
+async function init() {
   let savedApiKey = null;
   try {
     savedApiKey = localStorage.getItem('iikoApiLogin');
@@ -4153,4 +4168,6 @@ exportBtn.addEventListener('click', async () => {
 
   window.openImageModalFromUrl = openImageModalFromUrl;
   syncImageButtonAvailability();
-})();
+}
+
+bootstrapUserKey().then(init);

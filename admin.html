@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Управление пользователями</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-4xl mx-auto py-10 px-4 space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold text-gray-800">Пользователи</h1>
+      <a href="/" class="text-blue-600 underline">На главную</a>
+    </div>
+    {% if message %}
+    <div class="p-3 rounded bg-blue-50 border border-blue-200 text-sm text-blue-800">{{ message }}</div>
+    {% endif %}
+
+    <div class="grid gap-4">
+      {% for username, info in users.items() %}
+      <form method="post" action="/users/save" class="bg-white shadow-sm rounded-lg p-4 space-y-3">
+        <input type="hidden" name="action" value="edit" />
+        <input type="hidden" name="username" value="{{ username }}" />
+        <div class="flex flex-wrap justify-between gap-3 items-center">
+          <div>
+            <p class="font-semibold">{{ username }}</p>
+            <p class="text-xs text-gray-500">Измените роль или права доступа</p>
+          </div>
+          <div class="flex gap-2">
+            <select name="role" class="border rounded px-2 py-1 text-sm">
+              <option value="user" {% if info.role == 'user' %}selected{% endif %}>Пользователь</option>
+              <option value="admin" {% if info.role == 'admin' %}selected{% endif %}>Администратор</option>
+            </select>
+            <button type="submit" class="px-3 py-1 bg-green-600 text-white rounded text-sm">Сохранить</button>
+            <button type="submit" name="action" value="delete" class="px-3 py-1 bg-red-600 text-white rounded text-sm" onclick="return confirm('Удалить пользователя {{ username }}?')">Удалить</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-4 text-sm">
+          {% set tabs = info.tabs or [] %}
+          <label class="flex items-center gap-2"><input type="checkbox" name="tabs" value="index" {% if 'index' in tabs %}checked{% endif %}/> <span>Вкладка iiko</span></label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="tabs" value="yandex" {% if 'yandex' in tabs %}checked{% endif %}/> <span>Вкладка Yandex</span></label>
+          <label class="flex items-center gap-2"><input type="checkbox" name="tabs" value="users" {% if 'users' in tabs %}checked{% endif %}/> <span>Админка пользователей</span></label>
+        </div>
+      </form>
+      {% endfor %}
+    </div>
+
+    <form method="post" action="/users/save" class="bg-white shadow-sm rounded-lg p-4 space-y-3">
+      <input type="hidden" name="action" value="add" />
+      <p class="font-semibold">Добавить пользователя</p>
+      <div class="grid md:grid-cols-2 gap-3">
+        <input required name="username" placeholder="Логин" class="border rounded px-3 py-2" />
+        <input required type="password" name="password" placeholder="Пароль" class="border rounded px-3 py-2" />
+      </div>
+      <div class="flex flex-wrap gap-3 text-sm">
+        <select name="role" class="border rounded px-2 py-1 text-sm">
+          <option value="user">Пользователь</option>
+          <option value="admin">Администратор</option>
+        </select>
+        <label class="flex items-center gap-2"><input type="checkbox" name="tabs" value="index" checked /> <span>Вкладка iiko</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="tabs" value="yandex" checked /> <span>Вкладка Yandex</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="tabs" value="users" /> <span>Админка пользователей</span></label>
+      </div>
+      <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded text-sm">Создать</button>
+    </form>
+  </div>
+</body>
+</html>
