@@ -73,10 +73,10 @@
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
-    .table-shell table { min-width: 1400px; width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .table-shell table { min-width: 1200px; width: 100%; table-layout: auto; border-collapse: collapse; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; }
     .table-shell td { vertical-align: middle; }
-    .table-shell td, .table-shell th { text-align: center; }
+    .table-shell td, .table-shell th { text-align: center; vertical-align: middle; }
     .table-header-main { background: #e5e7eb; }
     .table-header-filters { background: #f9fafb; }
     .table-header-main th, .table-header-filters th { border-bottom: 1px solid var(--border-soft); color: #374151; }
@@ -139,9 +139,9 @@
     }
     /* Групповые строки как на index */
     .group-city-row { background: linear-gradient(90deg, #dcfce7, #ecfdf5) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
-    .group-city-row td, .group-city-row th { color: #065f46; font-weight: 700; width: 100%; display: table-cell; padding-left: 12px; padding-right: 12px; }
+    .group-city-row td, .group-city-row th { color: #065f46; font-weight: 700; width: 100%; display: table-cell; padding-left: 12px; padding-right: 12px; text-align: left; }
     .group-category-row { background: linear-gradient(90deg, #fefce8, #fff7ed) !important; box-shadow: 0 1px 0 #e5e7eb, inset 0 -1px 0 #e5e7eb; }
-    .group-category-row td, .group-category-row th { color: #111827; font-weight: 700; width: 100%; display: table-cell; padding-left: 16px; padding-right: 12px; }
+    .group-category-row td, .group-category-row th { color: #111827; font-weight: 700; width: 100%; display: table-cell; padding-left: 16px; padding-right: 12px; text-align: left; }
     #menuTableBody .menu-data-row:nth-child(odd) { background-color: #ffffff; }
     #menuTableBody .menu-data-row:nth-child(even) { background-color: #f8fafc; }
     #menuTableBody .menu-data-row td { border-bottom: 1px solid var(--border-soft); }
@@ -182,7 +182,17 @@
     .modifier-block { border: 1px solid #c7d2fe; background: #eef2ff; border-radius: 10px; padding: 6px; margin-bottom: 6px; }
     .modifier-block .mod-header { font-weight: 700; color: #312e81; text-align: center; }
     .modifier-block .mod-meta { font-size: 11px; color: #4338ca; text-align: center; margin-bottom: 4px; }
-    .modifier-block .mod-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff; padding: 4px 6px; border-radius: 8px; }
+    .modifier-block .mod-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff; padding: 4px 6px; border-radius: 8px; word-break: break-word; }
+    .col-category { width: 170px; text-align: left !important; }
+    .col-name { width: 240px; text-align: left !important; }
+    .col-photo { width: 120px; }
+    .col-sku { width: 190px; word-break: break-word; }
+    .col-description { width: 240px; }
+    .col-modifiers { width: 260px; }
+    .col-price { width: 120px; }
+    .col-availability { width: 120px; }
+    .highlight { background: #fde68a; border-radius: 4px; padding: 1px 2px; }
+    .chevron-toggle { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; border: 1px solid rgba(0,0,0,0.12); background: #fff; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -274,6 +284,11 @@
                   <span class="text-xs text-slate-500">▼</span>
                 </button>
                 <div class="picker-panel" id="placePanel">
+                  <div class="flex flex-wrap gap-2 mb-2 text-xs">
+                    <button id="selectAllPlaces" class="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100">Выбрать все</button>
+                    <button id="clearAllPlaces" class="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100">Сбросить все</button>
+                    <button id="resetPlaceSearch" class="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100">Сброс</button>
+                  </div>
                   <input id="placeSearch" type="text" class="picker-search" placeholder="Поиск по названию, адресу или placeId" />
                   <div id="placeList" class="space-y-2"></div>
                 </div>
@@ -299,14 +314,14 @@
             <table class="w-full text-sm" id="menuTable">
               <thead class="uppercase text-[11px] text-slate-600">
                 <tr class="table-header-main">
-                  <th id="thCategory" class="text-center px-3 py-2 border-b border-soft"><span class="inline-flex items-center gap-1 flex-col leading-tight"><span class="flex items-center gap-1">Категория <span class="text-[10px] sort-btn" data-sort="category">⇅</span></span><span class="text-[10px] text-slate-500">↕</span></span></th>
-                  <th id="thName" class="text-center px-3 py-2 border-b border-soft"><span class="inline-flex items-center gap-1 flex-col leading-tight"><span class="flex items-center gap-1">Блюдо / товар <span class="text-[10px] sort-btn" data-sort="name">⇅</span></span><span class="text-[10px] text-slate-500">↕</span></span></th>
-                  <th id="thPhoto" class="text-center px-3 py-2 border-b border-soft">Фото</th>
-                  <th id="thSku" class="text-center px-3 py-2 border-b border-soft">ID / SKU</th>
-                  <th id="thDescription" class="text-center px-3 py-2 border-b border-soft">Описание</th>
-                  <th id="thModifiers" class="text-center px-3 py-2 border-b border-soft">Модификаторы</th>
-                  <th id="thPrice" class="text-center px-3 py-2 border-b border-soft">Цена</th>
-                  <th id="thAvailability" class="text-center px-3 py-2 border-b border-soft">Доступность</th>
+                  <th id="thCategory" class="text-center px-3 py-2 border-b border-soft col-category"><span class="inline-flex items-center gap-2"><span>Категория</span><span class="text-[10px] sort-btn" data-sort="category">⇅</span><button id="toggleCategories" class="chevron-toggle" type="button">▾</button></span></th>
+                  <th id="thName" class="text-center px-3 py-2 border-b border-soft col-name"><span class="inline-flex items-center gap-2"><span>Блюдо / товар</span><span class="text-[10px] sort-btn" data-sort="name">⇅</span><button id="togglePlaces" class="chevron-toggle" type="button">▾</button></span></th>
+                  <th id="thPhoto" class="text-center px-3 py-2 border-b border-soft col-photo">Фото</th>
+                  <th id="thSku" class="text-center px-3 py-2 border-b border-soft col-sku">ID / SKU</th>
+                  <th id="thDescription" class="text-center px-3 py-2 border-b border-soft col-description">Описание</th>
+                  <th id="thModifiers" class="text-center px-3 py-2 border-b border-soft col-modifiers">Модификаторы</th>
+                  <th id="thPrice" class="text-center px-3 py-2 border-b border-soft col-price">Цена</th>
+                  <th id="thAvailability" class="text-center px-3 py-2 border-b border-soft col-availability">Доступность</th>
                 </tr>
                 <tr class="table-header-filters text-[11px]">
                   <th class="px-2 py-1" id="filterCategoryCell"><input id="filterCategory" class="filter-input" placeholder="Фильтр" /></th>
@@ -438,7 +453,11 @@
         <button id="stopOverlayClose" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Закрыть</button>
       </div>
       <div class="space-y-2">
-        <input id="stopSearch" type="text" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Поиск по названию, артикулу или категории" />
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="stopSearch" type="text" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Поиск по названию, артикулу или категории" />
+          <button id="expandAllStop" class="px-3 h-10 text-xs font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Развернуть все</button>
+          <button id="collapseAllStop" class="px-3 h-10 text-xs font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Свернуть все</button>
+        </div>
         <div class="overflow-auto max-h-[60vh]">
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-xs text-slate-600">

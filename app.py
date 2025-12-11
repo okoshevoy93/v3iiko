@@ -3,6 +3,7 @@ from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
 from requests import exceptions as req_exc
+from typing import Any
 import logging
 from datetime import datetime
 import openpyxl
@@ -1031,9 +1032,34 @@ def export_excel():
     if headers:
         writer.writerow(headers)
 
+    def normalize_sku(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, (int,)):
+            return str(value)
+        if isinstance(value, float):
+            if value.is_integer():
+                return str(int(value))
+            return ("%f" % value).rstrip("0").rstrip(".")
+        text = str(value)
+        m = re.match(r"^[-+]?\d+[\.,]?\d*$", text)
+        if m:
+            normalized = text.replace(",", ".")
+            if "." in normalized:
+                head, tail = normalized.split(".", 1)
+                if tail and set(tail) == {"0"}:
+                    return head
+            return normalized
+        return text
+
+    sku_indexes = [i for i, k in enumerate(keys) if str(k).lower() in {"sku", "id"}]
+
     for row in table_data:
         if isinstance(row, dict):
-            writer.writerow([row.get(k, "") for k in keys])
+            values = [row.get(k, "") for k in keys]
+            for idx in sku_indexes:
+                values[idx] = normalize_sku(values[idx])
+            writer.writerow(values)
         elif isinstance(row, list):
             writer.writerow(row)
         else:

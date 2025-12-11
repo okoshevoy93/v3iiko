@@ -42,6 +42,8 @@ const filterModifiersInput = document.getElementById('filterModifiers');
 const filterPriceInput = document.getElementById('filterPrice');
 const filterAvailabilityInput = document.getElementById('filterAvailability');
 const filterSearchInput = document.getElementById('filterSearch');
+const toggleCategoriesBtn = document.getElementById('toggleCategories');
+const togglePlacesBtn = document.getElementById('togglePlaces');
 const thCategory = document.getElementById('thCategory');
 const thName = document.getElementById('thName');
 const thPhoto = document.getElementById('thPhoto');
@@ -64,6 +66,8 @@ const stopOverlay = document.getElementById('stopOverlay');
 const stopOverlayClose = document.getElementById('stopOverlayClose');
 const stopTableBody = document.getElementById('stopTableBody');
 const stopSearchInput = document.getElementById('stopSearch');
+const expandAllStopBtn = document.getElementById('expandAllStop');
+const collapseAllStopBtn = document.getElementById('collapseAllStop');
 const overlay = document.getElementById('dishOverlay');
 const overlayClose = document.getElementById('overlayClose');
 const overlayTitle = document.getElementById('overlayTitle');
@@ -94,6 +98,9 @@ const btnCreateOrder = document.getElementById('btnCreateOrder');
 const btnUpdateOrder = document.getElementById('btnUpdateOrder');
 const btnCancelOrder = document.getElementById('btnCancelOrder');
 const btnMenuFull = document.getElementById('btnMenuFull');
+const selectAllPlacesBtn = document.getElementById('selectAllPlaces');
+const clearAllPlacesBtn = document.getElementById('clearAllPlaces');
+const resetPlaceSearchBtn = document.getElementById('resetPlaceSearch');
 
 let cachedPlaces = [];
 let iikoOrgs = [];
@@ -108,6 +115,8 @@ let allPlaces = [];
 let selectedPlaceIds = new Set();
 let collapsedPlaces = new Set();
 let collapsedCategories = new Set();
+const collapsedStopPlaces = new Set();
+const collapsedStopCategories = new Set();
 const YANDEX_STATE_KEY = 'yandexPageState';
 let showStopItems = false;
 const availabilityCache = new Map();
@@ -140,6 +149,23 @@ function stripHtml(str) {
   const d = document.createElement('div');
   d.innerHTML = str;
   return d.textContent || d.innerText || '';
+}
+
+function escapeHtml(str = '') {
+  return str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
+}
+
+function highlightValue(text, needles = [], { rawHtml = false } = {}) {
+  const base = rawHtml ? String(text ?? '') : escapeHtml(String(text ?? ''));
+  if (!base || !needles.length) return base;
+  let result = base;
+  needles.filter(Boolean).forEach(term => {
+    const safe = escapeHtml(String(term).trim());
+    if (!safe) return;
+    const pattern = new RegExp(`(${safe.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')})`, 'gi');
+    result = result.replace(pattern, '<span class="highlight">$1</span>');
+  });
+  return result;
 }
 
 function formatPrice(val) {
@@ -201,7 +227,7 @@ function setStatus(message, tone = 'info') {
 
 function buttonLoading(btn, isLoading, label) {
   if (!btn) return;
-  if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent;
+  if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent || 'Обновить точки';
   btn.disabled = isLoading;
   if (isLoading) {
     btn.textContent = label || 'Загрузка...';
@@ -457,6 +483,20 @@ function togglePlaceSelection(placeId) {
   renderPlaces(allPlaces, true);
   const picker = document.getElementById('placePicker');
   picker?.classList.add('open');
+  persistSession();
+}
+
+function selectAllPlaces() {
+  selectedPlaceIds = new Set((cachedPlaces || []).map(p => p.orgId || p.yandexPlaceId || p.id || p.place_id || '').filter(Boolean));
+  Array.from(placeSelect.options).forEach(opt => { opt.selected = selectedPlaceIds.has(opt.value); });
+  renderPlaces(allPlaces, true);
+  persistSession();
+}
+
+function clearAllPlaces() {
+  selectedPlaceIds.clear();
+  Array.from(placeSelect.options).forEach(opt => { opt.selected = false; });
+  renderPlaces(allPlaces, true);
   persistSession();
 }
 
@@ -743,11 +783,21 @@ function applyMenuFilters() {
     const bySearch = !search || [row.name, row.id, row.category, modText].some(v => (v || '').toLowerCase().includes(search));
     return byCat && byName && bySku && byDesc && byMods && byPrice && byAvail && bySearch;
   });
-  renderMenuTable(filtered);
+  const highlights = {
+    category: cat ? [cat] : [],
+    name: name ? [name] : [],
+    sku: sku ? [sku] : [],
+    description: desc ? [desc] : [],
+    modifiers: mods ? [mods] : [],
+    price: price ? [price] : [],
+    availability: avail ? [avail] : [],
+    search: search ? [search] : [],
+  };
+  renderMenuTable(filtered, highlights);
   updateSummaryFromRows(filtered);
 }
 
-function renderMenuTable(rows) {
+function renderMenuTable(rows, highlights = {}) {
   if (!menuTableBody) return;
   syncColumnVisibility();
   const visibleColumns = getVisibleColumns();
@@ -778,7 +828,7 @@ function renderMenuTable(rows) {
     placeHeader.className = 'group-city-row cursor-pointer';
     placeHeader.dataset.toggle = placeClass;
     placeHeader.dataset.place = placeName;
-    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-center text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-center"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="flex flex-col leading-tight text-left md:text-center"><span class="font-semibold">Город: ${placeName}</span><span class="text-[10px] text-emerald-700">↕</span></span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
+    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-start"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="font-semibold">Город: ${placeName}</span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
     menuTableBody.appendChild(placeHeader);
 
     if (placeCollapsed) return;
@@ -796,8 +846,8 @@ function renderMenuTable(rows) {
       header.className = 'group-category-row cursor-pointer';
       header.dataset.toggle = catId;
       header.dataset.category = catId;
-      header.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-[12px] font-semibold text-slate-800 text-center border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-center"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span>
-        <span class="flex flex-col leading-tight">${category || 'Без категории'}<span class="text-[10px] text-amber-700">↕</span></span>
+      header.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-[12px] font-semibold text-slate-800 text-left border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-start"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span>
+        <span class="flex flex-col leading-tight">${category || 'Без категории'}</span>
         <span class="text-xs text-slate-500">${items.length} поз.</span></div>
       </th>`;
       menuTableBody.appendChild(header);
@@ -805,7 +855,7 @@ function renderMenuTable(rows) {
       if (catCollapsed) return;
 
       items.forEach(row => {
-        const stopBadge = row.stopList ? '<span class="stop-pill">В стоп-листе</span>' : '';
+        const stopBadge = row.stopList ? '<span class="stop-pill">Стоп</span>' : '';
         const imageSrc = row.image ? `/img?url=${encodeURIComponent(row.image)}&thumb=1` : '';
         const imageHtml = imageSrc
           ? `<img src="${imageSrc}" data-full="/img?url=${encodeURIComponent(row.image)}" alt="${row.name}" class="menu-img" loading="lazy" decoding="async" />`
@@ -815,15 +865,20 @@ function renderMenuTable(rows) {
         tr.className = `menu-data-row hover:bg-slate-50 ${row.stopList ? 'bg-rose-50/60' : ''} ${catId} ${placeClass} border-b border-slate-200`;
         tr.dataset.category = catId;
         const cells = [];
+        const catNeedles = [...(highlights.category || []), ...(highlights.search || [])];
+        const nameNeedles = [...(highlights.name || []), ...(highlights.search || [])];
+        const skuNeedles = [...(highlights.sku || []), ...(highlights.search || [])];
+        const descNeedles = [...(highlights.description || []), ...(highlights.search || [])];
+        const modNeedles = [...(highlights.modifiers || []), ...(highlights.search || [])];
         visibleColumns.forEach(col => {
-          if (col === 'category') cells.push(`<td class="px-3 py-2 text-slate-800 font-semibold text-center align-middle">${row.category || 'Без категории'}</td>`);
-          if (col === 'name') cells.push(`<td class="px-3 py-2 align-middle"><div class="flex items-center gap-2 justify-center text-center min-h-[52px] leading-tight">${row.name || ''} ${stopBadge}</div></td>`);
-          if (col === 'photo') cells.push(`<td class="px-3 py-2 text-center align-middle"><div class="flex items-center justify-center">${imageHtml}</div></td>`);
-          if (col === 'sku') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-center align-middle">${row.id || '—'}</td>`);
-          if (col === 'description') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-center align-middle">${row.description || ''}</td>`);
-          if (col === 'modifiers') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle">${modifiersHtml}</td>`);
-          if (col === 'price') cells.push(`<td class="px-3 py-2 font-semibold text-center align-middle">${formatPrice(row.price)}</td>`);
-          if (col === 'availability') cells.push(`<td class="px-3 py-2 text-center align-middle">${row.stopList ? '<span class="pill red">В стопе</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">В стоп-листе</span>')}</td>`);
+          if (col === 'category') cells.push(`<td class="px-3 py-2 text-slate-800 font-semibold text-left align-middle col-category">${highlightValue(row.category || 'Без категории', catNeedles)}</td>`);
+          if (col === 'name') cells.push(`<td class="px-3 py-2 align-middle col-name"><div class="flex items-center gap-2 justify-start text-left min-h-[52px] leading-tight">${highlightValue(row.name || '', nameNeedles)} ${stopBadge}</div></td>`);
+          if (col === 'photo') cells.push(`<td class="px-3 py-2 text-center align-middle col-photo"><div class="flex items-center justify-center">${imageHtml}</div></td>`);
+          if (col === 'sku') cells.push(`<td class="px-3 py-2 text-xs text-slate-700 text-center align-middle col-sku">${highlightValue(row.id || '—', skuNeedles)}</td>`);
+          if (col === 'description') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-description">${highlightValue(row.description || '', descNeedles)}</td>`);
+          if (col === 'modifiers') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-modifiers">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</td>`);
+          if (col === 'price') cells.push(`<td class="px-3 py-2 font-semibold text-center align-middle col-price">${formatPrice(row.price)}</td>`);
+          if (col === 'availability') cells.push(`<td class="px-3 py-2 text-center align-middle col-availability">${row.stopList ? '<span class="pill red">Стоп</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Нет</span>')}</td>`);
         });
         tr.innerHTML = cells.join('');
         tr.dataset.itemId = row.id;
@@ -833,6 +888,18 @@ function renderMenuTable(rows) {
     });
   });
   updateSummaryFromRows(data);
+}
+
+function setAllPlaceCollapse(collapse = true) {
+  const names = new Set(renderedMenuRows.map(r => r.place || 'Без точки'));
+  collapsedPlaces.clear();
+  if (collapse) names.forEach(n => collapsedPlaces.add(n));
+}
+
+function setAllCategoryCollapse(collapse = true) {
+  const ids = new Set(renderedMenuRows.map(r => `cat-${normalizeKey(r.category)}-${normalizeKey(r.place)}`));
+  collapsedCategories.clear();
+  if (collapse) ids.forEach(i => collapsedCategories.add(i));
 }
 
 function collectStopRows(term = '') {
@@ -894,12 +961,34 @@ function collectStopRows(term = '') {
   return rows.filter(r => `${r.name} ${r.id} ${r.category} ${r.place}`.toLowerCase().includes(search));
 }
 
+function setStopCollapseAll(term = '', collapse = true) {
+  const stops = collectStopRows(term);
+  if (!collapse) {
+    collapsedStopPlaces.clear();
+    collapsedStopCategories.clear();
+    return;
+  }
+  const placeKeys = new Set();
+  const catKeys = new Set();
+  stops.forEach(r => {
+    const placeKey = `stop-${normalizeKey(r.place || 'Без точки')}`;
+    placeKeys.add(placeKey);
+    const catKey = `${placeKey}::${normalizeKey(r.category || 'Без категории')}`;
+    catKeys.add(catKey);
+  });
+  collapsedStopPlaces.clear();
+  collapsedStopCategories.clear();
+  placeKeys.forEach(k => collapsedStopPlaces.add(k));
+  catKeys.forEach(k => collapsedStopCategories.add(k));
+}
+
 async function renderStopListPanel(term = '') {
   if (!stopOverlay || !stopTableBody) return;
   if (stopSearchInput && !term) stopSearchInput.value = '';
 
   const stops = collectStopRows(term);
   stopTableBody.innerHTML = '';
+  const needles = term ? [term] : [];
 
   const grouped = new Map();
   stops.forEach(r => {
@@ -919,18 +1008,24 @@ async function renderStopListPanel(term = '') {
 
   let html = '';
   grouped.forEach((cats, place) => {
-    html += `<tr class="group-city-row"><th colspan="6" class="px-3 py-1 text-left">${place}</th></tr>`;
+    const placeKey = `stop-${normalizeKey(place)}`;
+    const placeCollapsed = collapsedStopPlaces.has(placeKey);
+    html += `<tr class="group-city-row cursor-pointer" data-stop-place="${placeKey}"><th colspan="6" class="px-3 py-1 text-left"><div class="flex items-center gap-2"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span>${place}</span><span class="text-[11px] text-slate-500">(${Array.from(cats.values()).reduce((a,b)=>a+b.length,0)})</span></div></th></tr>`;
+    if (placeCollapsed) return;
     cats.forEach((rows, cat) => {
-      html += `<tr class="group-category-row"><th colspan="6" class="px-3 py-1 text-left flex items-center gap-2"><span class="text-[12px]">${cat}</span><span class="text-[11px] text-slate-500">${rows.length}</span></th></tr>`;
+      const catKey = `${placeKey}::${normalizeKey(cat)}`;
+      const catCollapsed = collapsedStopCategories.has(catKey);
+      html += `<tr class="group-category-row cursor-pointer" data-stop-category="${catKey}"><th colspan="6" class="px-3 py-1 text-left flex items-center gap-2"><span class="group-toggle">${catCollapsed ? '+' : '−'}</span><span class="text-[12px]">${cat}</span><span class="text-[11px] text-slate-500">${rows.length}</span></th></tr>`;
+      if (catCollapsed) return;
       rows.forEach(r => {
         const img = r.image ? `<img class="menu-img" src="/img?url=${encodeURIComponent(r.image)}&thumb=1" alt="" />` : '<div class="menu-img placeholder">нет фото</div>';
         html += `<tr class="border-b border-slate-100">` +
-          `<td class="px-2 py-1 text-sm text-slate-700">${r.category || 'Без категории'}</td>` +
-          `<td class="px-2 py-1 text-sm">${r.name}</td>` +
+          `<td class="px-2 py-1 text-sm text-slate-700">${highlightValue(r.category || 'Без категории', needles)}</td>` +
+          `<td class="px-2 py-1 text-sm">${highlightValue(r.name, needles)}</td>` +
           `<td class="px-2 py-1 text-center">${img}</td>` +
-          `<td class="px-2 py-1 text-xs text-slate-500 text-center">${r.id || ''}</td>` +
+          `<td class="px-2 py-1 text-xs text-slate-500 text-center">${highlightValue(r.id || '', needles)}</td>` +
           `<td class="px-2 py-1 font-semibold text-center">${formatPrice(r.price)}</td>` +
-          `<td class="px-2 py-1 text-xs text-slate-500 text-center">${r.stopDate || '—'}</td>` +
+          `<td class="px-2 py-1 text-xs text-slate-500 text-center">${highlightValue(r.stopDate || '—', needles)}</td>` +
           `</tr>`;
       });
     });
@@ -1480,6 +1575,23 @@ placeSearchInput?.addEventListener('input', () => filterPlaces(placeSearchInput.
 placeToggle?.addEventListener('click', () => {
   placeToggle.closest('.picker')?.classList.toggle('open');
 });
+selectAllPlacesBtn?.addEventListener('click', (e) => { e.preventDefault(); selectAllPlaces(); });
+clearAllPlacesBtn?.addEventListener('click', (e) => { e.preventDefault(); clearAllPlaces(); });
+resetPlaceSearchBtn?.addEventListener('click', (e) => { e.preventDefault(); if (placeSearchInput) placeSearchInput.value = ''; filterPlaces(''); });
+togglePlacesBtn?.addEventListener('click', () => {
+  const collapse = collapsedPlaces.size === 0;
+  setAllPlaceCollapse(collapse);
+  togglePlacesBtn.textContent = collapse ? '▴' : '▾';
+  renderMenuTable(renderedMenuRows);
+  persistSession();
+});
+toggleCategoriesBtn?.addEventListener('click', () => {
+  const collapse = collapsedCategories.size === 0;
+  setAllCategoryCollapse(collapse);
+  toggleCategoriesBtn.textContent = collapse ? '▴' : '▾';
+  renderMenuTable(renderedMenuRows);
+  persistSession();
+});
 placeList?.addEventListener('click', (e) => {
   const btn = e.target.closest('.picker-item');
   if (!btn) return;
@@ -1491,51 +1603,53 @@ placeList?.addEventListener('click', (e) => {
   }
 });
 
-menuTableBody?.addEventListener('click', (e) => {
-  const cityRow = e.target.closest('tr.group-city-row');
-  if (cityRow?.dataset.place) {
-    const placeName = cityRow.dataset.place;
-    if (collapsedPlaces.has(placeName)) collapsedPlaces.delete(placeName); else collapsedPlaces.add(placeName);
-    renderMenuTable(renderedMenuRows);
-    return;
-  }
-  const catRow = e.target.closest('tr.group-category-row');
-  if (catRow?.dataset.category) {
-    const catId = catRow.dataset.category;
-    if (collapsedCategories.has(catId)) collapsedCategories.delete(catId); else collapsedCategories.add(catId);
-    renderMenuTable(renderedMenuRows);
-  }
-});
+  menuTableBody?.addEventListener('click', (e) => {
+    const cityRow = e.target.closest('tr.group-city-row');
+    if (cityRow?.dataset.place) {
+      const placeName = cityRow.dataset.place;
+      if (collapsedPlaces.has(placeName)) collapsedPlaces.delete(placeName); else collapsedPlaces.add(placeName);
+      renderMenuTable(renderedMenuRows);
+      return;
+    }
+    const catRow = e.target.closest('tr.group-category-row');
+    if (catRow?.dataset.category) {
+      const catId = catRow.dataset.category;
+      if (collapsedCategories.has(catId)) collapsedCategories.delete(catId); else collapsedCategories.add(catId);
+      renderMenuTable(renderedMenuRows);
+      return;
+    }
+    const img = e.target.closest('.menu-img');
+    if (img && img.dataset.full) {
+      const index = img.closest('tr')?.dataset?.itemIndex;
+      const row = normalizedMenuRows[Number(index)] || null;
+      if (row) showDishOverlay(row, img.dataset.full);
+    }
+  });
 stopListBtn?.addEventListener('click', openStopListOverlay);
 summaryStop?.addEventListener('click', openStopListOverlay);
 stopOverlayClose?.addEventListener('click', () => stopOverlay?.classList.remove('active'));
 stopSearchInput?.addEventListener('input', () => filterStopList(stopSearchInput.value));
 stopOverlay?.addEventListener('click', (e) => { if (e.target === stopOverlay) stopOverlay.classList.remove('active'); });
+expandAllStopBtn?.addEventListener('click', () => { setStopCollapseAll(stopSearchInput?.value || '', false); renderStopListPanel(stopSearchInput?.value || ''); });
+collapseAllStopBtn?.addEventListener('click', () => { setStopCollapseAll(stopSearchInput?.value || '', true); renderStopListPanel(stopSearchInput?.value || ''); });
+stopTableBody?.addEventListener('click', (e) => {
+  const place = e.target.closest('tr[data-stop-place]');
+  const cat = e.target.closest('tr[data-stop-category]');
+  if (place?.dataset.stopPlace) {
+    if (collapsedStopPlaces.has(place.dataset.stopPlace)) collapsedStopPlaces.delete(place.dataset.stopPlace); else collapsedStopPlaces.add(place.dataset.stopPlace);
+    renderStopListPanel(stopSearchInput?.value || '');
+    return;
+  }
+  if (cat?.dataset.stopCategory) {
+    if (collapsedStopCategories.has(cat.dataset.stopCategory)) collapsedStopCategories.delete(cat.dataset.stopCategory); else collapsedStopCategories.add(cat.dataset.stopCategory);
+    renderStopListPanel(stopSearchInput?.value || '');
+  }
+});
 showStopInlineBtn?.addEventListener('click', () => { showStopItems = !showStopItems; showStopInlineBtn.textContent = showStopItems ? 'Скрыть стоп-лист' : 'Показать стоп-лист'; renderMenuTable(normalizedMenuRows); persistSession(); });
 document.addEventListener('click', (e) => {
   if (!placeToggle?.closest('.picker')) return;
   if (!placeToggle.closest('.picker').contains(e.target)) {
     placeToggle.closest('.picker').classList.remove('open');
-  }
-});
-  menuTableBody?.addEventListener('click', (e) => {
-    const toggle = e.target.closest('tr[data-toggle]');
-    if (toggle) {
-      if (toggle.dataset.place) {
-        if (collapsedPlaces.has(toggle.dataset.place)) collapsedPlaces.delete(toggle.dataset.place); else collapsedPlaces.add(toggle.dataset.place);
-      }
-      if (toggle.dataset.category) {
-        if (collapsedCategories.has(toggle.dataset.category)) collapsedCategories.delete(toggle.dataset.category); else collapsedCategories.add(toggle.dataset.category);
-      }
-      renderMenuTable(renderedMenuRows);
-      persistSession();
-      return;
-    }
-  const img = e.target.closest('.menu-img');
-  if (img && img.dataset.full) {
-    const index = img.closest('tr')?.dataset?.itemIndex;
-    const row = normalizedMenuRows[Number(index)] || null;
-    if (row) showDishOverlay(row, img.dataset.full);
   }
 });
 menuTableBody?.addEventListener('contextmenu', (e) => {
