@@ -4143,13 +4143,31 @@ exportBtn.addEventListener('click', async () => {
         }
       })
     });
-    const json = await res.json();
-    if (!res.ok || !json.download_url) {
-      throw new Error(json.error || `Ошибка экспорта (${res.status})`);
+
+    if (!res.ok) {
+      let message = `Ошибка экспорта (${res.status})`;
+      try {
+        const data = await res.json();
+        if (data?.error) message = data.error;
+      } catch (e) {
+        const text = await res.text();
+        if (text) message = text.slice(0, 200);
+      }
+      throw new Error(message);
     }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'iiko_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
     setButtonProgress(exportBtn, 1.0);
     setStatus('Excel сформирован, начинается загрузка файла...', 'success');
-    window.location.href = json.download_url;
     finishButtonLoading(exportBtn);
   } catch (e) {
     console.error(e);

@@ -666,7 +666,8 @@ def serve_chunk(filename):
     chunk_dir = BASE_DIR / "assets" / "chunks"
     if not (chunk_dir / filename).exists():
         abort(404)
-    resp = send_from_directory(chunk_dir, filename, mimetype="text/javascript")
+    resp = send_from_directory(chunk_dir, filename, mimetype="application/javascript")
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -1320,7 +1321,6 @@ def export_excel():
             headers = [f"Колонка {i+1}" for i in range(len(sample))]
 
     output = io.StringIO()
-    output.write('\ufeff')
     writer = csv.writer(output, delimiter=';')
     if headers:
         writer.writerow(headers)
@@ -1358,10 +1358,16 @@ def export_excel():
         else:
             writer.writerow([row])
 
-    output.seek(0)
+    csv_text = output.getvalue()
+    if not csv_text.startswith("\ufeff"):
+        csv_text = "\ufeff" + csv_text
+
     filename = f"export_{int(time.time())}.csv"
-    return Response(output.getvalue(), mimetype="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+    return Response(
+        csv_text.encode("utf-8"),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @app.route("/logout")
 def logout():
