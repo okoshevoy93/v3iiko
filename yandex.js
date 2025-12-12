@@ -967,7 +967,7 @@ function renderMenuTable(rows, highlights = {}, prepared = false) {
     placeHeader.className = 'group-city-row cursor-pointer';
     placeHeader.dataset.toggle = placeClass;
     placeHeader.dataset.place = placeName;
-    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-start"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="font-semibold">Город: ${placeName}</span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
+    placeHeader.innerHTML = `<th colspan="${colCount}" class="px-3 py-2 text-[12px] font-semibold border-t border-b border-slate-200"><div class="flex items-center gap-3 justify-start"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="font-semibold">${placeName}</span><span class="text-slate-500">(${itemsForPlace.length})</span></div></th>`;
     menuTableBody.appendChild(placeHeader);
 
     if (placeCollapsed) return;
@@ -1042,7 +1042,7 @@ function renderMenuCards(rows, highlights = {}, prepared = false) {
     const placeCollapsed = collapsedPlaces.has(placeName);
     const placeWrap = document.createElement('div');
     placeWrap.className = 'mb-3';
-    placeWrap.innerHTML = `<div class="group-city-row cursor-pointer px-3 py-2 text-[12px] font-semibold border border-slate-200 rounded-lg bg-slate-50 flex items-center gap-3" data-toggle="${normalizeKey(placeName)}" data-place="${placeName}"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="font-semibold">Город: ${placeName}</span><span class="text-slate-500 text-[11px]">(${itemsForPlace.length})</span></div>`;
+    placeWrap.innerHTML = `<div class="group-city-row cursor-pointer px-3 py-2 text-[12px] font-semibold border border-slate-200 rounded-lg bg-slate-50 flex items-center gap-3" data-toggle="${normalizeKey(placeName)}" data-place="${placeName}"><span class="group-toggle">${placeCollapsed ? '+' : '−'}</span><span class="font-semibold">${placeName}</span><span class="text-slate-500 text-[11px]">(${itemsForPlace.length})</span></div>`;
     cardsContainer.appendChild(placeWrap);
     if (placeCollapsed) return;
     const grouped = new Map();
@@ -1468,7 +1468,8 @@ async function loadCities({ skipYandex = false } = {}) {
   buttonLoading(loadCitiesBtn, true, 'Обновляем точки...');
   try {
     await runRestaurants();
-    setStatus('Список точек обновлен.', 'ok');
+    const total = allPlaces.length || cachedPlaces.length;
+    setStatus(`Загружено ${total} ресторанов.`, 'ok');
   } catch (e) {
     setStatus(e.message || 'Не удалось обновить точки', 'err');
   } finally {
@@ -1943,9 +1944,9 @@ stopExportBtn?.addEventListener('click', async () => {
     ];
     const table_data = [];
     grouped.forEach((cats, place) => {
-      table_data.push({ place: `Город: ${place}`, category: '', name: '', photo: '', id: '', price: '', stop: '' });
+      table_data.push({ place: place, category: '', name: '', photo: '', id: '', price: '', stop: '' });
       cats.forEach((rows, cat) => {
-        table_data.push({ place: '', category: `Категория: ${cat}`, name: '', photo: '', id: '', price: '', stop: '' });
+        table_data.push({ place: place, category: `Категория: ${cat}`, name: '', photo: '', id: '', price: '', stop: '' });
         rows.forEach(row => {
           table_data.push({
             place: place,
@@ -2062,9 +2063,9 @@ exportYandexBtn?.addEventListener('click', async () => {
 
     const table_data = [];
     grouped.forEach((cats, place) => {
-      table_data.push({ place: `Город: ${place}`, category: '', name: '', id: '', description: '', modifiers: '', price: '', available: '' });
+      table_data.push({ place: place, category: '', name: '', id: '', description: '', modifiers: '', price: '', available: '' });
       cats.forEach((items, cat) => {
-        table_data.push({ place: '', category: `Категория: ${cat}`, name: '', id: '', description: '', modifiers: '', price: '', available: '' });
+        table_data.push({ place: place, category: `Категория: ${cat}`, name: '', id: '', description: '', modifiers: '', price: '', available: '' });
         items.forEach(row => {
           table_data.push({
             place: place,

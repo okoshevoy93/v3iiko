@@ -14,8 +14,10 @@ from pathlib import Path
 import re
 import shutil
 from functools import wraps
+from types import SimpleNamespace
 import bcrypt
 import json
+from uuid import uuid4
 import urllib.parse
 from urllib.parse import urlparse
 import io
@@ -127,6 +129,7 @@ for d in (IMAGE_CACHE_DIR, EXPORTS_DIR):
 
 # ==================== АВТОРИЗАЦИЯ ====================
 USERS_DB = {}
+ACTIVE_SESSIONS: dict[str, str] = {}
 
 def load_users():
     global USERS_DB
@@ -269,22 +272,21 @@ def check_auth(username, password):
 
 
 def current_username() -> str:
-    auth = request.authorization
-    return auth.username if auth else ""
+    return ACTIVE_SESSIONS.get(request.cookies.get("session_token"), "")
+
+
+def current_user_record() -> dict:
+    uname = current_username()
+    return USERS_DB.get(uname) or {}
+
 
 def is_admin():
-    auth = request.authorization
-    if not auth:
-        return False
-    user = USERS_DB.get(auth.username)
-    return user and user.get("role") == "admin" and check_auth(auth.username, auth.password)
+    user = current_user_record()
+    return user.get("role") == "admin"
 
 
 def has_tab_access(tab: str) -> bool:
-    auth = request.authorization
-    if not auth:
-        return False
-    user = USERS_DB.get(auth.username)
+    user = current_user_record()
     if not user:
         return False
     tabs = user.get("tabs") or []
@@ -302,34 +304,74 @@ def current_realm() -> str:
     return f"iiko-menu v2 session-{AUTH_REALM_VERSION}"
 
 
-def authenticate():
-    resp = Response('Доступ запрещён', 401,
-                    {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
-    resp.headers["Cache-Control"] = "no-store"
+def login_markup(error: str = "", next_url: str = "/"):
+    message = "Введите логин и пароль, чтобы продолжить." if not error else error
+    return f"""
+    <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
+    <head><title>Вход</title></head>
+    <body style=\"display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;\">
+      <div style=\"max-width:520px;width:100%;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;box-shadow:0 18px 45px rgba(0,0,0,0.45);\">
+        <div style=\"display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;\">🔐 Авторизация</div>
+        <p style=\"margin:10px 0 14px;font-size:14px;line-height:1.6;color:{'#fca5a5' if error else '#cbd5e1'};\">{message}</p>
+        <form method=\"POST\" action=\"/login\" style=\"display:flex;flex-direction:column;gap:10px;\">
+          <input type=\"hidden\" name=\"next\" value=\"{next_url}\" />
+          <input name=\"username\" placeholder=\"Логин\" style=\"padding:10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#e5e7eb;font-size:14px;\" required />
+          <input type=\"password\" name=\"password\" placeholder=\"Пароль\" style=\"padding:10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#e5e7eb;font-size:14px;\" required />
+          <button type=\"submit\" style=\"margin-top:4px;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#0b2e13;font-weight:800;font-size:14px;cursor:pointer;\">Войти</button>
+        </form>
+      </div>
+    </body>
+    </html>
+    """
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    global AUTH_REALM_VERSION
+    next_url = request.args.get("next") or request.form.get("next") or "/"
+    if request.method == "POST":
+        data = request.form or request.get_json() or {}
+        username = (data.get("username") or "").strip()
+        password = data.get("password") or ""
+        if check_auth(username, password):
+            token = uuid4().hex
+            ACTIVE_SESSIONS[token] = username
+            AUTH_REALM_VERSION = int(time.time())
+            resp = redirect(next_url or "/")
+            resp.set_cookie('session_token', token, httponly=True, samesite='Lax', path='/')
+            resp.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
+            return resp
+        return Response(login_markup("Неверный логин или пароль", next_url), 401)
+
+    resp = Response(login_markup("", next_url), 401)
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
+    resp.set_cookie('session_user', '', expires=0, path='/', samesite='Lax')
     return resp
+
 
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth = request.authorization
-        has_valid_session = request.cookies.get('session') == str(AUTH_REALM_VERSION)
-        if not has_valid_session:
-            if not auth or not check_auth(auth.username, auth.password):
-                return authenticate()
-            resp = authenticate()
-            resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax', path='/')
-            return resp
-        if auth and not check_auth(auth.username, auth.password):
-            return authenticate()
+        session_token = request.cookies.get('session_token')
+        username = ACTIVE_SESSIONS.get(session_token, '')
+        if not username:
+            next_url = urllib.parse.quote(request.path or '/')
+            return redirect(f"/login?next={next_url}")
+
+        request.authorization = SimpleNamespace(username=username, password='')
         required_tab = required_tab_from_path(request.path)
         if required_tab and not has_tab_access(required_tab):
             return Response('Доступ запрещён', 403)
+
         resp = f(*args, **kwargs)
         if isinstance(resp, Response):
-            resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax', path='/')
+            resp.set_cookie('session_token', session_token, httponly=True, samesite='Lax', path='/')
+            resp.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
             return resp
         wrapped = Response(resp)
-        wrapped.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax', path='/')
+        wrapped.set_cookie('session_token', session_token, httponly=True, samesite='Lax', path='/')
+        wrapped.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
         return wrapped
     return decorated
 
@@ -493,10 +535,10 @@ def yandex_js():
 @app.route("/api/me")
 @require_auth
 def api_me():
-    auth = request.authorization
-    user = USERS_DB.get(auth.username) or {}
+    uname = current_username()
+    user = USERS_DB.get(uname) or {}
     return jsonify({
-        "user": auth.username,
+        "user": uname,
         "role": user.get("role", "user"),
         "tabs": user.get("tabs") or ["index", "yandex", "users"],
     })
@@ -1156,6 +1198,8 @@ def export_excel():
 def logout():
     global AUTH_REALM_VERSION
     AUTH_REALM_VERSION = int(time.time())
+    token = request.cookies.get('session_token')
+    ACTIVE_SESSIONS.pop(token, None)
     html = """
     <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
     <head><title>Вы вышли</title></head>
@@ -1168,9 +1212,10 @@ def logout():
     </body>
     </html>
     """
-    resp = Response(html, 401, {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
+    resp = Response(html, 200)
     resp.headers['Cache-Control'] = 'no-store'
-    resp.set_cookie('session', '', expires=0, path='/', samesite='Lax')
+    resp.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
+    resp.set_cookie('session_user', '', expires=0, path='/', samesite='Lax')
     return resp
 
 
