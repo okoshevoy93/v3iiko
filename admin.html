@@ -3,91 +3,111 @@
 <head>
   <meta charset="UTF-8" />
   <title>Управление пользователями</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    .glass { backdrop-filter: blur(16px); background: rgba(255,255,255,0.86); }
+    .hero { background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.18) 0, transparent 35%),
+                    radial-gradient(circle at 80% 0%, rgba(14,165,233,0.16) 0, transparent 30%),
+                    linear-gradient(135deg, #eef2ff, #ecfeff); }
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="max-w-5xl mx-auto py-10 px-4 space-y-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-sm uppercase text-gray-500">Панель администратора</p>
-        <h1 class="text-3xl font-semibold text-gray-900">Пользователи и доступ</h1>
+<body class="bg-slate-50 min-h-screen">
+  <div class="hero">
+    <div class="max-w-6xl mx-auto px-6 py-10 space-y-8">
+      <div class="flex items-start justify-between gap-4">
+        <div class="space-y-2">
+          <p class="text-xs uppercase tracking-widest text-slate-500">Панель администратора</p>
+          <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-semibold text-slate-900">Пользователи и доступ</h1>
+            <span class="px-3 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Закрытая область</span>
+          </div>
+          <p class="text-slate-600 max-w-2xl">Управляйте учетными записями, паролями и вкладками в том же стиле, что и Yandex-раздел.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
+            <span class="text-lg">←</span> Вернуться в меню
+          </a>
+        </div>
       </div>
-      <a href="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100">← На главную</a>
-    </div>
-    {% if message %}
-    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800 shadow">{{ message }}</div>
-    {% endif %}
+      {% if message %}
+      <div class="glass border border-emerald-200 text-emerald-800 rounded-xl p-4 shadow">{{ message }}</div>
+      {% endif %}
 
-    <div class="grid gap-4">
-      {% for username, info in users.items() %}
-      <form method="post" action="/users/save" class="bg-white shadow-sm rounded-2xl p-4 space-y-4 border border-gray-100">
-        <input type="hidden" name="action" value="edit" />
-        <input type="hidden" name="username" value="{{ username }}" />
-        <div class="flex flex-wrap justify-between gap-3 items-start">
-          <div class="space-y-1">
-            <p class="text-lg font-semibold text-gray-900">{{ username }}</p>
-            <p class="text-xs text-gray-500">Роль, доступы и пароль можно изменить в любой момент.</p>
+      <div class="space-y-4">
+        {% for username, info in users.items() %}
+        <form method="post" action="/users/save" class="glass border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+          <input type="hidden" name="action" value="edit" />
+          <input type="hidden" name="username" value="{{ username }}" />
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="space-y-1">
+              <p class="text-lg font-semibold text-slate-900">{{ username }}</p>
+              <p class="text-xs text-slate-500">Измените роль, пароль и права доступа.</p>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+              <select name="role" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm">
+                <option value="user" {% if info.role == 'user' %}selected{% endif %}>Пользователь</option>
+                <option value="admin" {% if info.role == 'admin' %}selected{% endif %}>Администратор</option>
+              </select>
+              <button type="submit" class="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm shadow hover:bg-emerald-500">Сохранить</button>
+              <button type="submit" name="action" value="delete" class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm shadow hover:bg-red-500" onclick="return confirm('Удалить пользователя {{ username }}?')">Удалить</button>
+            </div>
           </div>
-          <div class="flex flex-wrap gap-2 items-center">
-            <select name="role" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm">
-              <option value="user" {% if info.role == 'user' %}selected{% endif %}>Пользователь</option>
-              <option value="admin" {% if info.role == 'admin' %}selected{% endif %}>Администратор</option>
-            </select>
-            <button type="submit" class="px-3 py-2 bg-green-600 text-white rounded-lg text-sm shadow hover:bg-green-500">Сохранить</button>
-            <button type="submit" name="action" value="delete" class="px-3 py-2 bg-red-600 text-white rounded-lg text-sm shadow hover:bg-red-500" onclick="return confirm('Удалить пользователя {{ username }}?')">Удалить</button>
+          <div class="grid md:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs text-slate-500">Новый пароль</label>
+              <input type="password" name="password" placeholder="Оставьте пустым, чтобы не менять" class="border rounded-lg px-3 py-2 text-sm w-full" />
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs text-slate-500">Доступные вкладки</label>
+              <div class="flex flex-wrap gap-2 text-sm">
+                {% set tabs = info.tabs or [] %}
+                <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50"><input type="checkbox" name="tabs" value="index" {% if 'index' in tabs %}checked{% endif %}/> <span>Вкладка iiko</span></label>
+                <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50"><input type="checkbox" name="tabs" value="yandex" {% if 'yandex' in tabs %}checked{% endif %}/> <span>Вкладка Yandex</span></label>
+                <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50"><input type="checkbox" name="tabs" value="users" {% if 'users' in tabs %}checked{% endif %}/> <span>Админка</span></label>
+              </div>
+            </div>
           </div>
+        </form>
+        {% endfor %}
+      </div>
+
+      <form method="post" action="/users/save" class="glass border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <input type="hidden" name="action" value="add" />
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase text-slate-500">Новый пользователь</p>
+            <p class="text-lg font-semibold text-slate-900">Создать учётную запись</p>
+          </div>
+          <span class="px-3 py-1 text-xs rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Только администратор</span>
         </div>
         <div class="grid md:grid-cols-2 gap-3">
           <div class="space-y-1">
-            <label class="text-xs text-gray-500">Новый пароль</label>
-            <input type="password" name="password" placeholder="Оставьте пустым, чтобы не менять" class="border rounded-lg px-3 py-2 text-sm w-full" />
+            <label class="text-xs text-slate-500">Логин</label>
+            <input required name="username" placeholder="Логин" class="border rounded-lg px-3 py-2 w-full" />
           </div>
           <div class="space-y-1">
-            <label class="text-xs text-gray-500">Выданные вкладки</label>
-            <div class="flex flex-wrap gap-2 text-sm">
-              {% set tabs = info.tabs or [] %}
-              <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-gray-50"><input type="checkbox" name="tabs" value="index" {% if 'index' in tabs %}checked{% endif %}/> <span>Вкладка iiko</span></label>
-              <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-gray-50"><input type="checkbox" name="tabs" value="yandex" {% if 'yandex' in tabs %}checked{% endif %}/> <span>Вкладка Yandex</span></label>
-              <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-gray-50"><input type="checkbox" name="tabs" value="users" {% if 'users' in tabs %}checked{% endif %}/> <span>Админка</span></label>
-            </div>
+            <label class="text-xs text-slate-500">Пароль</label>
+            <input required type="password" name="password" placeholder="Пароль" class="border rounded-lg px-3 py-2 w-full" />
           </div>
         </div>
+        <div class="flex flex-wrap gap-3 text-sm items-center">
+          <select name="role" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm">
+            <option value="user">Пользователь</option>
+            <option value="admin">Администратор</option>
+          </select>
+          <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50"><input type="checkbox" name="tabs" value="index" checked /> <span>Вкладка iiko</span></label>
+          <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50"><input type="checkbox" name="tabs" value="yandex" checked /> <span>Вкладка Yandex</span></label>
+          <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50"><input type="checkbox" name="tabs" value="users" /> <span>Админка</span></label>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-indigo-500">Создать</button>
+        </div>
       </form>
-      {% endfor %}
     </div>
-
-    <form method="post" action="/users/save" class="bg-white shadow-sm rounded-2xl p-5 space-y-4 border border-gray-100">
-      <input type="hidden" name="action" value="add" />
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase text-gray-500">Новый пользователь</p>
-          <p class="text-lg font-semibold text-gray-900">Создать учётную запись</p>
-        </div>
-        <span class="px-3 py-1 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200">Только администратор</span>
-      </div>
-      <div class="grid md:grid-cols-2 gap-3">
-        <div class="space-y-1">
-          <label class="text-xs text-gray-500">Логин</label>
-          <input required name="username" placeholder="Логин" class="border rounded-lg px-3 py-2 w-full" />
-        </div>
-        <div class="space-y-1">
-          <label class="text-xs text-gray-500">Пароль</label>
-          <input required type="password" name="password" placeholder="Пароль" class="border rounded-lg px-3 py-2 w-full" />
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-3 text-sm items-center">
-        <select name="role" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm">
-          <option value="user">Пользователь</option>
-          <option value="admin">Администратор</option>
-        </select>
-        <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-gray-50"><input type="checkbox" name="tabs" value="index" checked /> <span>Вкладка iiko</span></label>
-        <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-gray-50"><input type="checkbox" name="tabs" value="yandex" checked /> <span>Вкладка Yandex</span></label>
-        <label class="flex items-center gap-2 px-3 py-2 border rounded-lg bg-gray-50"><input type="checkbox" name="tabs" value="users" /> <span>Админка</span></label>
-      </div>
-      <div class="flex justify-end">
-        <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-blue-500">Создать</button>
-      </div>
-    </form>
   </div>
 </body>
 </html>

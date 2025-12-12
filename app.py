@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, abort, Response, render_template, redirect
+from flask import Flask, request, jsonify, send_file, abort, Response, render_template, redirect, send_from_directory
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
@@ -22,6 +22,7 @@ import urllib.parse
 from urllib.parse import urlparse
 import io
 import csv
+from string import Template
 
 app = Flask(__name__, template_folder=str(Path(__file__).resolve().parent))
 CORS(app)
@@ -305,16 +306,125 @@ def current_realm() -> str:
     return f"iiko-menu v2 session-{AUTH_REALM_VERSION}"
 
 
+LOGIN_TEMPLATE = Template(
+    """
+    <html lang=\"ru\" class=\"h-full\">
+    <head>
+      <meta charset=\"UTF-8\" />
+      <title>Авторизация</title>
+      <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
+      <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+      <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap\" rel=\"stylesheet\">
+      <style>
+        body {
+          margin: 0;
+          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: radial-gradient(circle at 20% 20%, #e0f2fe 0, transparent 35%),
+                      radial-gradient(circle at 80% 0%, #fce7f3 0, transparent 30%),
+                      #f8fafc;
+          color: #0f172a;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+        }
+        .card {
+          width: min(520px, 100%);
+          background: #fff;
+          border-radius: 20px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
+          padding: 28px;
+          position: relative;
+          overflow: hidden;
+        }
+        .halo {
+          position: absolute;
+          inset: -60px;
+          background: radial-gradient(circle, rgba(14,165,233,0.12) 0%, rgba(14,165,233,0) 60%);
+          opacity: .8;
+          pointer-events: none;
+        }
+        .title { display:flex; align-items:center; gap:12px; font-weight:700; font-size:20px; }
+        .title .logo {
+          width: 44px; height: 44px; border-radius: 14px;
+          display: grid; place-items: center;
+          background: linear-gradient(135deg, #22d3ee, #6366f1);
+          color: #fff; font-weight: 800;
+          box-shadow: 0 12px 30px rgba(99, 102, 241, .35);
+        }
+        .message { margin: 10px 0 18px; font-size: 14px; color: #475569; }
+        .message.error { color: #b91c1c; }
+        .field { display:flex; flex-direction: column; gap:6px; }
+        .field label { font-size: 12px; color: #475569; font-weight:600; }
+        .field input {
+          border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; font-size: 14px;
+          transition: border-color .15s, box-shadow .15s; background: #f8fafc; color:#0f172a;
+        }
+        .field input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,.12); background: #fff; }
+        .actions { display:flex; align-items:center; gap:10px; justify-content: space-between; margin-top: 14px; }
+        button {
+          border: none; border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 14px; cursor: pointer;
+          background: linear-gradient(135deg, #34d399, #10b981); color: #052e16;
+          transition: transform .12s ease, box-shadow .12s ease;
+          width: 100%;
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          box-shadow: 0 12px 30px rgba(16, 185, 129, .28);
+        }
+        button:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(16,185,129,.35); }
+        button:active { transform: translateY(0); }
+        .status-icon { width: 16px; height: 16px; border-radius: 50%; border:2px solid transparent; display:none; }
+        .status-icon.ok { border-color:#16a34a; }
+        .status-icon.fail { border-color:#dc2626; }
+        .status-icon.pulse { animation: pulse 0.9s ease-in-out infinite; }
+        .status-icon::after { content:''; display:block; width:6px; height:10px; border:2px solid currentColor; border-left:0; border-top:0; transform: translate(3px,-2px) rotate(45deg); }
+        .status-icon.fail::after { width:10px;height:10px;border:0;border-top:2px solid currentColor;border-right:2px solid currentColor;transform: translate(3px,3px) rotate(45deg); box-sizing:border-box; }
+        .divider { height:1px; background: linear-gradient(90deg, rgba(99,102,241,.1), rgba(99,102,241,.4), rgba(99,102,241,.1)); margin: 18px 0 12px; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
+      </style>
+      <script src=\"/assets/login.js\" defer></script>
+    </head>
+    <body class=\"h-full\" data-state=\"$state\" data-error=\"$error_flag\">
+      <div class=\"card\">
+        <div class=\"halo\"></div>
+        <div class=\"title\">
+          <div class=\"logo\">⦾</div>
+          <div>Вход в панель iiko</div>
+        </div>
+        <p class=\"message $error_class\">$message</p>
+        <form method=\"POST\" action=\"/login\" class=\"space-y-4\" id=\"loginForm\">
+          <input type=\"hidden\" name=\"next\" value=\"$next_url\" />
+          <div class=\"field\">
+            <label>Логин</label>
+            <input name=\"username\" placeholder=\"username\" autocomplete=\"username\" required />
+          </div>
+          <div class=\"field\">
+            <label>Пароль</label>
+            <input type=\"password\" name=\"password\" placeholder=\"••••••••\" autocomplete=\"current-password\" required />
+          </div>
+          <div class=\"divider\"></div>
+          <div class=\"actions\">
+            <button type=\"submit\" id=\"loginBtn\"><span class=\"status-icon\" id=\"loginStatus\"></span><span id=\"loginLabel\">Войти</span></button>
+          </div>
+        </form>
+      </div>
+    </body>
+    </html>
+    """
+)
+
+
 @app.after_request
 def apply_security_headers(response: Response):
     """Добавляем строгие заголовки безопасности ко всем ответам."""
     csp = (
         "default-src 'self'; "
         "script-src 'self' https://cdn.tailwindcss.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
         "img-src 'self' data: blob: https:; "
-        "font-src 'self' data:; "
-        "connect-src 'self' https://cdn.tailwindcss.com; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
+        "connect-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com; "
         "object-src 'none'; frame-ancestors 'none'"
     )
     response.headers.setdefault("Content-Security-Policy", csp)
@@ -333,23 +443,15 @@ def apply_security_headers(response: Response):
 
 def login_markup(error: str = "", next_url: str = "/"):
     message = "Введите логин и пароль, чтобы продолжить." if not error else error
-    return f"""
-    <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
-    <head><title>Вход</title></head>
-    <body style=\"display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;\">
-      <div style=\"max-width:520px;width:100%;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;box-shadow:0 18px 45px rgba(0,0,0,0.45);\">
-        <div style=\"display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;\">🔐 Авторизация</div>
-        <p style=\"margin:10px 0 14px;font-size:14px;line-height:1.6;color:{'#fca5a5' if error else '#cbd5e1'};\">{message}</p>
-        <form method=\"POST\" action=\"/login\" style=\"display:flex;flex-direction:column;gap:10px;\">
-          <input type=\"hidden\" name=\"next\" value=\"{next_url}\" />
-          <input name=\"username\" placeholder=\"Логин\" style=\"padding:10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#e5e7eb;font-size:14px;\" required />
-          <input type=\"password\" name=\"password\" placeholder=\"Пароль\" style=\"padding:10px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#e5e7eb;font-size:14px;\" required />
-          <button type=\"submit\" style=\"margin-top:4px;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#0b2e13;font-weight:800;font-size:14px;cursor:pointer;\">Войти</button>
-        </form>
-      </div>
-    </body>
-    </html>
-    """
+    state_class = "error" if error else "idle"
+    error_class = "error" if error else ""
+    return LOGIN_TEMPLATE.substitute(
+        message=message,
+        next_url=next_url,
+        state=state_class,
+        error_class=error_class,
+        error_flag=1 if error else 0,
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -547,6 +649,36 @@ def index():
 @require_auth
 def yandex_page():
     return send_file(BASE_DIR / "yandex.html")
+
+@app.route("/chunks/<path:filename>")
+@require_auth
+def serve_chunk(filename):
+    chunk_dir = BASE_DIR / "assets" / "chunks"
+    if not (chunk_dir / filename).exists():
+        abort(404)
+    resp = send_from_directory(chunk_dir, filename, mimetype="text/javascript")
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.route("/assets/<path:filename>")
+def serve_asset(filename):
+    asset_dir = BASE_DIR / "assets"
+    target = asset_dir / filename
+    if not target.exists():
+        abort(404)
+    if filename.startswith("src/"):
+        abort(404)
+    if filename == "login.js":
+        resp = send_from_directory(asset_dir, filename)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+    session_token = request.cookies.get('session_token')
+    if session_token not in ACTIVE_SESSIONS:
+        next_url = urllib.parse.quote(request.path or '/')
+        return redirect(f"/login?next={next_url}")
+    resp = send_from_directory(asset_dir, filename)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.route("/app.js")
 @require_auth
