@@ -4191,6 +4191,7 @@ exportBtn.addEventListener('click', async () => {
 
     setButtonProgress(exportBtn, 1.0);
     setStatus('Excel сформирован, начинается загрузка файла...', 'success');
+    setTimeout(() => setStatus('Файл скачан. Проверьте загрузки.', 'success'), 800);
     finishButtonLoading(exportBtn);
   } catch (e) {
     console.error(e);

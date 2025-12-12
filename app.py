@@ -444,6 +444,80 @@ LOGIN_TEMPLATE = Template(
 )
 
 
+LOGOUT_TEMPLATE = Template(
+    """
+    <html lang=\"ru\" class=\"h-full\">
+    <head>
+      <meta charset=\"UTF-8\" />
+      <title>Вы вышли</title>
+      <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
+      <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+      <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap\" rel=\"stylesheet\">
+      <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: radial-gradient(circle at 15% 20%, rgba(52,211,153,0.15) 0, transparent 28%),
+                      radial-gradient(circle at 80% 0%, rgba(59,130,246,0.22) 0, transparent 34%),
+                      linear-gradient(145deg, #0b1224 0%, #0f172a 35%, #0b1224 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 32px;
+          color: #e2e8f0;
+          position: relative;
+          overflow: hidden;
+        }
+        .grid-bg { position: absolute; inset: 0; background: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 52px 52px; mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55), transparent 60%); pointer-events: none; }
+        .glow { position:absolute; width:340px; height:340px; filter: blur(80px); opacity:0.4; }
+        .glow.green { background: #22c55e; top: -80px; left: -60px; }
+        .glow.blue { background: #6366f1; bottom: -80px; right: -60px; }
+        .card {
+          position: relative;
+          width: min(560px, 100%);
+          padding: 34px;
+          border-radius: 24px;
+          background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+          border: 1px solid rgba(255,255,255,0.12);
+          box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+          backdrop-filter: blur(14px);
+          overflow: hidden;
+        }
+        .card::before { content:''; position:absolute; inset:0; background: linear-gradient(120deg, rgba(34,197,94,0.14), rgba(59,130,246,0.12)); opacity:0.8; pointer-events:none; }
+        .card-content { position:relative; z-index:1; }
+        .title { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; letter-spacing:0.2px; }
+        .badge { width:38px; height:38px; border-radius:14px; display:grid; place-items:center; background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; font-size:18px; font-weight:800; box-shadow:0 8px 22px rgba(34,197,94,0.3); }
+        p { margin:14px 0 22px; font-size:14px; line-height:1.7; color:#cbd5e1; }
+        .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.16); color:#e2e8f0; text-decoration:none; font-weight:700; transition: transform .12s, box-shadow .12s, border-color .12s; backdrop-filter: blur(6px); }
+        .btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; border-color: #16a34a; box-shadow:0 12px 28px rgba(34,197,94,0.28); }
+        .btn.secondary { background: rgba(15,23,42,0.6); }
+        .btn:hover { transform: translateY(-2px); box-shadow:0 14px 32px rgba(99,102,241,0.35); }
+      </style>
+    </head>
+    <body>
+      <div class=\"grid-bg\"></div>
+      <div class=\"glow green\"></div>
+      <div class=\"glow blue\"></div>
+      <div class=\"card\">
+        <div class=\"card-content\">
+          <div class=\"title\"><span class=\"badge\">⇦</span>Вы вышли из аккаунта</div>
+          <p>Сессия завершена. Чтобы вернуться к работе, снова авторизуйтесь на сайте и введите свои данные.</p>
+          <div class=\"actions\">
+            <a class=\"btn primary\" href=\"/\">Вернуться к авторизации</a>
+            <a class=\"btn secondary\" href=\"/login\">Открыть форму входа</a>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+)
+
+
 @app.after_request
 def apply_security_headers(response: Response):
     """Добавляем строгие заголовки безопасности ко всем ответам."""
@@ -1513,18 +1587,7 @@ def logout():
     global AUTH_REALM_VERSION
     AUTH_REALM_VERSION = int(time.time())
     ACTIVE_SESSIONS.clear()
-    html = """
-    <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
-    <head><title>Вы вышли</title></head>
-    <body style=\"display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;\">
-      <div style=\"max-width:520px;width:100%;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;box-shadow:0 18px 45px rgba(0,0,0,0.45);\">
-        <div style=\"display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;\">🥾 Вы вышли из аккаунта</div>
-        <p style=\"margin:12px 0 18px;font-size:14px;line-height:1.6;color:#cbd5e1;\">Чтобы продолжить работу, заново выполните вход и введите свои учётные данные.</p>
-        <a href=\"/\" style=\"display:inline-flex;align-items:center;gap:8px;background:#22c55e;border:1px solid #16a34a;color:#0b2e13;padding:10px 14px;border-radius:12px;font-weight:700;text-decoration:none;\">Перейти к авторизации</a>
-      </div>
-    </body>
-    </html>
-    """
+    html = LOGOUT_TEMPLATE.substitute()
     resp = Response(html, 200)
     resp.headers['Content-Type'] = 'text/html; charset=utf-8'
     resp.headers['Cache-Control'] = 'no-store'

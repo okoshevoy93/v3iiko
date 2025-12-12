@@ -2015,7 +2015,8 @@ stopExportBtn?.addEventListener('click', async () => {
     a.click();
     a.remove();
     window.URL.revokeObjectURL(url);
-    setStatus('Экспорт стоп-листа завершён.', 'ok');
+    setStatus('Экспорт стоп-листа завершён. Начинается загрузка файла...', 'ok');
+    setTimeout(() => setStatus('Файл стоп-листа скачан. Проверьте загрузки.', 'ok'), 800);
   } catch (e) {
     setStatus(e.message || 'Ошибка экспорта стоп-листа', 'err');
   }
@@ -2138,7 +2139,8 @@ exportYandexBtn?.addEventListener('click', async () => {
     a.click();
     a.remove();
     window.URL.revokeObjectURL(url);
-    setStatus('Экспорт завершён.', 'success');
+    setStatus('Экспорт завершён. Начинается загрузка файла...', 'success');
+    setTimeout(() => setStatus('Файл скачан. Проверьте загрузки.', 'success'), 800);
   } catch (e) {
     setStatus(e.message || 'Ошибка экспорта', 'error');
   }
