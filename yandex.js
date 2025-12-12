@@ -1016,7 +1016,7 @@ function renderMenuTable(rows, highlights = {}, prepared = false) {
           if (col === 'sku') cells.push(`<td class="px-3 py-2 text-sm font-semibold text-slate-800 text-center align-middle col-sku">${highlightValue(row.id || '—', skuNeedles)}</td>`);
           if (col === 'description') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-description">${highlightValue(row.description || '', descNeedles)}</td>`);
           if (col === 'modifiers') cells.push(`<td class="px-3 py-2 text-xs text-slate-600 text-left align-middle col-modifiers">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</td>`);
-          if (col === 'price') cells.push(`<td class="px-3 py-2 font-semibold text-center align-middle col-price">${formatPrice(row.price)}</td>`);
+          if (col === 'price') cells.push(`<td class="px-3 py-2 text-center align-middle col-price price-strong">${formatPrice(row.price)}</td>`);
           if (col === 'availability') cells.push(`<td class="px-3 py-2 text-center align-middle col-availability">${row.stopList ? '<span class="pill red">Стоп</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Нет</span>')}</td>`);
         });
         tr.innerHTML = cells.join('');
@@ -1083,10 +1083,9 @@ function renderMenuCards(rows, highlights = {}, prepared = false) {
           <div class="meta-line"><span class="font-semibold">SKU:</span> ${highlightValue(row.id || '—', skuNeedles)}</div>
           <div class="card-modifiers">${highlightValue(modifiersHtml, modNeedles, { rawHtml: true })}</div>
           <div class="card-footer">
-            <span class="font-semibold">${formatPrice(row.price)}</span>
-            ${row.stopList ? '<span class="pill red">Стоп</span>' : (row.available ? '<span class="pill green">Доступно</span>' : '<span class="pill red">Нет</span>')}
+            <span class="price-strong">${formatPrice(row.price)}</span>
           </div>
-          <div class="text-xs text-slate-600">${highlightValue(row.description || '', descNeedles)}</div>
+          <div class="text-xs text-slate-600 card-divider">${highlightValue(row.description || '', descNeedles)}</div>
         `;
         grid.appendChild(card);
       });
@@ -1248,7 +1247,7 @@ async function renderStopListPanel(term = '') {
           `<td class="px-2 py-1 text-sm">${highlightValue(r.name, needles)}</td>` +
           `<td class="px-2 py-1 text-center">${img}</td>` +
           `<td class="px-2 py-1 text-xs text-slate-500 text-center">${highlightValue(r.id || '', needles)}</td>` +
-          `<td class="px-2 py-1 font-semibold text-center">${formatPrice(r.price)}</td>` +
+          `<td class="px-2 py-1 text-center price-strong">${formatPrice(r.price)}</td>` +
           `<td class="px-2 py-1 text-xs text-slate-500 text-center">${highlightValue(r.stopDate || '—', needles)}</td>` +
           `</tr>`;
       });
@@ -1949,8 +1948,8 @@ stopExportBtn?.addEventListener('click', async () => {
         table_data.push({ place: '', category: `Категория: ${cat}`, name: '', photo: '', id: '', price: '', stop: '' });
         rows.forEach(row => {
           table_data.push({
-            place: '',
-            category: '',
+            place: place,
+            category: cat,
             name: row.name || row.id || '',
             photo: row.image || '',
             id: row.id || '',
@@ -2068,8 +2067,8 @@ exportYandexBtn?.addEventListener('click', async () => {
         table_data.push({ place: '', category: `Категория: ${cat}`, name: '', id: '', description: '', modifiers: '', price: '', available: '' });
         items.forEach(row => {
           table_data.push({
-            place: '',
-            category: '',
+            place: place,
+            category: cat,
             name: row.name || '',
             id: row.id || '',
             description: showDescription ? (row.description || '') : '',

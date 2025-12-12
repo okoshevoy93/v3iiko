@@ -3199,8 +3199,8 @@ async function loadOrganizationsAndMenus() {
 
 loadOrgsBtn.addEventListener('click', loadOrganizationsAndMenus);
 
-// Выход
-logoutBtn.addEventListener('click', () => {
+// Выход через верхнюю кнопку
+logoutBtn?.addEventListener('click', () => {
   try {
     localStorage.removeItem('iikoApiLogin');
   } catch (e) {

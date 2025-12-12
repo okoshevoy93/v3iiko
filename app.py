@@ -306,26 +306,30 @@ def authenticate():
     resp = Response('Доступ запрещён', 401,
                     {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
     resp.headers["Cache-Control"] = "no-store"
-    resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax')
     return resp
 
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
-        if request.cookies.get('session') != str(AUTH_REALM_VERSION):
-            return authenticate()
-        if not auth or not check_auth(auth.username, auth.password):
+        has_valid_session = request.cookies.get('session') == str(AUTH_REALM_VERSION)
+        if not has_valid_session:
+            if not auth or not check_auth(auth.username, auth.password):
+                return authenticate()
+            resp = authenticate()
+            resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax', path='/')
+            return resp
+        if auth and not check_auth(auth.username, auth.password):
             return authenticate()
         required_tab = required_tab_from_path(request.path)
         if required_tab and not has_tab_access(required_tab):
             return Response('Доступ запрещён', 403)
         resp = f(*args, **kwargs)
         if isinstance(resp, Response):
-            resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax')
+            resp.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax', path='/')
             return resp
         wrapped = Response(resp)
-        wrapped.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax')
+        wrapped.set_cookie('session', str(AUTH_REALM_VERSION), httponly=True, samesite='Lax', path='/')
         return wrapped
     return decorated
 
@@ -1152,10 +1156,41 @@ def export_excel():
 def logout():
     global AUTH_REALM_VERSION
     AUTH_REALM_VERSION = int(time.time())
-    resp = Response('Вы вышли', 401,
-                    {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
+    html = """
+    <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
+    <head><title>Вы вышли</title></head>
+    <body style=\"display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;\">
+      <div style=\"max-width:520px;width:100%;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;box-shadow:0 18px 45px rgba(0,0,0,0.45);\">
+        <div style=\"display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;\">🥾 Вы вышли из аккаунта</div>
+        <p style=\"margin:12px 0 18px;font-size:14px;line-height:1.6;color:#cbd5e1;\">Чтобы продолжить работу, заново выполните вход и введите свои учётные данные.</p>
+        <a href=\"/\" style=\"display:inline-flex;align-items:center;gap:8px;background:#22c55e;border:1px solid #16a34a;color:#0b2e13;padding:10px 14px;border-radius:12px;font-weight:700;text-decoration:none;\">Перейти к авторизации</a>
+      </div>
+    </body>
+    </html>
+    """
+    resp = Response(html, 401, {'WWW-Authenticate': f'Basic realm="{current_realm()}"'})
     resp.headers['Cache-Control'] = 'no-store'
-    resp.set_cookie('session', '', expires=0)
+    resp.set_cookie('session', '', expires=0, path='/', samesite='Lax')
+    return resp
+
+
+@app.errorhandler(404)
+def not_found(_error):
+    html = """
+    <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
+    <head><title>Страница не найдена</title></head>
+    <body style=\"display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;\">
+      <div style=\"max-width:520px;width:100%;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;box-shadow:0 18px 45px rgba(0,0,0,0.45);\">
+        <div style=\"display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;\">🔎 Страница не найдена</div>
+        <p style=\"margin:12px 0 18px;font-size:14px;line-height:1.6;color:#cbd5e1;\">Проверьте адрес или вернитесь на главную страницу, чтобы снова авторизоваться.</p>
+        <a href=\"/\" style=\"display:inline-flex;align-items:center;gap:8px;background:#3b82f6;border:1px solid #2563eb;color:#e0f2fe;padding:10px 14px;border-radius:12px;font-weight:700;text-decoration:none;\">На главную</a>
+      </div>
+    </body>
+    </html>
+    """
+    resp = Response(html, 404)
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.set_cookie('session', '', expires=0, path='/', samesite='Lax')
     return resp
 
 if __name__ == "__main__":
