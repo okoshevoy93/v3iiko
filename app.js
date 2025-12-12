@@ -1,11 +1,13 @@
 // Lightweight loader for the protected index bundle
 const chunkVersion = window.__CHUNK_VERSION__ || Date.now();
+
 async function bootIndex() {
   try {
     const { code } = await import(`/chunks/index.logic.js?v=${chunkVersion}`);
     const decoded = atob(code);
-    // execute in global scope
-    window.eval(decoded);
+    const blobUrl = URL.createObjectURL(new Blob([decoded], { type: 'text/javascript' }));
+    await import(blobUrl);
+    URL.revokeObjectURL(blobUrl);
   } catch (err) {
     console.error('Не удалось загрузить интерфейс iiko:', err);
     const container = document.getElementById('status') || document.body;
@@ -15,4 +17,5 @@ async function bootIndex() {
     container.appendChild(banner);
   }
 }
+
 bootIndex();

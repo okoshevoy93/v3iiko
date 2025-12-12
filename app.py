@@ -420,11 +420,11 @@ def apply_security_headers(response: Response):
     """Добавляем строгие заголовки безопасности ко всем ответам."""
     csp = (
         "default-src 'self'; "
-        "script-src 'self' https://cdn.tailwindcss.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
+        "script-src 'self' 'unsafe-inline' blob: https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: blob: https:; "
         "font-src 'self' data: https://fonts.gstatic.com; "
-        "connect-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com; "
+        "connect-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; "
         "object-src 'none'; frame-ancestors 'none'"
     )
     response.headers.setdefault("Content-Security-Policy", csp)
@@ -463,9 +463,9 @@ def login_page():
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
         if check_auth(username, password):
-            token = uuid4().hex
-            ACTIVE_SESSIONS[token] = username
             AUTH_REALM_VERSION = int(time.time())
+            token = f"{uuid4().hex}::{AUTH_REALM_VERSION}"
+            ACTIVE_SESSIONS[token] = username
             resp = redirect(next_url or "/")
             resp.set_cookie('session_token', token, httponly=True, samesite='Lax', path='/')
             resp.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
@@ -484,6 +484,16 @@ def require_auth(f):
     def decorated(*args, **kwargs):
         session_token = request.cookies.get('session_token')
         username = ACTIVE_SESSIONS.get(session_token, '')
+        realm_ok = False
+        if session_token and '::' in session_token:
+            try:
+                _, realm = session_token.rsplit('::', 1)
+                realm_ok = str(realm) == str(AUTH_REALM_VERSION)
+            except ValueError:
+                realm_ok = False
+        if session_token and not realm_ok:
+            ACTIVE_SESSIONS.pop(session_token, None)
+            username = ''
         if not username:
             next_url = urllib.parse.quote(request.path or '/')
             return redirect(f"/login?next={next_url}")
@@ -1357,8 +1367,7 @@ def export_excel():
 def logout():
     global AUTH_REALM_VERSION
     AUTH_REALM_VERSION = int(time.time())
-    token = request.cookies.get('session_token')
-    ACTIVE_SESSIONS.pop(token, None)
+    ACTIVE_SESSIONS.clear()
     html = """
     <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
     <head><title>Вы вышли</title></head>

@@ -1,10 +1,13 @@
 // Loader for the protected Yandex bundle
 const chunkVersion = window.__CHUNK_VERSION__ || Date.now();
+
 async function bootYandex() {
   try {
     const { code } = await import(`/chunks/yandex.logic.js?v=${chunkVersion}`);
     const decoded = atob(code);
-    window.eval(decoded);
+    const blobUrl = URL.createObjectURL(new Blob([decoded], { type: 'text/javascript' }));
+    await import(blobUrl);
+    URL.revokeObjectURL(blobUrl);
   } catch (err) {
     console.error('Не удалось загрузить интерфейс Yandex:', err);
     const container = document.querySelector('#yandexApp') || document.body;
@@ -14,4 +17,5 @@ async function bootYandex() {
     container.appendChild(banner);
   }
 }
+
 bootYandex();
