@@ -4,10 +4,9 @@ const chunkVersion = window.__CHUNK_VERSION__ || Date.now();
 async function bootYandex() {
   try {
     const { code } = await import(`/chunks/yandex.logic.js?v=${chunkVersion}`);
-    const binary = atob(code);
-    const buffer = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) buffer[i] = binary.charCodeAt(i);
-    const blobUrl = URL.createObjectURL(new Blob([buffer], { type: 'text/javascript;charset=utf-8' }));
+    const buffer = Uint8Array.from(atob(code), (ch) => ch.charCodeAt(0));
+    const decoded = new TextDecoder('utf-8').decode(buffer);
+    const blobUrl = URL.createObjectURL(new Blob([decoded], { type: 'text/javascript;charset=utf-8' }));
     await import(blobUrl);
     URL.revokeObjectURL(blobUrl);
   } catch (err) {

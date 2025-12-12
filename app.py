@@ -21,13 +21,13 @@ from uuid import uuid4
 import urllib.parse
 from urllib.parse import urlparse
 import io
-import csv
 from string import Template
 
 app = Flask(__name__, template_folder=str(Path(__file__).resolve().parent))
 CORS(app)
 app.secret_key = "iiko-menu-secret-2025"
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["JSON_AS_ASCII"] = False
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -308,104 +308,133 @@ def current_realm() -> str:
 
 LOGIN_TEMPLATE = Template(
     """
-    <html lang=\"ru\" class=\"h-full\">
+    <html lang="ru" class="h-full">
     <head>
-      <meta charset=\"UTF-8\" />
+      <meta charset="UTF-8" />
       <title>Авторизация</title>
-      <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
-      <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-      <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap\" rel=\"stylesheet\">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
       <style>
+        :root {
+          color-scheme: light;
+        }
+        * { box-sizing: border-box; }
         body {
           margin: 0;
           font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          background: radial-gradient(circle at 20% 20%, #e0f2fe 0, transparent 35%),
-                      radial-gradient(circle at 80% 0%, #fce7f3 0, transparent 30%),
-                      #f8fafc;
-          color: #0f172a;
+          background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.26) 0, transparent 28%),
+                      radial-gradient(circle at 80% 0%, rgba(16,185,129,0.22) 0, transparent 32%),
+                      linear-gradient(145deg, #0f172a 0%, #0b1224 45%, #0f172a 100%);
+          color: #e2e8f0;
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 24px;
-        }
-        .card {
-          width: min(520px, 100%);
-          background: #fff;
-          border-radius: 20px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 30px 80px rgba(15, 23, 42, 0.12);
-          padding: 28px;
-          position: relative;
+          padding: 32px;
           overflow: hidden;
         }
-        .halo {
-          position: absolute;
-          inset: -60px;
-          background: radial-gradient(circle, rgba(14,165,233,0.12) 0%, rgba(14,165,233,0) 60%);
-          opacity: .8;
+        .grid-bg {
+          position: absolute; inset: 0;
+          background: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+          background-size: 46px 46px;
+          mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.6), transparent 60%);
           pointer-events: none;
         }
-        .title { display:flex; align-items:center; gap:12px; font-weight:700; font-size:20px; }
+        .card {
+          position: relative;
+          width: min(560px, 100%);
+          border-radius: 22px;
+          padding: 30px;
+          background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+          border: 1px solid rgba(255,255,255,0.12);
+          backdrop-filter: blur(18px) saturate(140%);
+          box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+          overflow: hidden;
+        }
+        .card::before {
+          content: '';
+          position: absolute; inset: -40% 30% auto auto;
+          width: 240px; height: 240px;
+          background: radial-gradient(circle, rgba(52,211,153,0.25), rgba(52,211,153,0));
+          filter: blur(10px);
+        }
+        .card::after {
+          content: '';
+          position: absolute; inset: auto auto -35% -20%;
+          width: 260px; height: 260px;
+          background: radial-gradient(circle, rgba(99,102,241,0.28), rgba(99,102,241,0));
+          filter: blur(12px);
+        }
+        .title { display:flex; align-items:center; gap:14px; font-weight:800; font-size:21px; letter-spacing: 0.2px; color:#e2e8f0; position: relative; z-index:2; }
         .title .logo {
-          width: 44px; height: 44px; border-radius: 14px;
+          width: 52px; height: 52px; border-radius: 18px;
           display: grid; place-items: center;
-          background: linear-gradient(135deg, #22d3ee, #6366f1);
-          color: #fff; font-weight: 800;
-          box-shadow: 0 12px 30px rgba(99, 102, 241, .35);
+          background: conic-gradient(from 45deg, #22d3ee, #6366f1, #22c55e, #22d3ee);
+          color: #0b1224; font-weight: 900; font-size: 22px;
+          box-shadow: 0 16px 40px rgba(34,211,238,0.35);
+          border: 1px solid rgba(255,255,255,0.25);
         }
-        .message { margin: 10px 0 18px; font-size: 14px; color: #475569; }
-        .message.error { color: #b91c1c; }
-        .field { display:flex; flex-direction: column; gap:6px; }
-        .field label { font-size: 12px; color: #475569; font-weight:600; }
+        .message { margin: 10px 0 22px; font-size: 14px; color: #cbd5e1; position: relative; z-index:2; }
+        .message.error { color: #fecdd3; }
+        .field { display:flex; flex-direction: column; gap:8px; position: relative; z-index:2; }
+        .field label { font-size: 12px; color: #cbd5e1; font-weight:600; letter-spacing: 0.3px; }
         .field input {
-          border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; font-size: 14px;
-          transition: border-color .15s, box-shadow .15s; background: #f8fafc; color:#0f172a;
+          border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 12px 14px; font-size: 14px;
+          transition: border-color .15s, box-shadow .15s, background .15s; background: rgba(15,23,42,0.55); color:#f8fafc;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
-        .field input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,.12); background: #fff; }
-        .actions { display:flex; align-items:center; gap:10px; justify-content: space-between; margin-top: 14px; }
+        .field input:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 4px rgba(56,189,248,.18); background: rgba(255,255,255,0.08); }
+        .actions { display:flex; align-items:center; gap:10px; justify-content: space-between; margin-top: 18px; position: relative; z-index:2; }
         button {
-          border: none; border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 14px; cursor: pointer;
-          background: linear-gradient(135deg, #34d399, #10b981); color: #052e16;
-          transition: transform .12s ease, box-shadow .12s ease;
+          border: none; border-radius: 14px; padding: 13px 18px; font-weight: 800; font-size: 14px; cursor: pointer;
+          background: linear-gradient(135deg, #34d399, #22c55e); color: #052e16;
+          transition: transform .16s ease, box-shadow .16s ease;
           width: 100%;
-          display:flex; align-items:center; justify-content:center; gap:8px;
-          box-shadow: 0 12px 30px rgba(16, 185, 129, .28);
+          display:flex; align-items:center; justify-content:center; gap:9px;
+          box-shadow: 0 16px 40px rgba(34,197,94,.36), 0 0 0 1px rgba(255,255,255,0.05) inset;
         }
-        button:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(16,185,129,.35); }
+        button:hover { transform: translateY(-1px) scale(1.01); box-shadow: 0 20px 46px rgba(34,197,94,.42); }
         button:active { transform: translateY(0); }
-        .status-icon { width: 16px; height: 16px; border-radius: 50%; border:2px solid transparent; display:none; }
-        .status-icon.ok { border-color:#16a34a; }
-        .status-icon.fail { border-color:#dc2626; }
+        .status-icon { width: 16px; height: 16px; border-radius: 50%; border:2px solid transparent; display:none; position: relative; }
+        .status-icon.ok { border-color:#bbf7d0; color:#16a34a; }
+        .status-icon.fail { border-color:#fecdd3; color:#dc2626; }
         .status-icon.pulse { animation: pulse 0.9s ease-in-out infinite; }
         .status-icon::after { content:''; display:block; width:6px; height:10px; border:2px solid currentColor; border-left:0; border-top:0; transform: translate(3px,-2px) rotate(45deg); }
         .status-icon.fail::after { width:10px;height:10px;border:0;border-top:2px solid currentColor;border-right:2px solid currentColor;transform: translate(3px,3px) rotate(45deg); box-sizing:border-box; }
-        .divider { height:1px; background: linear-gradient(90deg, rgba(99,102,241,.1), rgba(99,102,241,.4), rgba(99,102,241,.1)); margin: 18px 0 12px; }
+        .divider { height:1px; background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(99,102,241,.45), rgba(255,255,255,.05)); margin: 18px 0 12px; position: relative; z-index:2; }
+        .badge { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; background: rgba(255,255,255,0.08); border-radius: 999px; border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:12px; }
+        .loader {
+          width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); border-top-color: rgba(255,255,255,0.9); animation: spin 0.8s linear infinite;
+        }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
+        @keyframes spin { to { transform: rotate(360deg);} }
       </style>
-      <script src=\"/assets/login.js\" defer></script>
+      <script src="/assets/login.js" defer></script>
     </head>
-    <body class=\"h-full\" data-state=\"$state\" data-error=\"$error_flag\">
-      <div class=\"card\">
-        <div class=\"halo\"></div>
-        <div class=\"title\">
-          <div class=\"logo\">⦾</div>
+    <body class="h-full" data-state="$state" data-error="$error_flag">
+      <div class="grid-bg"></div>
+      <div class="card">
+        <div class="title">
+          <div class="logo">⦿</div>
           <div>Вход в панель iiko</div>
+          <span class="badge"><span class="loader"></span> защищённый доступ</span>
         </div>
-        <p class=\"message $error_class\">$message</p>
-        <form method=\"POST\" action=\"/login\" class=\"space-y-4\" id=\"loginForm\">
-          <input type=\"hidden\" name=\"next\" value=\"$next_url\" />
-          <div class=\"field\">
+        <p class="message $error_class">$message</p>
+        <form method="POST" action="/login" class="space-y-4" id="loginForm">
+          <input type="hidden" name="next" value="$next_url" />
+          <div class="field">
             <label>Логин</label>
-            <input name=\"username\" placeholder=\"username\" autocomplete=\"username\" required />
+            <input name="username" placeholder="username" autocomplete="username" required />
           </div>
-          <div class=\"field\">
+          <div class="field">
             <label>Пароль</label>
-            <input type=\"password\" name=\"password\" placeholder=\"••••••••\" autocomplete=\"current-password\" required />
+            <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
           </div>
-          <div class=\"divider\"></div>
-          <div class=\"actions\">
-            <button type=\"submit\" id=\"loginBtn\"><span class=\"status-icon\" id=\"loginStatus\"></span><span id=\"loginLabel\">Войти</span></button>
+          <div class="divider"></div>
+          <div class="actions">
+            <button type="submit" id="loginBtn"><span class="status-icon" id="loginStatus"></span><span id="loginLabel">Войти</span></button>
           </div>
         </form>
       </div>
@@ -1317,13 +1346,14 @@ def export_excel():
     payload = request.get_json(silent=True) or {}
     table_data = payload.get("table_data") or []
     columns = payload.get("columns") or payload.get("layout", {}).get("columns")
+    layout_rows = (payload.get("layout") or {}).get("rows") or []
 
     if not isinstance(table_data, list) or not table_data:
         return json_response({"error": "Нет данных для экспорта"}, 400)
 
     # Определяем заголовки
-    headers = []
-    keys = []
+    headers: list[str] = []
+    keys: list[str] = []
     if columns and isinstance(columns, list) and all(isinstance(c, dict) for c in columns):
         for col in columns:
             title = col.get("title") or col.get("label") or col.get("name") or col.get("key") or ""
@@ -1338,12 +1368,29 @@ def export_excel():
         elif isinstance(sample, list):
             headers = [f"Колонка {i+1}" for i in range(len(sample))]
 
-    output = io.StringIO()
-    writer = csv.writer(output, delimiter=';')
-    if headers:
-        writer.writerow(headers)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Экспорт"
+    ws.sheet_properties.outlinePr.summaryBelow = True
+    ws.append(headers)
 
-    def normalize_sku(value: Any) -> str:
+    sku_indexes = [i for i, k in enumerate(keys) if str(k).lower() in {"sku", "id"}]
+
+    def normalize_numeric(value: Any):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return value
+        text = str(value).strip()
+        if not text:
+            return None
+        text = text.replace(",", ".")
+        try:
+            return float(text) if "." in text else int(text)
+        except Exception:
+            return value
+
+    def normalize_sku(value: Any):
         if value is None:
             return ""
         if isinstance(value, (int,)):
@@ -1363,28 +1410,102 @@ def export_excel():
             return normalized
         return text
 
-    sku_indexes = [i for i, k in enumerate(keys) if str(k).lower() in {"sku", "id"}]
+    key_to_index = {k: i for i, k in enumerate(keys)}
 
-    for row in table_data:
-        if isinstance(row, dict):
-            values = [row.get(k, "") for k in keys]
-            for idx in sku_indexes:
-                values[idx] = normalize_sku(values[idx])
-            writer.writerow(values)
-        elif isinstance(row, list):
-            writer.writerow(row)
-        else:
-            writer.writerow([row])
+    def append_row(row_values):
+        ws.append(row_values)
 
-    csv_text = output.getvalue()
-    if not csv_text.startswith("\ufeff"):
-        csv_text = "\ufeff" + csv_text
+    def values_for_item(item: dict) -> list:
+        values = []
+        for idx, key in enumerate(keys):
+            val = item.get(key, "") if isinstance(item, dict) else ""
+            if idx in sku_indexes:
+                val = normalize_sku(val)
+            elif isinstance(val, (int, float)):
+                pass
+            else:
+                num_val = normalize_numeric(val)
+                if isinstance(num_val, (int, float)):
+                    val = num_val
+            values.append(val)
+        return values
 
-    filename = f"export_{int(time.time())}.csv"
-    return Response(
-        csv_text.encode("utf-8"),
-        mimetype="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    city_group_start = None
+    city_collapsed = False
+    category_group_start = None
+    category_collapsed = False
+    current_excel_row = 2  # first data row
+
+    def close_category():
+        nonlocal category_group_start, category_collapsed, current_excel_row
+        if category_group_start is not None and current_excel_row - 1 >= category_group_start + 1:
+            ws.row_dimensions.group(category_group_start + 1, current_excel_row - 1, outline_level=2, hidden=category_collapsed)
+        category_group_start = None
+        category_collapsed = False
+
+    def close_city():
+        nonlocal city_group_start, city_collapsed, current_excel_row
+        if city_group_start is not None and current_excel_row - 1 >= city_group_start + 1:
+            ws.row_dimensions.group(city_group_start + 1, current_excel_row - 1, outline_level=1, hidden=city_collapsed)
+        city_group_start = None
+        city_collapsed = False
+
+    if not layout_rows:
+        for item in table_data:
+            append_row(values_for_item(item))
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return send_file(buf, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                         as_attachment=True, download_name=f"export_{int(time.time())}.xlsx")
+
+    for row in layout_rows:
+        r_type = row.get("type")
+        if r_type == "city":
+            close_category()
+            close_city()
+            city_group_start = current_excel_row
+            city_collapsed = bool(row.get("collapsed"))
+            values = ["" for _ in headers]
+            if "city" in key_to_index:
+                values[key_to_index["city"]] = row.get("city", "")
+            append_row(values)
+            current_excel_row += 1
+        elif r_type == "category":
+            close_category()
+            category_group_start = current_excel_row
+            category_collapsed = bool(row.get("collapsed"))
+            values = ["" for _ in headers]
+            if "city" in key_to_index and row.get("city"):
+                values[key_to_index["city"]] = row.get("city")
+            if "category" in key_to_index:
+                values[key_to_index["category"]] = row.get("category", "")
+            append_row(values)
+            current_excel_row += 1
+        elif r_type == "item":
+            item_idx = row.get("item_index")
+            if item_idx is None or item_idx >= len(table_data):
+                continue
+            item_data = table_data[item_idx] if isinstance(table_data[item_idx], dict) else {}
+            # гарантируем наличие города для каждой позиции
+            if "city" in key_to_index and not item_data.get("city") and row.get("city"):
+                item_data = {**item_data, "city": row.get("city")}
+            values = values_for_item(item_data)
+            append_row(values)
+            current_excel_row += 1
+
+    close_category()
+    close_city()
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"export_{int(time.time())}.xlsx"
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=filename
     )
 
 @app.route("/logout")

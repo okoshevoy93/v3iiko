@@ -297,9 +297,15 @@ function decodeSecret(str = '') {
   }
 }
 
+
 function formatPrice(val) {
   if (val === null || val === undefined || val === '') return '';
-  const clean = String(val).replace(/₽/g, '').replace(/\s+/g, '').trim();
+  let clean = String(val)
+    .replace(/₽/g, '')
+    .replace(/â[^\s]{0,2}½/gi, '')
+    .replace(/Â/g, '')
+    .replace(/\s+/g, '')
+    .trim();
   if (!clean) return '';
   const num = Number(clean);
   if (!Number.isNaN(num)) {
@@ -307,6 +313,7 @@ function formatPrice(val) {
   }
   return `${clean} ₽`;
 }
+
 let showModifiers = true;
 let showDescription = false;
 let restoredSession = false;
@@ -349,8 +356,20 @@ function syncStoredIikoKey(value) {
 }
 
 function setStatus(message, tone = 'info') {
-  statusEl.textContent = message;
+  const isLoading = tone === 'loading' || /загруз|формирован/i.test(message || '');
   statusEl.className = `text-sm px-3 py-2 rounded-lg border ${tone === 'ok' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : tone === 'err' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`;
+  statusEl.innerHTML = '';
+  const line = document.createElement('div');
+  line.className = 'status-line';
+  if (isLoading) {
+    const spinner = document.createElement('span');
+    spinner.className = 'status-spinner';
+    line.appendChild(spinner);
+  }
+  const label = document.createElement('span');
+  label.textContent = message || '';
+  line.appendChild(label);
+  statusEl.appendChild(line);
   if (statusDot) {
     statusDot.classList.toggle('ok', tone === 'ok');
     statusDot.classList.toggle('err', tone === 'err');

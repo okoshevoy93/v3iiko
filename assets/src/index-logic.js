@@ -366,10 +366,23 @@ function setStatus(text, type = 'info') {
     const dishCount = selectionItems ? selectionItems.size : 0;
     text = `${text} • Блюд в выборке: ${dishCount}`;
   }
-  statusEl.textContent = text;
+  const isLoading = type === 'loading' || /загруз|формирован/i.test(text || '');
   statusEl.classList.remove('text-red-400', 'text-emerald-400');
   if (type === 'error')  statusEl.classList.add('text-red-400');
   if (type === 'success') statusEl.classList.add('text-emerald-400');
+
+  statusEl.innerHTML = '';
+  const line = document.createElement('div');
+  line.className = 'status-line';
+  if (isLoading) {
+    const spinner = document.createElement('span');
+    spinner.className = 'status-spinner';
+    line.appendChild(spinner);
+  }
+  const label = document.createElement('span');
+  label.textContent = text || '';
+  line.appendChild(label);
+  statusEl.appendChild(line);
 }
 
 function loadSessionSnapshot() {
@@ -3944,7 +3957,7 @@ loadImagesBtn.addEventListener('click', async () => {
  *  - rows: последовательность строк (город/категория/блюдо) в текущем состоянии развёрнутости
  *  - columns: описание колонок (для группировки на бэке)
  */
-function buildExportLayoutAndData() {
+function buildExportLayoutAndData(includeHidden = false) {
   const colKeys = tableColumnKeys || [];
   const colLabels = tableColumnLabels || [];
   const baseCount = getBaseColumnCount();
@@ -3996,9 +4009,9 @@ function buildExportLayoutAndData() {
       pricesByLabel[label] = val == null ? '' : val;
     });
 
-    return {
+    const payload = {
       view_mode: viewMode,
-      city: hasCityGrouping ? (item.cityLabel || '') : '',
+      city: item.cityLabel || '',
       category: item.categoryPath || '',
       name: item.name || '',
       size: item.sizeName || '',
@@ -4007,6 +4020,12 @@ function buildExportLayoutAndData() {
       image: item.imageUrl || '',
       prices: pricesByLabel
     };
+
+    colLabels.forEach((label, idx) => {
+      payload[`price_${idx}`] = pricesByLabel[label] ?? '';
+    });
+
+    return payload;
   }
 
   if (hasCityGrouping) {
@@ -4052,16 +4071,18 @@ function buildExportLayoutAndData() {
           subtotal_count: items.length
         });
 
-        if (cityCollapsed || isCollapsed) return;
-
-        items.forEach(item => {
-          const itemData = makeItemData(item);
-          const idx = visibleItems.push(itemData) - 1;
-          rows.push({
-            type: 'item',
-            item_index: idx
+        const skipItems = (cityCollapsed || isCollapsed) && !includeHidden;
+        if (!skipItems) {
+          items.forEach(item => {
+            const itemData = makeItemData(item);
+            const idx = visibleItems.push(itemData) - 1;
+            rows.push({
+              type: 'item',
+              item_index: idx,
+              hidden: cityCollapsed || isCollapsed
+            });
           });
-        });
+        }
       });
     });
   } else {
@@ -4088,16 +4109,18 @@ function buildExportLayoutAndData() {
         subtotal_count: items.length
       });
 
-      if (isCollapsed) return;
-
-      items.forEach(item => {
-        const itemData = makeItemData(item);
-        const idx = visibleItems.push(itemData) - 1;
-        rows.push({
-          type: 'item',
-          item_index: idx
+      const skipItems = isCollapsed && !includeHidden;
+      if (!skipItems) {
+        items.forEach(item => {
+          const itemData = makeItemData(item);
+          const idx = visibleItems.push(itemData) - 1;
+          rows.push({
+            type: 'item',
+            item_index: idx,
+            hidden: isCollapsed
+          });
         });
-      });
+      }
     });
   }
 
@@ -4111,7 +4134,7 @@ function buildExportLayoutAndData() {
 // === Экспорт в Excel ===
 exportBtn.addEventListener('click', async () => {
   try {
-    const layout = buildExportLayoutAndData();
+    const layout = buildExportLayoutAndData(true);
     const table_data = layout.visibleItems;
 
     if (!table_data.length) {
@@ -4121,7 +4144,7 @@ exportBtn.addEventListener('click', async () => {
 
     startButtonLoading(exportBtn, 'Экспорт');
     setButtonProgress(exportBtn, 0.0);
-    setStatus('Формирование Excel...', 'info');
+    setStatus('Формирование Excel...', 'loading');
 
     const res = await fetch('/api/export_excel', {
       method: 'POST',
