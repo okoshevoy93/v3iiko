@@ -470,10 +470,14 @@ def login_page():
             resp.set_cookie('session_token', token, httponly=True, samesite='Lax', path='/')
             resp.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
             return resp
-        return Response(login_markup("Неверный логин или пароль", next_url), 401)
+        resp = Response(login_markup("Неверный логин или пароль", next_url), 401)
+        resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
 
     resp = Response(login_markup("", next_url), 401)
     resp.headers['Cache-Control'] = 'no-store'
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
     resp.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
     resp.set_cookie('session_user', '', expires=0, path='/', samesite='Lax')
     return resp
@@ -501,7 +505,9 @@ def require_auth(f):
         request.authorization = SimpleNamespace(username=username, password='')
         required_tab = required_tab_from_path(request.path)
         if required_tab and not has_tab_access(required_tab):
-            return Response('Доступ запрещён', 403)
+            resp = Response('Доступ запрещён', 403)
+            resp.headers['Content-Type'] = 'text/plain; charset=utf-8'
+            return resp
 
         resp = f(*args, **kwargs)
         if isinstance(resp, Response):
@@ -653,12 +659,18 @@ def get_yandex_token(
 @app.route("/")
 @require_auth
 def index():
-    return send_file(BASE_DIR / "index.html")
+    resp = send_file(BASE_DIR / "index.html")
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
 
 @app.route("/yandex")
 @require_auth
 def yandex_page():
-    return send_file(BASE_DIR / "yandex.html")
+    resp = send_file(BASE_DIR / "yandex.html")
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
 
 @app.route("/chunks/<path:filename>")
 @require_auth
@@ -694,12 +706,18 @@ def serve_asset(filename):
 @app.route("/app.js")
 @require_auth
 def app_js():
-    return send_file(BASE_DIR / "app.js")
+    resp = send_file(BASE_DIR / "app.js")
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
 
 @app.route("/yandex.js")
 @require_auth
 def yandex_js():
-    return send_file(BASE_DIR / "yandex.js")
+    resp = send_file(BASE_DIR / "yandex.js")
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
 
 
 @app.route("/api/me")
@@ -1387,6 +1405,7 @@ def logout():
     </html>
     """
     resp = Response(html, 200)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
     resp.headers['Cache-Control'] = 'no-store'
     resp.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
     resp.set_cookie('session_user', '', expires=0, path='/', samesite='Lax')
@@ -1408,6 +1427,7 @@ def not_found(_error):
     </html>
     """
     resp = Response(html, 404)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
     resp.headers['Cache-Control'] = 'no-store'
     resp.set_cookie('session', '', expires=0, path='/', samesite='Lax')
     return resp
