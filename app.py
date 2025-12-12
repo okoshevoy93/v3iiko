@@ -26,6 +26,7 @@ import csv
 app = Flask(__name__, template_folder=str(Path(__file__).resolve().parent))
 CORS(app)
 app.secret_key = "iiko-menu-secret-2025"
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -302,6 +303,32 @@ def required_tab_from_path(path: str) -> str:
 
 def current_realm() -> str:
     return f"iiko-menu v2 session-{AUTH_REALM_VERSION}"
+
+
+@app.after_request
+def apply_security_headers(response: Response):
+    """Добавляем строгие заголовки безопасности ко всем ответам."""
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+        "img-src 'self' data: blob: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' https://cdn.tailwindcss.com; "
+        "object-src 'none'; frame-ancestors 'none'"
+    )
+    response.headers.setdefault("Content-Security-Policy", csp)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=()")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+    response.headers.setdefault("X-Robots-Tag", "noindex, nofollow, noarchive")
+    if "Cache-Control" not in response.headers:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers.setdefault("Pragma", "no-cache")
+    response.headers.setdefault("Expires", "0")
+    return response
 
 
 def login_markup(error: str = "", next_url: str = "/"):

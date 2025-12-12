@@ -145,7 +145,21 @@ const availabilityCache = new Map();
 let sortField = 'place';
 let sortDir = 1;
 const columnOrder = ['category', 'name', 'photo', 'sku', 'description', 'modifiers', 'price', 'availability'];
-const ENC_SALT = 'iiko-enc-v1';
+const LEGACY_SALT = 'iiko-enc-v1';
+const ENC_SALT = (() => {
+  const key = 'iiko-session-salt';
+  try {
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+    const rand = crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+    const salt = `${rand}-${Date.now()}`;
+    sessionStorage.setItem(key, salt);
+    return salt;
+  } catch (e) {
+    console.warn('Session salt unavailable, falling back to legacy', e);
+    return `${LEGACY_SALT}-fallback`;
+  }
+})();
 const headerByKey = {
   category: thCategory,
   name: thName,
@@ -270,8 +284,15 @@ function encodeSecret(str = '') {
 function decodeSecret(str = '') {
   try {
     const decoded = atob(str);
-    return Array.from(decoded).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ ENC_SALT.charCodeAt(idx % ENC_SALT.length))).join('');
+    const withPrimary = Array.from(decoded).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ ENC_SALT.charCodeAt(idx % ENC_SALT.length))).join('');
+    if (withPrimary) return withPrimary;
   } catch (e) {
+    // ignore and try legacy
+  }
+  try {
+    const decoded = atob(str);
+    return Array.from(decoded).map((ch, idx) => String.fromCharCode(ch.charCodeAt(0) ^ LEGACY_SALT.charCodeAt(idx % LEGACY_SALT.length))).join('');
+  } catch (e2) {
     return str;
   }
 }
