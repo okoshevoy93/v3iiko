@@ -3,6 +3,14 @@
   const btn = document.getElementById('loginBtn');
   const icon = document.getElementById('loginStatus');
   const label = document.getElementById('loginLabel');
+  const userInput = form ? form.querySelector('input[name="username"]') : null;
+
+  if (userInput) {
+    requestAnimationFrame(() => {
+      userInput.focus();
+      userInput.select();
+    });
+  }
   const hasError = document.body.dataset.error === '1';
 
   if (hasError && icon) {

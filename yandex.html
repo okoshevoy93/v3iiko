@@ -119,9 +119,8 @@
     .stop-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 9999px; background: #fef2f2; color: #b91c1c; font-weight: 700; font-size: 11px; border: 1px solid #fecdd3; }
     .picker {
       position: relative;
-      width: max-content;
-      min-width: 240px;
-      max-width: 520px;
+      width: min(100%, 520px);
+      min-width: 200px;
     }
     .picker-toggle {
       width: 100%;
@@ -248,6 +247,28 @@
     .photo-badge { position: absolute; top: 8px; left: 8px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #0f172a; box-shadow: 0 6px 14px rgba(0,0,0,0.15); backdrop-filter: blur(4px); border: 1px solid rgba(0,0,0,0.08); }
     .photo-badge.red { background: rgba(248,113,113,0.78); color: #7f1d1d; border-color: rgba(248,113,113,0.6); }
     .photo-badge.green { background: rgba(167,243,208,0.82); color: #065f46; border-color: rgba(74,222,128,0.6); }
+    .controls-stack { display: flex; flex-wrap: wrap; gap: 10px; }
+    .controls-stack .btn-big { flex: 1 1 190px; }
+    .summary-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .filters-row { flex-wrap: wrap; }
+    .filters-row .filter-input { max-width: 320px; width: 100%; }
+    .narrow-panel { max-width: 540px; width: 100%; }
+    .image-modal-footer { align-items: center; gap: 6px; }
+    @media (max-width: 900px) {
+      .controls-stack { flex-direction: column; align-items: stretch; }
+      .controls-stack .btn-big { width: 100%; }
+      .picker, .view-picker { width: 100%; max-width: 100%; min-width: 0; }
+      .summary-bar .pill, .summary-bar .btn-chip { width: 100%; justify-content: center; }
+      .filters-row { flex-direction: column; align-items: stretch; }
+      .filters-row .filter-input { width: 100% !important; }
+      .narrow-panel { margin: 0 auto; }
+    }
+    @media (max-width: 640px) {
+      .filters-row { gap: 8px; }
+      .controls-stack { gap: 8px; }
+      .picker-toggle { min-height: 44px; }
+      .picker-panel { inset: auto 0 0 0; width: 100%; }
+    }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -271,7 +292,7 @@
           <span>Yandex Еда</span>
         </a>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3 controls-stack">
         <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
         <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить рестораны</span></button>
         <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
@@ -282,7 +303,7 @@
     </div>
 
     <div class="grid lg:grid-cols-[320px,1fr] gap-4 items-start">
-      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0" style="margin-left:0">
+      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0 narrow-panel" style="margin-left:0">
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
           <p class="text-sm text-slate-600">Храните ключи и вебхук рядом с интеграцией.</p>
@@ -328,7 +349,7 @@
 
       <div class="space-y-4">
         <div class="card panel-bg p-4 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="summary-bar flex items-center justify-between gap-3">
             <div class="space-y-2">
               <div class="card card-bg p-3 space-y-2 picker" id="placePicker">
                 <div class="flex items-center justify-between gap-2">
@@ -374,7 +395,7 @@
             </div>
           </div>
           <div class="table-shell border border-soft rounded-xl bg-white head-sticky">
-            <div class="px-3 pt-2 pb-1 flex flex-wrap items-center gap-2 justify-between">
+            <div class="px-3 pt-2 pb-1 flex flex-wrap items-center gap-2 justify-between filters-row">
               <div class="flex flex-wrap items-end gap-2">
                 <div id="viewPicker" class="picker view-picker">
                   <span class="text-xs text-slate-500 uppercase tracking-wide">Режим таблицы</span>

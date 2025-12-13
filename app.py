@@ -410,6 +410,13 @@ LOGIN_TEMPLATE = Template(
         }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
         @keyframes spin { to { transform: rotate(360deg);} }
+        @media (max-width: 640px) {
+          body { padding: 18px; }
+          .card { width: 100%; padding: 22px; border-radius: 18px; }
+          .title { flex-direction: column; align-items: flex-start; gap: 6px; }
+          .actions { flex-direction: column; align-items: stretch; }
+          button { width: 100%; }
+        }
       </style>
       <script src="/assets/login.js" defer></script>
     </head>
@@ -426,7 +433,7 @@ LOGIN_TEMPLATE = Template(
           <input type="hidden" name="next" value="$next_url" />
           <div class="field">
             <label>Логин</label>
-            <input name="username" placeholder="username" autocomplete="username" required />
+            <input name="username" placeholder="username" autocomplete="username" required autofocus />
           </div>
           <div class="field">
             <label>Пароль</label>
@@ -508,7 +515,6 @@ LOGOUT_TEMPLATE = Template(
           <p>Сессия завершена. Чтобы вернуться к работе, снова авторизуйтесь на сайте и введите свои данные.</p>
           <div class=\"actions\">
             <a class=\"btn primary\" href=\"/\">Вернуться к авторизации</a>
-            <a class=\"btn secondary\" href=\"/login\">Открыть форму входа</a>
           </div>
         </div>
       </div>
