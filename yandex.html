@@ -16,7 +16,7 @@
       --text-primary: #111827;
       --text-muted: #6b7280;
     }
-    body { background-color: var(--app-bg); color: var(--text-primary); font-size: 14px; }
+    body { background-color: var(--app-bg); color: var(--text-primary); font-size: 14px; position: relative; }
     .panel-bg { background-color: var(--panel-bg); }
     .card-bg { background-color: var(--card-bg); }
     .border-soft { border-color: var(--border-soft); }
@@ -60,10 +60,10 @@
     .status-dot.ok { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,0.15); }
     .status-dot.err { background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.15); }
     .logout-btn {
-      position: fixed;
+      position: absolute;
       top: 12px;
       right: 12px;
-      z-index: 9999;
+      z-index: 20;
       background: #dc2626;
       color: white;
       padding: 10px 18px;
@@ -82,7 +82,8 @@
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
-    .table-shell table { min-width: 1200px; width: 100%; table-layout: auto; border-collapse: collapse; }
+    .table-shell { max-height: 76vh; }
+    .table-shell table { min-width: 1300px; width: 100%; table-layout: auto; border-collapse: collapse; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; z-index: 5; }
     .table-shell td { vertical-align: middle; }
     .table-shell td, .table-shell th { text-align: center; vertical-align: middle; }
@@ -103,10 +104,13 @@
     .filter-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 12px; }
     .menu-img { width: 144px; height: 144px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; position: relative; }
     .menu-img.placeholder { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; }
-    .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
+    .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: none; align-items: flex-start; justify-content: center; z-index: 50; padding: 1rem; overflow: auto; }
     .overlay.active { display: flex; }
-    .overlay-card { background: #fff; border-radius: 18px; border: 1px solid var(--border-soft); max-width: 960px; width: 100%; box-shadow: 0 16px 45px rgba(15,23,42,0.25); overflow: hidden; }
-    .overlay-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+    .overlay-card { background: #fff; border-radius: 18px; border: 1px solid var(--border-soft); max-width: 960px; width: 100%; box-shadow: 0 16px 45px rgba(15,23,42,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 92vh; }
+    .overlay-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: flex-start; }
+    .overlay-grid > div { min-width: 0; }
+    .overlay-body { flex: 1; min-height: 0; overflow: auto; padding-right: 4px; }
+    .overlay-image { width: 100%; border-radius: 14px; border: 1px solid var(--border-soft); object-fit: contain; max-height: 420px; background: #f8fafc; }
     @media (max-width: 900px) { .overlay-grid { grid-template-columns: 1fr; } }
     .btn-big { position: relative; overflow: hidden; transition: box-shadow .12s, transform .05s; min-height: 44px; min-width: 210px; white-space: normal; text-align: center; padding: 0.6rem 0.85rem; border-radius: 12px; font-weight: 700; font-size: 14px; }
     .btn-big::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to right, rgba(249,115,22,0.5), rgba(234,88,12,0.98)); transform-origin: left; transform: scaleX(var(--progress,0)); transition: transform .12s linear; z-index: 0; opacity: 0.9; pointer-events: none; }
@@ -196,7 +200,7 @@
     .modifier-block { border: 1px solid #c7d2fe; background: #eef2ff; border-radius: 10px; padding: 6px; margin-bottom: 6px; }
     .modifier-block .mod-header { font-weight: 700; color: #312e81; text-align: center; }
     .modifier-block .mod-meta { font-size: 11px; color: #4338ca; text-align: center; margin-bottom: 4px; }
-    .col-category { width: 170px; text-align: left !important; }
+    .col-category { width: 210px; text-align: left !important; }
     .col-name { width: 260px; text-align: left !important; }
     .col-photo { width: 180px; }
     .col-sku { width: 210px; word-break: break-word; font-size: 13px; font-weight: 700; color: #0f172a; }
@@ -248,6 +252,19 @@
     .photo-badge { position: absolute; top: 8px; left: 8px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #0f172a; box-shadow: 0 6px 14px rgba(0,0,0,0.15); backdrop-filter: blur(4px); border: 1px solid rgba(0,0,0,0.08); }
     .photo-badge.red { background: rgba(248,113,113,0.78); color: #7f1d1d; border-color: rgba(248,113,113,0.6); }
     .photo-badge.green { background: rgba(167,243,208,0.82); color: #065f46; border-color: rgba(74,222,128,0.6); }
+    @media (max-width: 1024px) { .overlay-card { max-height: 90vh; } }
+    @media (max-width: 900px) { .table-shell { max-height: 72vh; } }
+    @media (max-width: 640px) {
+      body { font-size: 13px; }
+      .btn-big { min-width: 0; width: 100%; }
+      .picker { width: 100%; min-width: 0; max-width: none; }
+      .picker-toggle { min-height: 42px; }
+      .overlay { padding: 0.75rem; }
+      .overlay-card { max-height: 88vh; }
+      .overlay-image { max-height: 360px; }
+      .table-shell { max-height: none; }
+      .table-shell table { min-width: 1150px; }
+    }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -272,29 +289,29 @@
         </a>
       </div>
       <div class="flex flex-wrap items-center gap-3">
-        <button id="connectBtn" class="btn-big btn-green w-44 flex-shrink-0"><span>Проверить доступ</span></button>
-        <button id="loadCitiesBtn" class="btn-big btn-amber w-44 flex-shrink-0"><span>Обновить рестораны</span></button>
-        <button id="loadMenuBtn" class="btn-big btn-red w-44 flex-shrink-0"><span>Загрузить меню</span></button>
+        <button id="connectBtn" class="btn-big btn-green w-full sm:w-44 flex-shrink"><span>Проверить доступ</span></button>
+        <button id="loadCitiesBtn" class="btn-big btn-amber w-full sm:w-44 flex-shrink"><span>Обновить рестораны</span></button>
+        <button id="loadMenuBtn" class="btn-big btn-red w-full sm:w-44 flex-shrink"><span>Загрузить меню</span></button>
       </div>
       <div id="status" class="text-sm text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
         Введите client_id, client_secret и URL вебхука, чтобы получить доступ к данным Yandex Еды. Точки загрузятся после проверки доступа.
       </div>
     </div>
 
-    <div class="grid lg:grid-cols-[320px,1fr] gap-4 items-start">
-      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0" style="margin-left:0">
+    <div class="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-4 items-start">
+      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0 w-full" style="margin-left:0">
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
           <p class="text-sm text-slate-600">Храните ключи и вебхук рядом с интеграцией.</p>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
-          <div class="flex gap-2">
-            <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
+          <div class="flex flex-wrap gap-2">
+            <select id="integrationSelect" class="w-full sm:flex-1 px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500 min-w-[180px]">
               <option value="">— Не выбрано —</option>
             </select>
-            <button id="addIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-500 transition" title="Добавить новую интеграцию">+</button>
-            <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition">✕</button>
+            <button id="addIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-green-600 text-white hover:bg-green-500 transition w-full sm:w-auto" title="Добавить новую интеграцию">+</button>
+            <button id="deleteIntegrationBtn" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition w-full sm:w-auto">✕</button>
           </div>
         </div>
         <div class="flex flex-col gap-1">
@@ -305,7 +322,7 @@
           <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
           <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
         </div>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div class="flex flex-col gap-1">
             <label class="text-xs text-slate-500" for="clientId">Client ID</label>
             <input id="clientId" type="text" placeholder="Client ID" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
@@ -394,8 +411,13 @@
             <table class="w-full text-sm" id="menuTable">
               <thead class="uppercase text-[11px] text-slate-600">
                 <tr class="table-header-main">
-                  <th id="thCategory" class="text-center px-3 py-2 border-b border-soft col-category"><span class="inline-flex items-center gap-2"><span>Категория</span><button id="toggleCategories" class="chevron-toggle" type="button" aria-label="Свернуть/развернуть категории">▾</button></span></th>
-                  <th id="thName" class="text-center px-3 py-2 border-b border-soft col-name"><span class="inline-flex items-center gap-2"><span>Блюдо / товар</span><button id="togglePlaces" class="chevron-toggle" type="button" aria-label="Свернуть/развернуть города">▾</button></span></th>
+                  <th id="thCategory" class="text-center px-3 py-2 border-b border-soft col-category">
+                    <div class="flex flex-col items-center gap-1">
+                      <span class="inline-flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-700"><span>Города</span><button id="togglePlaces" class="chevron-toggle" type="button" aria-label="Свернуть/развернуть города">▾</button></span>
+                      <span class="inline-flex items-center gap-2"><span>Категория</span><button id="toggleCategories" class="chevron-toggle" type="button" aria-label="Свернуть/развернуть категории">▾</button></span>
+                    </div>
+                  </th>
+                  <th id="thName" class="text-center px-3 py-2 border-b border-soft col-name"><span>Блюдо / товар</span></th>
                   <th id="thPhoto" class="text-center px-3 py-2 border-b border-soft col-photo">Фото</th>
                   <th id="thSku" class="text-center px-3 py-2 border-b border-soft col-sku">ID / SKU</th>
                   <th id="thDescription" class="text-center px-3 py-2 border-b border-soft col-description">Описание</th>
@@ -507,17 +529,19 @@
         </div>
         <button id="overlayClose" class="px-3 h-10 text-sm font-semibold rounded-md bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 transition">Закрыть</button>
       </div>
-      <div class="overlay-grid">
-        <div class="space-y-2">
-          <img id="overlayImage" src="" alt="Фото блюда" class="w-full rounded-xl border border-slate-200 object-cover" />
-          <div id="overlayAvailability" class="pill"></div>
-          <div id="overlayPrice" class="text-base font-semibold text-slate-900"></div>
-        </div>
-        <div class="space-y-2 text-sm text-slate-700">
-          <div id="overlayDescription" class="text-slate-700"></div>
-          <div>
-            <div class="text-xs uppercase text-slate-500 mb-1">Модификаторы и группы</div>
-            <div id="overlayModifiers" class="space-y-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2"></div>
+      <div class="overlay-body">
+        <div class="overlay-grid">
+          <div class="space-y-2">
+            <img id="overlayImage" src="" alt="Фото блюда" class="overlay-image" />
+            <div id="overlayAvailability" class="pill"></div>
+            <div id="overlayPrice" class="text-base font-semibold text-slate-900"></div>
+          </div>
+          <div class="space-y-2 text-sm text-slate-700">
+            <div id="overlayDescription" class="text-slate-700"></div>
+            <div>
+              <div class="text-xs uppercase text-slate-500 mb-1">Модификаторы и группы</div>
+              <div id="overlayModifiers" class="space-y-1 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-2"></div>
+            </div>
           </div>
         </div>
       </div>
