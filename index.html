@@ -64,6 +64,12 @@
       z-index: 75;
       background: #f9fafb;
     }
+    .table-scroll-shell thead th {
+      position: sticky;
+      top: 0;
+      background: #f9fafb;
+      z-index: 10;
+    }
     .city-item {
       cursor: pointer;
       border-radius: 0.75rem;
@@ -186,6 +192,15 @@
       min-width: 2.5rem;
       text-align: right;
     }
+    .status-line { display:flex; align-items:center; gap:8px; }
+    .status-spinner {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 2px solid rgba(148,163,184,0.45);
+      border-top-color: rgba(99,102,241,0.9);
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .pc-chip {
       position: relative;
       overflow: hidden;
@@ -542,6 +557,15 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5);
     }
+    .controls-stack { display: flex; flex-wrap: wrap; gap: 10px; }
+    .controls-stack .btn-big { flex: 1 1 200px; }
+    .filters-row { flex-wrap: wrap; }
+    .filters-row .filter-input { width: 100%; max-width: 320px; }
+    .image-modal-footer { align-items: center; gap: 6px; }
+    @media (max-width: 900px) {
+      .controls-stack { flex-direction: column; align-items: stretch; }
+      .controls-stack .btn-big, .controls-stack input, .controls-stack button { width: 100%; }
+    }
   </style>
 </head>
 <body class="app-bg font-sans">
@@ -560,7 +584,7 @@
         <a href="/" class="tab-link active">iiko</a>
         <a href="/yandex" class="tab-link">Yandex Еда</a>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3 controls-stack">
         <div class="flex items-center gap-2">
           <span id="apiStatusDot" class="inline-block w-2.5 h-2.5 rounded-full bg-slate-500"></span>
           <span id="apiStatusText" class="text-xs text-slate-400">Не подключено</span>
@@ -584,10 +608,10 @@
           </span>
         </button>
         <button
-          id="logoutBtn"
-          class="px-3 h-9 flex items-center text-sm font-semibold rounded-md bg-white hover:bg-slate-100 border border-slate-700 text-slate-700 transition"
+          id="clearApiKeysBtn"
+          class="px-3 h-9 flex items-center text-sm font-semibold rounded-md bg-red-600 hover:bg-red-500 text-white border border-red-700 transition"
         >
-          Выйти
+          Очистить API ключи
         </button>
         <button
           id="resetAllBtn"
@@ -672,7 +696,7 @@
         </button>
       </div>
       <div class="flex-1 card-bg border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-inner">
-        <div class="px-3 py-2 border-b border-slate-800 text-xs text-slate-500 flex flex-wrap items-start md:items-center gap-3 table-shell-bg">
+        <div class="px-3 py-2 border-b border-slate-800 text-xs text-slate-500 flex flex-wrap items-start md:items-center gap-3 table-shell-bg filters-row">
           <div class="flex items-center gap-3 flex-wrap grow min-w-[320px]">
             <div class="flex items-center gap-2">
               <span class="text-[11px] text-slate-500 whitespace-nowrap">Внешнее меню</span>
@@ -887,7 +911,7 @@
            class="max-h-80 overflow-y-auto text-sm rounded-b-xl"></div>
     </div>
   </div>
-  <script src="/app.js"></script>
+  <script type="module" src="/app.js"></script>
   <script>
     (function () {
       const dishSearchResults = document.getElementById('dishSearchResults');

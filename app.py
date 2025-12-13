@@ -1,8 +1,9 @@
-from flask import Flask, request, jsonify, send_file, abort, Response, render_template, redirect
+from flask import Flask, request, jsonify, send_file, abort, Response, render_template, redirect, send_from_directory
 from flask_cors import CORS
 import requests
 from requests.auth import HTTPBasicAuth
 from requests import exceptions as req_exc
+from typing import Any
 import logging
 from datetime import datetime
 import openpyxl
@@ -13,16 +14,20 @@ from pathlib import Path
 import re
 import shutil
 from functools import wraps
+from types import SimpleNamespace
 import bcrypt
 import json
+from uuid import uuid4
 import urllib.parse
 from urllib.parse import urlparse
 import io
-import csv
+from string import Template
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(Path(__file__).resolve().parent))
 CORS(app)
 app.secret_key = "iiko-menu-secret-2025"
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["JSON_AS_ASCII"] = False
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -126,6 +131,7 @@ for d in (IMAGE_CACHE_DIR, EXPORTS_DIR):
 
 # ==================== АВТОРИЗАЦИЯ ====================
 USERS_DB = {}
+ACTIVE_SESSIONS: dict[str, str] = {}
 
 def load_users():
     global USERS_DB
@@ -134,16 +140,25 @@ def load_users():
             with open(USERS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 for login, info in data.items():
+                    default_tabs = ["index", "yandex", "users"] if info.get("role") == "admin" else ["index", "yandex"]
                     USERS_DB[login] = {
                         "hash": info["hash"].encode(),
-                        "role": info.get("role", "user")
+                        "role": info.get("role", "user"),
+                        "tabs": info.get("tabs") or default_tabs,
                     }
     except Exception as e:
         logger.error(f"Ошибка загрузки users.json: {e}")
 
 def save_users():
     try:
-        data = {login: {"hash": info["hash"].decode(), "role": info["role"]} for login, info in USERS_DB.items()}
+        data = {}
+        for login, info in USERS_DB.items():
+            default_tabs = ["index", "yandex", "users"] if info.get("role") == "admin" else ["index", "yandex"]
+            data[login] = {
+                "hash": info["hash"].decode(),
+                "role": info.get("role", "user"),
+                "tabs": info.get("tabs") or default_tabs,
+            }
         with open(USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
     except Exception as e:
@@ -152,6 +167,7 @@ def save_users():
 load_users()
 
 WEBHOOKS_DB: dict[str, dict] = {}
+AUTH_REALM_VERSION = int(time.time())
 
 
 def load_webhooks():
@@ -161,7 +177,12 @@ def load_webhooks():
             WEBHOOKS_FILE.write_text("{}", encoding="utf-8")
         with open(WEBHOOKS_FILE, "r", encoding="utf-8") as f:
             content = f.read().strip() or "{}"
-            WEBHOOKS_DB = json.loads(content)
+            raw = json.loads(content)
+            # Поддержка старого формата {"name": {...}}
+            if raw and all(isinstance(v, dict) and "webhook_url" in v for v in raw.values()):
+                WEBHOOKS_DB = {"_legacy": raw}
+            else:
+                WEBHOOKS_DB = raw
     except Exception as e:
         logger.error(f"Ошибка загрузки webhooks.json: {e}")
 
@@ -251,24 +272,369 @@ def check_auth(username, password):
     user = USERS_DB.get(username)
     return user and bcrypt.checkpw(password.encode("utf-8"), user["hash"])
 
-def is_admin():
-    auth = request.authorization
-    if not auth:
-        return False
-    user = USERS_DB.get(auth.username)
-    return user and user.get("role") == "admin" and check_auth(auth.username, auth.password)
 
-def authenticate():
-    return Response('Доступ запрещён', 401,
-                    {'WWW-Authenticate': 'Basic realm="iiko-menu v2"'})
+def current_username() -> str:
+    return ACTIVE_SESSIONS.get(request.cookies.get("session_token"), "")
+
+
+def current_user_record() -> dict:
+    uname = current_username()
+    return USERS_DB.get(uname) or {}
+
+
+def is_admin():
+    user = current_user_record()
+    return user.get("role") == "admin"
+
+
+def has_tab_access(tab: str) -> bool:
+    user = current_user_record()
+    if not user:
+        return False
+    tabs = user.get("tabs") or []
+    return tab in tabs or user.get("role") == "admin"
+
+
+def required_tab_from_path(path: str) -> str:
+    if path.startswith("/yandex") or path.startswith("/api/yandex"):
+        return "yandex"
+    if path.startswith("/users"):
+        return "users"
+    return "index"
+
+def current_realm() -> str:
+    return f"iiko-menu v2 session-{AUTH_REALM_VERSION}"
+
+
+LOGIN_TEMPLATE = Template(
+    """
+    <html lang="ru" class="h-full">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Авторизация</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+      <style>
+        :root {
+          color-scheme: light;
+        }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.26) 0, transparent 28%),
+                      radial-gradient(circle at 80% 0%, rgba(16,185,129,0.22) 0, transparent 32%),
+                      linear-gradient(145deg, #0f172a 0%, #0b1224 45%, #0f172a 100%);
+          color: #e2e8f0;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 22px;
+          overflow: hidden;
+        }
+        .grid-bg {
+          position: absolute; inset: 0;
+          background: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+          background-size: 46px 46px;
+          mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.6), transparent 60%);
+          pointer-events: none;
+        }
+        .card {
+          position: relative;
+          width: min(380px, 92vw);
+          border-radius: 20px;
+          padding: 20px;
+          background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+          border: 1px solid rgba(255,255,255,0.12);
+          backdrop-filter: blur(18px) saturate(140%);
+          box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+          overflow: hidden;
+        }
+        .card::before {
+          content: '';
+          position: absolute; inset: -40% 30% auto auto;
+          width: 240px; height: 240px;
+          background: radial-gradient(circle, rgba(52,211,153,0.25), rgba(52,211,153,0));
+          filter: blur(10px);
+        }
+        .card::after {
+          content: '';
+          position: absolute; inset: auto auto -35% -20%;
+          width: 260px; height: 260px;
+          background: radial-gradient(circle, rgba(99,102,241,0.28), rgba(99,102,241,0));
+          filter: blur(12px);
+        }
+        .title { display:flex; align-items:center; gap:12px; font-weight:800; font-size:20px; letter-spacing: 0.2px; color:#e2e8f0; position: relative; z-index:2; }
+        .title .logo {
+          width: 52px; height: 52px; border-radius: 18px;
+          display: grid; place-items: center;
+          background: conic-gradient(from 45deg, #22d3ee, #6366f1, #22c55e, #22d3ee);
+          color: #0b1224; font-weight: 900; font-size: 22px;
+          box-shadow: 0 16px 40px rgba(34,211,238,0.35);
+          border: 1px solid rgba(255,255,255,0.25);
+        }
+        .message { margin: 10px 0 20px; font-size: 14px; color: #cbd5e1; position: relative; z-index:2; }
+        .message.error { color: #fecdd3; }
+        .field { display:flex; flex-direction: column; gap:8px; position: relative; z-index:2; }
+        .field label { font-size: 12px; color: #cbd5e1; font-weight:600; letter-spacing: 0.3px; }
+        .field input {
+          border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 12px 14px; font-size: 14px;
+          transition: border-color .15s, box-shadow .15s, background .15s; background: rgba(15,23,42,0.55); color:#f8fafc;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        .field input:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 4px rgba(56,189,248,.18); background: rgba(255,255,255,0.08); }
+        .actions { display:flex; align-items:center; gap:10px; justify-content: space-between; margin-top: 18px; position: relative; z-index:2; }
+        button {
+          border: none; border-radius: 14px; padding: 13px 18px; font-weight: 800; font-size: 14px; cursor: pointer;
+          background: linear-gradient(135deg, #34d399, #22c55e); color: #052e16;
+          transition: transform .16s ease, box-shadow .16s ease;
+          width: 100%;
+          display:flex; align-items:center; justify-content:center; gap:9px;
+          box-shadow: 0 16px 40px rgba(34,197,94,.36), 0 0 0 1px rgba(255,255,255,0.05) inset;
+        }
+        button:hover { transform: translateY(-1px) scale(1.01); box-shadow: 0 20px 46px rgba(34,197,94,.42); }
+        button:active { transform: translateY(0); }
+        .status-icon { width: 16px; height: 16px; border-radius: 50%; border:2px solid transparent; display:none; position: relative; }
+        .status-icon.ok { border-color:#bbf7d0; color:#16a34a; }
+        .status-icon.fail { border-color:#fecdd3; color:#dc2626; }
+        .status-icon.pulse { animation: pulse 0.9s ease-in-out infinite; }
+        .status-icon::after { content:''; display:block; width:6px; height:10px; border:2px solid currentColor; border-left:0; border-top:0; transform: translate(3px,-2px) rotate(45deg); }
+        .status-icon.fail::after { width:10px;height:10px;border:0;border-top:2px solid currentColor;border-right:2px solid currentColor;transform: translate(3px,3px) rotate(45deg); box-sizing:border-box; }
+        .divider { height:1px; background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(99,102,241,.45), rgba(255,255,255,.05)); margin: 18px 0 12px; position: relative; z-index:2; }
+        .badge { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; background: rgba(255,255,255,0.08); border-radius: 999px; border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:12px; }
+        .loader {
+          width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); border-top-color: rgba(255,255,255,0.9); animation: spin 0.8s linear infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
+        @keyframes spin { to { transform: rotate(360deg);} }
+        @media (max-width: 640px) {
+          body { padding: 12px; }
+          .card { width: min(360px, 100%); padding: 16px; border-radius: 18px; margin: 0 auto; }
+          .title { flex-direction: column; align-items: flex-start; gap: 6px; font-size: 18px; }
+          .actions { flex-direction: column; align-items: stretch; }
+          button { width: 100%; }
+        }
+      </style>
+      <script src="/assets/login.js" defer></script>
+    </head>
+    <body class="h-full" data-state="$state" data-error="$error_flag">
+      <div class="grid-bg"></div>
+      <div class="card">
+        <div class="title">
+          <div class="logo">⦿</div>
+          <div>Вход в панель iiko</div>
+          <span class="badge"><span class="loader"></span> защищённый доступ</span>
+        </div>
+        <p class="message $error_class">$message</p>
+        <form method="POST" action="/login" class="space-y-4" id="loginForm">
+          <input type="hidden" name="next" value="$next_url" />
+          <div class="field">
+            <label>Логин</label>
+            <input name="username" placeholder="username" autocomplete="username" required autofocus />
+          </div>
+          <div class="field">
+            <label>Пароль</label>
+            <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required />
+          </div>
+          <div class="divider"></div>
+          <div class="actions">
+            <button type="submit" id="loginBtn"><span class="status-icon" id="loginStatus"></span><span id="loginLabel">Войти</span></button>
+          </div>
+        </form>
+      </div>
+    </body>
+    </html>
+    """
+)
+
+
+LOGOUT_TEMPLATE = Template(
+    """
+    <html lang=\"ru\" class=\"h-full\">
+    <head>
+      <meta charset=\"UTF-8\" />
+      <title>Вы вышли</title>
+      <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
+      <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
+      <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap\" rel=\"stylesheet\">
+      <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: radial-gradient(circle at 15% 20%, rgba(52,211,153,0.15) 0, transparent 28%),
+                      radial-gradient(circle at 80% 0%, rgba(59,130,246,0.22) 0, transparent 34%),
+                      linear-gradient(145deg, #0b1224 0%, #0f172a 35%, #0b1224 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 32px;
+          color: #e2e8f0;
+          position: relative;
+          overflow: hidden;
+        }
+        .grid-bg { position: absolute; inset: 0; background: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 52px 52px; mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55), transparent 60%); pointer-events: none; }
+        .glow { position:absolute; width:340px; height:340px; filter: blur(80px); opacity:0.4; }
+        .glow.green { background: #22c55e; top: -80px; left: -60px; }
+        .glow.blue { background: #6366f1; bottom: -80px; right: -60px; }
+        .card {
+          position: relative;
+          width: min(380px, 92vw);
+          padding: 20px;
+          border-radius: 20px;
+          background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+          border: 1px solid rgba(255,255,255,0.12);
+          box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+          backdrop-filter: blur(14px);
+          overflow: hidden;
+        }
+        .card::before { content:''; position:absolute; inset:0; background: linear-gradient(120deg, rgba(34,197,94,0.14), rgba(59,130,246,0.12)); opacity:0.8; pointer-events:none; }
+        .card-content { position:relative; z-index:1; }
+        .title { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; letter-spacing:0.2px; }
+        .badge { width:38px; height:38px; border-radius:14px; display:grid; place-items:center; background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; font-size:18px; font-weight:800; box-shadow:0 8px 22px rgba(34,197,94,0.3); }
+        p { margin:14px 0 22px; font-size:14px; line-height:1.7; color:#cbd5e1; }
+        .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.16); color:#e2e8f0; text-decoration:none; font-weight:700; transition: transform .12s, box-shadow .12s, border-color .12s; backdrop-filter: blur(6px); }
+        .btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; border-color: #16a34a; box-shadow:0 12px 28px rgba(34,197,94,0.28); }
+        .btn.secondary { background: rgba(15,23,42,0.6); }
+        .btn:hover { transform: translateY(-2px); box-shadow:0 14px 32px rgba(99,102,241,0.35); }
+        @media (max-width: 640px) {
+          body { padding: 12px; }
+          .card { width: min(360px, 100%); padding: 16px; border-radius: 16px; margin: 0 auto; }
+          .title { font-size: 18px; }
+          p { font-size: 13px; }
+          .actions { width: 100%; }
+          .btn { width: 100%; justify-content: center; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class=\"grid-bg\"></div>
+      <div class=\"glow green\"></div>
+      <div class=\"glow blue\"></div>
+      <div class=\"card\">
+        <div class=\"card-content\">
+          <div class=\"title\"><span class=\"badge\">⇦</span>Вы вышли из аккаунта</div>
+          <p>Сессия завершена. Чтобы вернуться к работе, снова авторизуйтесь на сайте и введите свои данные.</p>
+          <div class=\"actions\">
+            <a class=\"btn primary\" href=\"/\">Вернуться к авторизации</a>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+)
+
+
+@app.after_request
+def apply_security_headers(response: Response):
+    """Добавляем строгие заголовки безопасности ко всем ответам."""
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' blob: https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "img-src 'self' data: blob: https:; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
+        "connect-src 'self' https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+        "object-src 'none'; frame-ancestors 'none'"
+    )
+    response.headers.setdefault("Content-Security-Policy", csp)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=(), fullscreen=()")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+    response.headers.setdefault("X-Robots-Tag", "noindex, nofollow, noarchive")
+    if "Cache-Control" not in response.headers:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers.setdefault("Pragma", "no-cache")
+    response.headers.setdefault("Expires", "0")
+    return response
+
+
+def login_markup(error: str = "", next_url: str = "/"):
+    message = "Введите логин и пароль, чтобы продолжить." if not error else error
+    state_class = "error" if error else "idle"
+    error_class = "error" if error else ""
+    return LOGIN_TEMPLATE.substitute(
+        message=message,
+        next_url=next_url,
+        state=state_class,
+        error_class=error_class,
+        error_flag=1 if error else 0,
+    )
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    global AUTH_REALM_VERSION
+    next_url = request.args.get("next") or request.form.get("next") or "/"
+    if request.method == "POST":
+        data = request.form or request.get_json() or {}
+        username = (data.get("username") or "").strip()
+        password = data.get("password") or ""
+        if check_auth(username, password):
+            AUTH_REALM_VERSION = int(time.time())
+            token = f"{uuid4().hex}::{AUTH_REALM_VERSION}"
+            ACTIVE_SESSIONS[token] = username
+            resp = redirect(next_url or "/")
+            resp.set_cookie('session_token', token, httponly=True, samesite='Lax', path='/')
+            resp.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
+            return resp
+        resp = Response(login_markup("Неверный логин или пароль", next_url), 401)
+        resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
+
+    resp = Response(login_markup("", next_url), 401)
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+    resp.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
+    resp.set_cookie('session_user', '', expires=0, path='/', samesite='Lax')
+    return resp
+
 
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
+        session_token = request.cookies.get('session_token')
+        username = ACTIVE_SESSIONS.get(session_token, '')
+        realm_ok = False
+        if session_token and '::' in session_token:
+            try:
+                _, realm = session_token.rsplit('::', 1)
+                realm_ok = str(realm) == str(AUTH_REALM_VERSION)
+            except ValueError:
+                realm_ok = False
+        if session_token and not realm_ok:
+            ACTIVE_SESSIONS.pop(session_token, None)
+            username = ''
+        if not username:
+            next_url = urllib.parse.quote(request.path or '/')
+            return redirect(f"/login?next={next_url}")
+
+        request.authorization = SimpleNamespace(username=username, password='')
+        required_tab = required_tab_from_path(request.path)
+        if required_tab and not has_tab_access(required_tab):
+            resp = Response('Доступ запрещён', 403)
+            resp.headers['Content-Type'] = 'text/plain; charset=utf-8'
+            return resp
+
+        resp = f(*args, **kwargs)
+        if isinstance(resp, Response):
+            resp.set_cookie('session_token', session_token, httponly=True, samesite='Lax', path='/')
+            resp.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
+            return resp
+        wrapped = Response(resp)
+        wrapped.set_cookie('session_token', session_token, httponly=True, samesite='Lax', path='/')
+        wrapped.set_cookie('session_user', username, httponly=True, samesite='Lax', path='/')
+        return wrapped
     return decorated
 
 # ==================== iiko ЛОГИКА ====================
@@ -410,22 +776,77 @@ def get_yandex_token(
 @app.route("/")
 @require_auth
 def index():
-    return send_file(BASE_DIR / "index.html")
+    resp = send_file(BASE_DIR / "index.html")
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
 
 @app.route("/yandex")
 @require_auth
 def yandex_page():
-    return send_file(BASE_DIR / "yandex.html")
+    resp = send_file(BASE_DIR / "yandex.html")
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
+
+@app.route("/chunks/<path:filename>")
+@require_auth
+def serve_chunk(filename):
+    chunk_dir = BASE_DIR / "assets" / "chunks"
+    if not (chunk_dir / filename).exists():
+        abort(404)
+    resp = send_from_directory(chunk_dir, filename, mimetype="application/javascript")
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.route("/assets/<path:filename>")
+def serve_asset(filename):
+    asset_dir = BASE_DIR / "assets"
+    target = asset_dir / filename
+    if not target.exists():
+        abort(404)
+    if filename.startswith("src/"):
+        abort(404)
+    if filename == "login.js":
+        resp = send_from_directory(asset_dir, filename)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+    session_token = request.cookies.get('session_token')
+    if session_token not in ACTIVE_SESSIONS:
+        next_url = urllib.parse.quote(request.path or '/')
+        return redirect(f"/login?next={next_url}")
+    resp = send_from_directory(asset_dir, filename)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.route("/app.js")
 @require_auth
 def app_js():
-    return send_file(BASE_DIR / "app.js")
+    resp = send_file(BASE_DIR / "app.js")
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
 
 @app.route("/yandex.js")
 @require_auth
 def yandex_js():
-    return send_file(BASE_DIR / "yandex.js")
+    resp = send_file(BASE_DIR / "yandex.js")
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers.setdefault("Cache-Control", "no-store")
+    return resp
+
+
+@app.route("/api/me")
+@require_auth
+def api_me():
+    uname = current_username()
+    user = USERS_DB.get(uname) or {}
+    return jsonify({
+        "user": uname,
+        "role": user.get("role", "user"),
+        "tabs": user.get("tabs") or ["index", "yandex", "users"],
+    })
 
 @app.route("/api/proxy", methods=["POST"])
 @require_auth
@@ -916,6 +1337,8 @@ def yandex_order_cancel():
 @app.route("/api/webhooks", methods=["GET"])
 @require_auth
 def webhooks_list():
+    user = current_username() or "_shared"
+    items_map = WEBHOOKS_DB.get(user) or WEBHOOKS_DB.get("_legacy") or {}
     items = sorted(({
         "name": name,
         "webhook_url": data.get("webhook_url", ""),
@@ -923,7 +1346,7 @@ def webhooks_list():
         "client_secret": data.get("client_secret", ""),
         "provider": data.get("provider", "yandex"),
         "iiko_key": data.get("iiko_key", ""),
-    } for name, data in WEBHOOKS_DB.items()), key=lambda x: x["name"].lower())
+    } for name, data in items_map.items()), key=lambda x: x["name"].lower())
     return jsonify({"items": items})
 
 
@@ -939,7 +1362,9 @@ def webhooks_save():
     iiko_key = (data.get("iiko_key") or "").strip()
     if not name or not webhook_url:
         return jsonify({"error": "name and webhook_url required"}), 400
-    WEBHOOKS_DB[name] = {
+    user = current_username() or "_shared"
+    WEBHOOKS_DB.setdefault(user, {})
+    WEBHOOKS_DB[user][name] = {
         "name": name,
         "webhook_url": webhook_url,
         "client_id": client_id,
@@ -948,15 +1373,18 @@ def webhooks_save():
         "iiko_key": iiko_key,
     }
     save_webhooks()
-    return jsonify({"ok": True, "item": WEBHOOKS_DB[name]})
+    return jsonify({"ok": True, "item": WEBHOOKS_DB[user][name]})
 
 
 @app.route("/api/webhooks/<name>", methods=["DELETE"])
 @require_auth
 def webhooks_delete(name):
     key = name.strip()
-    if key in WEBHOOKS_DB:
-        WEBHOOKS_DB.pop(key)
+    user = current_username() or "_shared"
+    bucket = WEBHOOKS_DB.get(user) or {}
+    if key in bucket:
+        bucket.pop(key)
+        WEBHOOKS_DB[user] = bucket
         save_webhooks()
         return jsonify({"ok": True})
     return jsonify({"error": "not found"}), 404
@@ -984,12 +1412,14 @@ def admin_save():
         password = request.form.get("password", "").strip()
         if action == "add" and not password:
             return redirect("/users?msg=Пароль+обязателен")
+        tabs = request.form.getlist("tabs") or ["index", "yandex"]
         if password:
             hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12))
-            USERS_DB[username] = {"hash": hashed, "role": request.form.get("role", "user")}
+            USERS_DB[username] = {"hash": hashed, "role": request.form.get("role", "user"), "tabs": tabs}
         else:
             if username in USERS_DB:
                 USERS_DB[username]["role"] = request.form.get("role", "user")
+                USERS_DB[username]["tabs"] = tabs
     elif action == "delete":
         if username in USERS_DB and USERS_DB[username]["role"] == "admin" and len([u for u, d in USERS_DB.items() if d["role"] == "admin"]) == 1:
             return redirect("/users?msg=Нельзя+удалить+последнего+админа")
@@ -1004,13 +1434,14 @@ def export_excel():
     payload = request.get_json(silent=True) or {}
     table_data = payload.get("table_data") or []
     columns = payload.get("columns") or payload.get("layout", {}).get("columns")
+    layout_rows = (payload.get("layout") or {}).get("rows") or []
 
     if not isinstance(table_data, list) or not table_data:
         return json_response({"error": "Нет данных для экспорта"}, 400)
 
     # Определяем заголовки
-    headers = []
-    keys = []
+    headers: list[str] = []
+    keys: list[str] = []
     if columns and isinstance(columns, list) and all(isinstance(c, dict) for c in columns):
         for col in columns:
             title = col.get("title") or col.get("label") or col.get("name") or col.get("key") or ""
@@ -1025,28 +1456,179 @@ def export_excel():
         elif isinstance(sample, list):
             headers = [f"Колонка {i+1}" for i in range(len(sample))]
 
-    output = io.StringIO()
-    writer = csv.writer(output, delimiter=';')
-    if headers:
-        writer.writerow(headers)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Экспорт"
+    ws.sheet_properties.outlinePr.summaryBelow = True
+    ws.append(headers)
 
-    for row in table_data:
-        if isinstance(row, dict):
-            writer.writerow([row.get(k, "") for k in keys])
-        elif isinstance(row, list):
-            writer.writerow(row)
-        else:
-            writer.writerow([row])
+    sku_indexes = [i for i, k in enumerate(keys) if str(k).lower() in {"sku", "id"}]
 
-    output.seek(0)
-    filename = f"export_{int(time.time())}.csv"
-    return Response(output.getvalue(), mimetype="text/csv",
-                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+    def normalize_numeric(value: Any):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return value
+        text = str(value).strip()
+        if not text:
+            return None
+        text = text.replace(",", ".")
+        try:
+            return float(text) if "." in text else int(text)
+        except Exception:
+            return value
+
+    def normalize_sku(value: Any):
+        if value is None:
+            return ""
+        if isinstance(value, (int,)):
+            return str(value)
+        if isinstance(value, float):
+            if value.is_integer():
+                return str(int(value))
+            return ("%f" % value).rstrip("0").rstrip(".")
+        text = str(value)
+        m = re.match(r"^[-+]?\d+[\.,]?\d*$", text)
+        if m:
+            normalized = text.replace(",", ".")
+            if "." in normalized:
+                head, tail = normalized.split(".", 1)
+                if tail and set(tail) == {"0"}:
+                    return head
+            return normalized
+        return text
+
+    key_to_index = {k: i for i, k in enumerate(keys)}
+
+    def append_row(row_values):
+        ws.append(row_values)
+
+    def values_for_item(item: dict) -> list:
+        values = []
+        for idx, key in enumerate(keys):
+            val = item.get(key, "") if isinstance(item, dict) else ""
+            if idx in sku_indexes:
+                val = normalize_sku(val)
+            elif isinstance(val, (int, float)):
+                pass
+            else:
+                num_val = normalize_numeric(val)
+                if isinstance(num_val, (int, float)):
+                    val = num_val
+            values.append(val)
+        return values
+
+    city_group_start = None
+    city_collapsed = False
+    category_group_start = None
+    category_collapsed = False
+    current_excel_row = 2  # first data row
+
+    def close_category():
+        nonlocal category_group_start, category_collapsed, current_excel_row
+        if category_group_start is not None and current_excel_row - 1 >= category_group_start + 1:
+            ws.row_dimensions.group(category_group_start + 1, current_excel_row - 1, outline_level=2, hidden=category_collapsed)
+        category_group_start = None
+        category_collapsed = False
+
+    def close_city():
+        nonlocal city_group_start, city_collapsed, current_excel_row
+        if city_group_start is not None and current_excel_row - 1 >= city_group_start + 1:
+            ws.row_dimensions.group(city_group_start + 1, current_excel_row - 1, outline_level=1, hidden=city_collapsed)
+        city_group_start = None
+        city_collapsed = False
+
+    if not layout_rows:
+        for item in table_data:
+            append_row(values_for_item(item))
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return send_file(buf, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                         as_attachment=True, download_name=f"export_{int(time.time())}.xlsx")
+
+    for row in layout_rows:
+        r_type = row.get("type")
+        if r_type == "city":
+            close_category()
+            close_city()
+            city_group_start = current_excel_row
+            city_collapsed = bool(row.get("collapsed"))
+            values = ["" for _ in headers]
+            if "city" in key_to_index:
+                values[key_to_index["city"]] = row.get("city", "")
+            append_row(values)
+            current_excel_row += 1
+        elif r_type == "category":
+            close_category()
+            category_group_start = current_excel_row
+            category_collapsed = bool(row.get("collapsed"))
+            values = ["" for _ in headers]
+            if "city" in key_to_index and row.get("city"):
+                values[key_to_index["city"]] = row.get("city")
+            if "category" in key_to_index:
+                values[key_to_index["category"]] = row.get("category", "")
+            append_row(values)
+            current_excel_row += 1
+        elif r_type == "item":
+            item_idx = row.get("item_index")
+            if item_idx is None or item_idx >= len(table_data):
+                continue
+            item_data = table_data[item_idx] if isinstance(table_data[item_idx], dict) else {}
+            # гарантируем наличие города для каждой позиции
+            if "city" in key_to_index and not item_data.get("city") and row.get("city"):
+                item_data = {**item_data, "city": row.get("city")}
+            values = values_for_item(item_data)
+            append_row(values)
+            current_excel_row += 1
+
+    close_category()
+    close_city()
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"export_{int(time.time())}.xlsx"
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=filename
+    )
 
 @app.route("/logout")
 def logout():
-    return Response('Вы вышли', 401,
-                    {'WWW-Authenticate': 'Basic realm="iiko-menu-logout-temp"'})
+    global AUTH_REALM_VERSION
+    AUTH_REALM_VERSION = int(time.time())
+    ACTIVE_SESSIONS.clear()
+    html = LOGOUT_TEMPLATE.substitute()
+    resp = Response(html, 200)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.set_cookie('session_token', '', expires=0, path='/', samesite='Lax')
+    resp.set_cookie('session_user', '', expires=0, path='/', samesite='Lax')
+    return resp
+
+
+@app.errorhandler(404)
+def not_found(_error):
+    html = """
+    <html lang=\"ru\" style=\"background:#0f172a;color:#e5e7eb;font-family:Arial,sans-serif;\">
+    <head><title>Страница не найдена</title></head>
+    <body style=\"display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;\">
+      <div style=\"max-width:520px;width:100%;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:24px;box-shadow:0 18px 45px rgba(0,0,0,0.45);\">
+        <div style=\"display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;\">🔎 Страница не найдена</div>
+        <p style=\"margin:12px 0 18px;font-size:14px;line-height:1.6;color:#cbd5e1;\">Проверьте адрес или вернитесь на главную страницу, чтобы снова авторизоваться.</p>
+        <a href=\"/\" style=\"display:inline-flex;align-items:center;gap:8px;background:#3b82f6;border:1px solid #2563eb;color:#e0f2fe;padding:10px 14px;border-radius:12px;font-weight:700;text-decoration:none;\">На главную</a>
+      </div>
+    </body>
+    </html>
+    """
+    resp = Response(html, 404)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.set_cookie('session', '', expires=0, path='/', samesite='Lax')
+    return resp
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9000)
