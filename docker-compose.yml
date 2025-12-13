@@ -2,14 +2,18 @@ version: "3.8"
 
 services:
   iiko-menu-web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: iiko_menu_v2
+    working_dir: /app
+    command: gunicorn -b 0.0.0.0:${PORT:-9000} app:app
     restart: unless-stopped
     ports:
       - "8282:9000"                    # внешний порт : внутренний порт приложения
     environment:
-      - PORT=9000
-      - REQUESTS_TIMEOUT=60
+      PORT: 9000
+      REQUESTS_TIMEOUT: 60
     volumes:
       - ./:/app:ro
     dns:
