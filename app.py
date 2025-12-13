@@ -311,6 +311,7 @@ LOGIN_TEMPLATE = Template(
     <html lang="ru" class="h-full">
     <head>
       <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Авторизация</title>
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,7 +332,7 @@ LOGIN_TEMPLATE = Template(
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 32px;
+          padding: clamp(18px, 4vw, 32px);
           overflow: hidden;
         }
         .grid-bg {
@@ -344,9 +345,9 @@ LOGIN_TEMPLATE = Template(
         }
         .card {
           position: relative;
-          width: min(560px, 100%);
+          width: min(440px, 100%);
           border-radius: 22px;
-          padding: 30px;
+          padding: clamp(20px, 5vw, 30px);
           background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
           border: 1px solid rgba(255,255,255,0.12);
           backdrop-filter: blur(18px) saturate(140%);
@@ -371,10 +372,13 @@ LOGIN_TEMPLATE = Template(
         .title .logo {
           width: 52px; height: 52px; border-radius: 18px;
           display: grid; place-items: center;
-          background: conic-gradient(from 45deg, #22d3ee, #6366f1, #22c55e, #22d3ee);
-          color: #0b1224; font-weight: 900; font-size: 22px;
-          box-shadow: 0 16px 40px rgba(34,211,238,0.35);
-          border: 1px solid rgba(255,255,255,0.25);
+          background: radial-gradient(circle at 30% 30%, #f472b6, transparent 45%),
+                      radial-gradient(circle at 80% 20%, #22d3ee, transparent 42%),
+                      linear-gradient(145deg, #6366f1, #22c55e);
+          color: #0b1224; font-weight: 900; font-size: 18px;
+          letter-spacing: 0.5px;
+          box-shadow: 0 16px 40px rgba(34,197,94,0.32);
+          border: 1px solid rgba(255,255,255,0.3);
         }
         .message { margin: 10px 0 22px; font-size: 14px; color: #cbd5e1; position: relative; z-index:2; }
         .message.error { color: #fecdd3; }
@@ -404,9 +408,16 @@ LOGIN_TEMPLATE = Template(
         .status-icon::after { content:''; display:block; width:6px; height:10px; border:2px solid currentColor; border-left:0; border-top:0; transform: translate(3px,-2px) rotate(45deg); }
         .status-icon.fail::after { width:10px;height:10px;border:0;border-top:2px solid currentColor;border-right:2px solid currentColor;transform: translate(3px,3px) rotate(45deg); box-sizing:border-box; }
         .divider { height:1px; background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(99,102,241,.45), rgba(255,255,255,.05)); margin: 18px 0 12px; position: relative; z-index:2; }
-        .badge { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; background: rgba(255,255,255,0.08); border-radius: 999px; border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:12px; }
-        .loader {
-          width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); border-top-color: rgba(255,255,255,0.9); animation: spin 0.8s linear infinite;
+        @media (max-width: 540px) {
+          body { padding-top: 26px; align-items: flex-start; }
+          .card { width: 100%; max-width: 420px; border-radius: 18px; }
+          .title { font-size: 18px; gap: 12px; }
+          .title .logo { width: 46px; height: 46px; font-size: 18px; border-radius: 16px; }
+          .message { font-size: 13px; margin-top: 6px; margin-bottom: 18px; }
+          .field label { font-size: 11px; }
+          .field input { font-size: 15px; padding: 11px 13px; }
+          button { font-size: 13px; padding: 12px 16px; }
+          .badge { font-size: 11px; }
         }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
         @keyframes spin { to { transform: rotate(360deg);} }
@@ -417,16 +428,15 @@ LOGIN_TEMPLATE = Template(
       <div class="grid-bg"></div>
       <div class="card">
         <div class="title">
-          <div class="logo">⦿</div>
+          <div class="logo">ii•k</div>
           <div>Вход в панель iiko</div>
-          <span class="badge"><span class="loader"></span> защищённый доступ</span>
         </div>
         <p class="message $error_class">$message</p>
         <form method="POST" action="/login" class="space-y-4" id="loginForm">
           <input type="hidden" name="next" value="$next_url" />
           <div class="field">
             <label>Логин</label>
-            <input name="username" placeholder="username" autocomplete="username" required />
+            <input name="username" placeholder="username" autocomplete="username" required autofocus />
           </div>
           <div class="field">
             <label>Пароль</label>
@@ -449,6 +459,7 @@ LOGOUT_TEMPLATE = Template(
     <html lang=\"ru\" class=\"h-full\">
     <head>
       <meta charset=\"UTF-8\" />
+      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
       <title>Вы вышли</title>
       <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
       <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
@@ -466,7 +477,7 @@ LOGOUT_TEMPLATE = Template(
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 32px;
+          padding: clamp(18px, 4vw, 32px);
           color: #e2e8f0;
           position: relative;
           overflow: hidden;
@@ -477,8 +488,8 @@ LOGOUT_TEMPLATE = Template(
         .glow.blue { background: #6366f1; bottom: -80px; right: -60px; }
         .card {
           position: relative;
-          width: min(560px, 100%);
-          padding: 34px;
+          width: min(440px, 100%);
+          padding: clamp(22px, 5vw, 34px);
           border-radius: 24px;
           background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
           border: 1px solid rgba(255,255,255,0.12);
@@ -494,8 +505,16 @@ LOGOUT_TEMPLATE = Template(
         .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
         .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.16); color:#e2e8f0; text-decoration:none; font-weight:700; transition: transform .12s, box-shadow .12s, border-color .12s; backdrop-filter: blur(6px); }
         .btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; border-color: #16a34a; box-shadow:0 12px 28px rgba(34,197,94,0.28); }
-        .btn.secondary { background: rgba(15,23,42,0.6); }
         .btn:hover { transform: translateY(-2px); box-shadow:0 14px 32px rgba(99,102,241,0.35); }
+        @media (max-width: 540px) {
+          body { padding-top: 26px; align-items: flex-start; }
+          .card { width: 100%; max-width: 420px; border-radius: 18px; }
+          .title { font-size: 18px; gap: 10px; }
+          .badge { width: 34px; height: 34px; font-size: 16px; }
+          p { font-size: 13px; line-height: 1.6; }
+          .btn { width: 100%; justify-content: center; }
+          .actions { flex-direction: column; align-items: stretch; }
+        }
       </style>
     </head>
     <body>
@@ -508,7 +527,6 @@ LOGOUT_TEMPLATE = Template(
           <p>Сессия завершена. Чтобы вернуться к работе, снова авторизуйтесь на сайте и введите свои данные.</p>
           <div class=\"actions\">
             <a class=\"btn primary\" href=\"/\">Вернуться к авторизации</a>
-            <a class=\"btn secondary\" href=\"/login\">Открыть форму входа</a>
           </div>
         </div>
       </div>
