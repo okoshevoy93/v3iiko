@@ -311,6 +311,7 @@ LOGIN_TEMPLATE = Template(
     <html lang="ru" class="h-full">
     <head>
       <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Авторизация</title>
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,7 +332,7 @@ LOGIN_TEMPLATE = Template(
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 32px;
+          padding: 24px 18px;
           overflow: hidden;
         }
         .grid-bg {
@@ -344,9 +345,9 @@ LOGIN_TEMPLATE = Template(
         }
         .card {
           position: relative;
-          width: min(560px, 100%);
+          width: min(520px, 100%);
           border-radius: 22px;
-          padding: 30px;
+          padding: clamp(18px, 5vw, 30px);
           background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
           border: 1px solid rgba(255,255,255,0.12);
           backdrop-filter: blur(18px) saturate(140%);
@@ -369,7 +370,7 @@ LOGIN_TEMPLATE = Template(
         }
         .title { display:flex; align-items:center; gap:14px; font-weight:800; font-size:21px; letter-spacing: 0.2px; color:#e2e8f0; position: relative; z-index:2; }
         .title .logo {
-          width: 52px; height: 52px; border-radius: 18px;
+          width: clamp(42px, 12vw, 52px); height: clamp(42px, 12vw, 52px); border-radius: 18px;
           display: grid; place-items: center;
           background: conic-gradient(from 45deg, #22d3ee, #6366f1, #22c55e, #22d3ee);
           color: #0b1224; font-weight: 900; font-size: 22px;
@@ -408,6 +409,16 @@ LOGIN_TEMPLATE = Template(
         .loader {
           width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); border-top-color: rgba(255,255,255,0.9); animation: spin 0.8s linear infinite;
         }
+        @media (max-width: 640px) {
+          body { padding: 16px 12px; }
+          .card { width: 100%; border-radius: 18px; }
+          .title { font-size: 18px; gap: 10px; }
+          .message { font-size: 13px; margin-top: 6px; }
+          .field label { font-size: 11px; }
+          .field input { padding: 11px 12px; font-size: 14px; }
+          .actions { flex-direction: column; gap: 12px; }
+          button { width: 100%; }
+        }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
         @keyframes spin { to { transform: rotate(360deg);} }
       </style>
@@ -426,7 +437,7 @@ LOGIN_TEMPLATE = Template(
           <input type="hidden" name="next" value="$next_url" />
           <div class="field">
             <label>Логин</label>
-            <input name="username" placeholder="username" autocomplete="username" required />
+            <input name="username" placeholder="username" autocomplete="username" required autofocus />
           </div>
           <div class="field">
             <label>Пароль</label>
@@ -449,6 +460,7 @@ LOGOUT_TEMPLATE = Template(
     <html lang=\"ru\" class=\"h-full\">
     <head>
       <meta charset=\"UTF-8\" />
+      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
       <title>Вы вышли</title>
       <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
       <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
@@ -466,7 +478,7 @@ LOGOUT_TEMPLATE = Template(
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 32px;
+          padding: 24px 18px;
           color: #e2e8f0;
           position: relative;
           overflow: hidden;
@@ -477,8 +489,8 @@ LOGOUT_TEMPLATE = Template(
         .glow.blue { background: #6366f1; bottom: -80px; right: -60px; }
         .card {
           position: relative;
-          width: min(560px, 100%);
-          padding: 34px;
+          width: min(520px, 100%);
+          padding: clamp(22px, 5vw, 34px);
           border-radius: 24px;
           background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
           border: 1px solid rgba(255,255,255,0.12);
@@ -491,11 +503,18 @@ LOGOUT_TEMPLATE = Template(
         .title { display:flex; align-items:center; gap:10px; font-weight:800; font-size:20px; letter-spacing:0.2px; }
         .badge { width:38px; height:38px; border-radius:14px; display:grid; place-items:center; background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; font-size:18px; font-weight:800; box-shadow:0 8px 22px rgba(34,197,94,0.3); }
         p { margin:14px 0 22px; font-size:14px; line-height:1.7; color:#cbd5e1; }
-        .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-        .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.16); color:#e2e8f0; text-decoration:none; font-weight:700; transition: transform .12s, box-shadow .12s, border-color .12s; backdrop-filter: blur(6px); }
+        .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:center; }
+        .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:14px; border:1px solid rgba(255,255,255,0.16); color:#e2e8f0; text-decoration:none; font-weight:700; transition: transform .12s, box-shadow .12s, border-color .12s; backdrop-filter: blur(6px); width:100%; justify-content:center; max-width: 280px; }
         .btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; border-color: #16a34a; box-shadow:0 12px 28px rgba(34,197,94,0.28); }
-        .btn.secondary { background: rgba(15,23,42,0.6); }
         .btn:hover { transform: translateY(-2px); box-shadow:0 14px 32px rgba(99,102,241,0.35); }
+        @media (max-width: 640px) {
+          body { padding: 18px 12px; text-align: center; }
+          .card { width: 100%; border-radius: 18px; }
+          .title { font-size: 18px; gap: 8px; }
+          p { font-size: 13px; }
+          .actions { flex-direction: column; }
+          .btn { width: 100%; max-width: none; }
+        }
       </style>
     </head>
     <body>
@@ -508,7 +527,6 @@ LOGOUT_TEMPLATE = Template(
           <p>Сессия завершена. Чтобы вернуться к работе, снова авторизуйтесь на сайте и введите свои данные.</p>
           <div class=\"actions\">
             <a class=\"btn primary\" href=\"/\">Вернуться к авторизации</a>
-            <a class=\"btn secondary\" href=\"/login\">Открыть форму входа</a>
           </div>
         </div>
       </div>
