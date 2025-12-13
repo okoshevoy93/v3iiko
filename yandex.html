@@ -81,6 +81,14 @@
     .badge { padding: 4px 10px; border-radius: 9999px; background: #e5e7eb; font-weight: 700; font-size: 12px; }
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
+    .config-grid { display: grid; gap: 1rem; align-items: start; }
+    @media (min-width: 1024px) { .config-grid { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } }
+    .form-section { width: 100%; max-width: 100%; }
+    .integration-row { display: flex; flex-wrap: wrap; gap: 0.5rem; width: 100%; }
+    .integration-row select { flex: 1 1 220px; min-width: 0; }
+    .integration-row button { flex: 0 0 auto; }
+    .two-col-responsive { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+    @media (min-width: 540px) { .two-col-responsive { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
     .table-shell table { min-width: 1200px; width: 100%; table-layout: auto; border-collapse: collapse; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; z-index: 5; }
@@ -281,15 +289,15 @@
       </div>
     </div>
 
-    <div class="grid lg:grid-cols-[320px,1fr] gap-4 items-start">
-      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0" style="margin-left:0">
+    <div class="config-grid">
+      <div class="card panel-bg p-4 space-y-3 self-start ml-0 lg:ml-0 form-section" style="margin-left:0">
         <div>
           <p class="text-xs text-slate-500 uppercase tracking-wide">Параметры подключения</p>
           <p class="text-sm text-slate-600">Храните ключи и вебхук рядом с интеграцией.</p>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-500" for="integrationSelect">Выберите интеграцию</label>
-          <div class="flex gap-2">
+          <div class="integration-row">
             <select id="integrationSelect" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500">
               <option value="">— Не выбрано —</option>
             </select>
@@ -305,7 +313,7 @@
           <label class="text-xs text-slate-500" for="webhookUrl">URL вебхука</label>
           <input id="webhookUrl" type="url" placeholder="https://example.com/webhook" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />
         </div>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="two-col-responsive">
           <div class="flex flex-col gap-1">
             <label class="text-xs text-slate-500" for="clientId">Client ID</label>
             <input id="clientId" type="text" placeholder="Client ID" class="w-full px-3 py-2 rounded-md bg-white border border-slate-300 text-sm focus:outline-none focus:ring focus:ring-blue-500" />

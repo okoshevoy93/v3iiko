@@ -4,6 +4,12 @@
   const icon = document.getElementById('loginStatus');
   const label = document.getElementById('loginLabel');
   const hasError = document.body.dataset.error === '1';
+  const usernameInput = form?.querySelector('input[name="username"]');
+
+  if (usernameInput) {
+    usernameInput.focus();
+    usernameInput.select?.();
+  }
 
   if (hasError && icon) {
     icon.style.display = 'inline-block';
