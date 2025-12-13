@@ -331,7 +331,7 @@ LOGIN_TEMPLATE = Template(
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 32px;
+          padding: 28px;
           overflow: hidden;
         }
         .grid-bg {
@@ -344,9 +344,9 @@ LOGIN_TEMPLATE = Template(
         }
         .card {
           position: relative;
-          width: min(560px, 100%);
+          width: min(440px, 100%);
           border-radius: 22px;
-          padding: 30px;
+          padding: 24px;
           background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
           border: 1px solid rgba(255,255,255,0.12);
           backdrop-filter: blur(18px) saturate(140%);
@@ -367,7 +367,7 @@ LOGIN_TEMPLATE = Template(
           background: radial-gradient(circle, rgba(99,102,241,0.28), rgba(99,102,241,0));
           filter: blur(12px);
         }
-        .title { display:flex; align-items:center; gap:14px; font-weight:800; font-size:21px; letter-spacing: 0.2px; color:#e2e8f0; position: relative; z-index:2; }
+        .title { display:flex; align-items:center; gap:12px; font-weight:800; font-size:20px; letter-spacing: 0.2px; color:#e2e8f0; position: relative; z-index:2; }
         .title .logo {
           width: 52px; height: 52px; border-radius: 18px;
           display: grid; place-items: center;
@@ -376,7 +376,7 @@ LOGIN_TEMPLATE = Template(
           box-shadow: 0 16px 40px rgba(34,211,238,0.35);
           border: 1px solid rgba(255,255,255,0.25);
         }
-        .message { margin: 10px 0 22px; font-size: 14px; color: #cbd5e1; position: relative; z-index:2; }
+        .message { margin: 10px 0 20px; font-size: 14px; color: #cbd5e1; position: relative; z-index:2; }
         .message.error { color: #fecdd3; }
         .field { display:flex; flex-direction: column; gap:8px; position: relative; z-index:2; }
         .field label { font-size: 12px; color: #cbd5e1; font-weight:600; letter-spacing: 0.3px; }
@@ -411,9 +411,9 @@ LOGIN_TEMPLATE = Template(
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
         @keyframes spin { to { transform: rotate(360deg);} }
         @media (max-width: 640px) {
-          body { padding: 18px; }
-          .card { width: 100%; padding: 22px; border-radius: 18px; }
-          .title { flex-direction: column; align-items: flex-start; gap: 6px; }
+          body { padding: 14px; }
+          .card { width: 100%; padding: 16px; border-radius: 18px; }
+          .title { flex-direction: column; align-items: flex-start; gap: 6px; font-size: 18px; }
           .actions { flex-direction: column; align-items: stretch; }
           button { width: 100%; }
         }
@@ -484,9 +484,9 @@ LOGOUT_TEMPLATE = Template(
         .glow.blue { background: #6366f1; bottom: -80px; right: -60px; }
         .card {
           position: relative;
-          width: min(560px, 100%);
-          padding: 34px;
-          border-radius: 24px;
+          width: min(420px, 100%);
+          padding: 22px;
+          border-radius: 20px;
           background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
           border: 1px solid rgba(255,255,255,0.12);
           box-shadow: 0 20px 60px rgba(0,0,0,0.5);
@@ -503,6 +503,14 @@ LOGOUT_TEMPLATE = Template(
         .btn.primary { background: linear-gradient(135deg, #22c55e, #16a34a); color:#0b2e13; border-color: #16a34a; box-shadow:0 12px 28px rgba(34,197,94,0.28); }
         .btn.secondary { background: rgba(15,23,42,0.6); }
         .btn:hover { transform: translateY(-2px); box-shadow:0 14px 32px rgba(99,102,241,0.35); }
+        @media (max-width: 640px) {
+          body { padding: 16px; }
+          .card { width: 100%; padding: 16px; border-radius: 16px; }
+          .title { font-size: 18px; }
+          p { font-size: 13px; }
+          .actions { width: 100%; }
+          .btn { width: 100%; justify-content: center; }
+        }
       </style>
     </head>
     <body>
