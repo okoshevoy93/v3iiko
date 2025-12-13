@@ -81,11 +81,12 @@
     .badge { padding: 4px 10px; border-radius: 9999px; background: #e5e7eb; font-weight: 700; font-size: 12px; }
     .card { border: 1px solid var(--border-soft); border-radius: 18px; box-shadow: 0 6px 14px rgba(15,23,42,0.08); }
     .muted { color: var(--text-muted); }
-    .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; }
+    .table-shell { overflow: auto; scrollbar-gutter: stable both-edges; touch-action: pan-x; overscroll-behavior-x: contain; }
     .table-shell table { min-width: 1200px; width: 100%; table-layout: auto; border-collapse: collapse; }
     .table-shell thead th { position: sticky; top: 0; background: #eef2ff; z-index: 5; }
     .table-shell td { vertical-align: middle; }
     .table-shell td, .table-shell th { text-align: center; vertical-align: middle; }
+    .image-modal-footer { display: flex; justify-content: center; align-items: center; }
     .table-header-main { background: #e5e7eb; }
     .table-header-filters { background: #f9fafb; }
     .table-header-main th, .table-header-filters th { border-bottom: 1px solid var(--border-soft); color: #374151; }
@@ -100,7 +101,7 @@
     .pill.green { background: #ecfdf3; color: #15803d; border-color: #bbf7d0; }
     .pill.red { background: #fef2f2; color: #b91c1c; border-color: #fecdd3; }
     .pill.blue { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .filter-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 12px; }
+    .filter-input { width: 100%; max-width: 420px; padding: 6px 10px; border: 1px solid var(--border-soft); border-radius: 10px; font-size: 12px; }
     .menu-img { width: 144px; height: 144px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-soft); background: #f8fafc; cursor: pointer; position: relative; }
     .menu-img.placeholder { display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; }
     .overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: none; align-items: center; justify-content: center; z-index: 50; padding: 1rem; }
@@ -248,6 +249,21 @@
     .photo-badge { position: absolute; top: 8px; left: 8px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #0f172a; box-shadow: 0 6px 14px rgba(0,0,0,0.15); backdrop-filter: blur(4px); border: 1px solid rgba(0,0,0,0.08); }
     .photo-badge.red { background: rgba(248,113,113,0.78); color: #7f1d1d; border-color: rgba(248,113,113,0.6); }
     .photo-badge.green { background: rgba(167,243,208,0.82); color: #065f46; border-color: rgba(74,222,128,0.6); }
+    .controls-panel { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+    .control-block { flex: 0 0 auto; }
+    .control-block.narrow { width: 100%; max-width: 360px; }
+    .control-block.grow { flex: 1 1 auto; }
+    @media (max-width: 768px) {
+      .btn-big {
+        min-width: auto;
+        width: auto;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      .controls-panel { flex-direction: column; align-items: flex-start; }
+      .control-block { width: 100%; max-width: 320px; }
+      .filter-input { max-width: 320px; }
+    }
   </style>
 </head>
 <body class="h-full app-bg">
@@ -328,8 +344,8 @@
 
       <div class="space-y-4">
         <div class="card panel-bg p-4 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="space-y-2">
+          <div class="controls-panel justify-between">
+            <div class="control-block space-y-2 min-w-[200px]">
               <div class="card card-bg p-3 space-y-2 picker" id="placePicker">
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-xs text-slate-500 uppercase tracking-wide">Выберите ресторан</span>
@@ -353,7 +369,7 @@
                 <select id="placeSelect" class="hidden" multiple></select>
               </div>
             </div>
-            <div class="flex flex-wrap gap-3 text-sm text-slate-500 items-center justify-end">
+            <div class="control-block grow flex flex-wrap gap-3 text-sm text-slate-500 items-center justify-end">
               <div class="flex flex-wrap items-center gap-2">
                 <span id="summaryCategories" class="pill summary-chip orange">Категории: 0</span>
                 <span id="summaryModifiers" class="pill summary-chip green">Модификаторы: 0</span>
@@ -374,21 +390,23 @@
             </div>
           </div>
           <div class="table-shell border border-soft rounded-xl bg-white head-sticky">
-            <div class="px-3 pt-2 pb-1 flex flex-wrap items-center gap-2 justify-between">
-              <div class="flex flex-wrap items-end gap-2">
-                <div id="viewPicker" class="picker view-picker">
-                  <span class="text-xs text-slate-500 uppercase tracking-wide">Режим таблицы</span>
-                  <button id="viewToggle" class="picker-toggle mt-1">
-                    <span id="viewToggleLabel" class="truncate">Список</span>
-                    <span class="text-xs text-slate-500">▼</span>
-                  </button>
-                  <div id="viewPanel" class="picker-panel">
-                    <div id="viewOptions" class="space-y-2"></div>
+            <div class="px-3 pt-2 pb-1">
+              <div class="controls-panel">
+                <div class="control-block flex flex-wrap items-end gap-2">
+                  <div id="viewPicker" class="picker view-picker">
+                    <span class="text-xs text-slate-500 uppercase tracking-wide">Режим таблицы</span>
+                    <button id="viewToggle" class="picker-toggle mt-1">
+                      <span id="viewToggleLabel" class="truncate">Список</span>
+                      <span class="text-xs text-slate-500">▼</span>
+                    </button>
+                    <div id="viewPanel" class="picker-panel">
+                      <div id="viewOptions" class="space-y-2"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="flex-1 flex justify-end">
-                <input id="filterSearch" class="filter-input w-60 sm:w-72 md:w-80" placeholder="Поиск по названию, SKU, модификаторам" />
+                <div class="control-block narrow w-full flex justify-start md:justify-end">
+                  <input id="filterSearch" class="filter-input w-full" placeholder="Поиск по названию, SKU, модификаторам" />
+                </div>
               </div>
             </div>
             <table class="w-full text-sm" id="menuTable">

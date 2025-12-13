@@ -192,6 +192,10 @@
       min-width: 2.5rem;
       text-align: right;
     }
+    .controls-panel { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+    .control-block { flex: 0 0 auto; }
+    .control-block.narrow { width: 100%; max-width: 360px; }
+    .control-block.grow { flex: 1 1 auto; }
     .status-line { display:flex; align-items:center; gap:8px; }
     .status-spinner {
       width: 14px; height: 14px; border-radius: 50%;
@@ -394,7 +398,7 @@
     }
     .image-modal-shell { backdrop-filter: blur(4px); }
     .image-modal-meta { text-align: center; }
-    .image-modal-footer { text-align: center; }
+    .image-modal-footer { display: flex; justify-content: center; align-items: center; }
     .icon-toggle-btn {
       width: 22px;
       height: 22px;
@@ -557,6 +561,18 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5);
     }
+    @media (max-width: 768px) {
+      .btn-big {
+        min-width: auto;
+        width: auto;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      .table-action-bar { justify-content: flex-start; }
+      .controls-panel { flex-direction: column; align-items: flex-start; }
+      .control-block { width: 100%; max-width: 320px; }
+      .filter-input { max-width: 320px; }
+    }
   </style>
 </head>
 <body class="app-bg font-sans">
@@ -687,24 +703,25 @@
         </button>
       </div>
       <div class="flex-1 card-bg border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-inner">
-        <div class="px-3 py-2 border-b border-slate-800 text-xs text-slate-500 flex flex-wrap items-start md:items-center gap-3 table-shell-bg">
-          <div class="flex items-center gap-3 flex-wrap grow min-w-[320px]">
-            <div class="flex items-center gap-2">
-              <span class="text-[11px] text-slate-500 whitespace-nowrap">Внешнее меню</span>
-              <select
+        <div class="px-3 py-2 border-b border-slate-800 text-xs text-slate-500 table-shell-bg">
+          <div class="controls-panel">
+            <div class="control-block grow flex items-center gap-3 flex-wrap min-w-[200px]">
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] text-slate-500 whitespace-nowrap">Внешнее меню</span>
+                <select
                 id="menuSelect"
                 class="min-w-[220px] px-3 py-1.5 rounded-md bg-white border border-slate-700 text-xs focus:outline-none focus:ring focus:ring-blue-500"
               >
                 <option value="">Сначала загрузите организации и меню</option>
               </select>
             </div>
-            <div id="priceFilterGroup" class="hidden items-center gap-1 bg-slate-950 px-2 py-1 rounded-md border border-slate-700">
+            <div id="priceFilterGroup" class="hidden items-center gap-1 bg-slate-950 px-2 py-1 rounded-md border border-slate-700 control-block narrow">
               <button id="filterAnyPriceBtn"
                       class="px-2 py-1 text-[12px] rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-700">
                 Только с ценой
               </button>
             </div>
-            <div class="flex items-center gap-1 ml-2">
+            <div class="control-block flex items-center gap-1">
               <button id="fontSmaller" class="px-2 py-1 text-[12px] rounded bg-slate-900 hover:bg-slate-800 border border-slate-700">
                 A-
               </button>
@@ -718,7 +735,7 @@
                 Описание +
               </button>
             </div>
-            <div class="flex items-center gap-1 flex-wrap ml-2">
+            <div class="control-block flex items-center gap-1 flex-wrap">
               <div class="w-px self-stretch bg-slate-300 hidden md:block"></div>
               <button id="modeOrgsAllBtn" class="mode-btn mode-btn-active">
                 <span>Цены по городам (все ЦК)</span>
@@ -736,7 +753,7 @@
                 <span>Таблица сверки цен</span>
               </button>
             </div>
-            <div id="selectionToolsGroup" class="hidden items-center gap-2 ml-2">
+            <div id="selectionToolsGroup" class="hidden items-center gap-2 control-block">
               <button id="openSelectionSearchBtn" class="selection-search-btn">
                 <span class="selection-search-btn-icon">Поиск</span>
                 <span>Поиск блюд</span>
@@ -750,7 +767,7 @@
             </div>
           </div>
         </div>
-        <div id="tableActionBar" class="flex items-center gap-2 flex-wrap justify-start lg:justify-end w-full table-action-bar pb-1">
+        <div id="tableActionBar" class="controls-panel table-action-bar pb-1">
           <button
             id="loadMenuBtn"
             data-default-label="Загрузить меню и цены"
