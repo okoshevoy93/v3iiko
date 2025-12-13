@@ -331,7 +331,7 @@ LOGIN_TEMPLATE = Template(
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 28px;
+          padding: 22px;
           overflow: hidden;
         }
         .grid-bg {
@@ -344,9 +344,9 @@ LOGIN_TEMPLATE = Template(
         }
         .card {
           position: relative;
-          width: min(440px, 100%);
-          border-radius: 22px;
-          padding: 24px;
+          width: min(380px, 92vw);
+          border-radius: 20px;
+          padding: 20px;
           background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
           border: 1px solid rgba(255,255,255,0.12);
           backdrop-filter: blur(18px) saturate(140%);
@@ -411,8 +411,8 @@ LOGIN_TEMPLATE = Template(
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
         @keyframes spin { to { transform: rotate(360deg);} }
         @media (max-width: 640px) {
-          body { padding: 14px; }
-          .card { width: 100%; padding: 16px; border-radius: 18px; }
+          body { padding: 12px; }
+          .card { width: min(360px, 100%); padding: 16px; border-radius: 18px; margin: 0 auto; }
           .title { flex-direction: column; align-items: flex-start; gap: 6px; font-size: 18px; }
           .actions { flex-direction: column; align-items: stretch; }
           button { width: 100%; }
@@ -484,8 +484,8 @@ LOGOUT_TEMPLATE = Template(
         .glow.blue { background: #6366f1; bottom: -80px; right: -60px; }
         .card {
           position: relative;
-          width: min(420px, 100%);
-          padding: 22px;
+          width: min(380px, 92vw);
+          padding: 20px;
           border-radius: 20px;
           background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
           border: 1px solid rgba(255,255,255,0.12);
@@ -504,8 +504,8 @@ LOGOUT_TEMPLATE = Template(
         .btn.secondary { background: rgba(15,23,42,0.6); }
         .btn:hover { transform: translateY(-2px); box-shadow:0 14px 32px rgba(99,102,241,0.35); }
         @media (max-width: 640px) {
-          body { padding: 16px; }
-          .card { width: 100%; padding: 16px; border-radius: 16px; }
+          body { padding: 12px; }
+          .card { width: min(360px, 100%); padding: 16px; border-radius: 16px; margin: 0 auto; }
           .title { font-size: 18px; }
           p { font-size: 13px; }
           .actions { width: 100%; }
