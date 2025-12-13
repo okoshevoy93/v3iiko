@@ -201,6 +201,17 @@
       flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .image-modal-footer { display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    @media (max-width: 768px) {
+      .btn-big {
+        min-width: auto;
+        width: auto;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      #tableActionBar { justify-content: flex-start; }
+      .mode-btn, .selection-search-btn { width: auto; }
+    }
     .pc-chip {
       position: relative;
       overflow: hidden;
