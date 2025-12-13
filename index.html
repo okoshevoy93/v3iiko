@@ -141,6 +141,10 @@
       text-align: center;
       padding: 0.5rem 0.75rem;
     }
+    .controls-panel { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start; }
+    .controls-panel .controls-stack { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .controls-panel .controls-stack.wide { width:100%; max-width: 640px; }
+    .controls-panel .controls-stack.compact { max-width: 360px; width: 100%; }
     .btn-big::before {
       content: "";
       position: absolute;
@@ -394,7 +398,7 @@
     }
     .image-modal-shell { backdrop-filter: blur(4px); }
     .image-modal-meta { text-align: center; }
-    .image-modal-footer { text-align: center; }
+    .image-modal-footer { display: flex; justify-content: center; align-items: center; gap: 8px; }
     .icon-toggle-btn {
       width: 22px;
       height: 22px;
@@ -520,6 +524,17 @@
     .count-pill.inverse { background: #ffffff; color: #0284c7; box-shadow: 0 1px 3px rgba(2,132,199,0.25); }
     .count-pill.red { background: #ef4444; }
     .count-pill.green { background: #22c55e; }
+    @media (max-width: 768px) {
+      .btn-big { min-width: auto; width: auto; padding: 6px 10px; font-size: 12px; }
+      .controls-panel { flex-direction: column; align-items: flex-start; }
+      .controls-panel .controls-stack { flex-direction: column; align-items: flex-start; max-width: 320px; width: 100%; }
+      .controls-panel input,
+      .controls-panel select,
+      .controls-panel button,
+      .controls-panel .mode-btn,
+      .controls-panel .tab-link { width: auto; max-width: 320px; }
+      #tableScrollContainer { overflow-x: auto; }
+    }
     .city-toggle-bar { display: none; }
     @media (max-width: 1440px) {
       .city-column { display: none; }
@@ -571,11 +586,11 @@
 
   <header class="header">
     <div class="flex flex-col gap-3 h-full">
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2 controls-panel">
         <a href="/" class="tab-link active">iiko</a>
         <a href="/yandex" class="tab-link">Yandex Еда</a>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3 controls-stack wide">
         <div class="flex items-center gap-2">
           <span id="apiStatusDot" class="inline-block w-2.5 h-2.5 rounded-full bg-slate-500"></span>
           <span id="apiStatusText" class="text-xs text-slate-400">Не подключено</span>
@@ -750,7 +765,7 @@
             </div>
           </div>
         </div>
-        <div id="tableActionBar" class="flex items-center gap-2 flex-wrap justify-start lg:justify-end w-full table-action-bar pb-1">
+        <div id="tableActionBar" class="flex items-center gap-2 flex-wrap justify-start lg:justify-end w-full table-action-bar pb-1 controls-panel">
           <button
             id="loadMenuBtn"
             data-default-label="Загрузить меню и цены"

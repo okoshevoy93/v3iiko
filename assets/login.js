@@ -22,4 +22,9 @@
       }, 320);
     });
   }
+
+  const usernameInput = document.querySelector('input[name="username"]');
+  if (usernameInput) {
+    window.requestAnimationFrame(() => usernameInput.focus());
+  }
 })();

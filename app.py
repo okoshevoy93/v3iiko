@@ -332,7 +332,7 @@ LOGIN_TEMPLATE = Template(
           align-items: center;
           justify-content: center;
           padding: 32px;
-          overflow: hidden;
+          overflow: auto;
         }
         .grid-bg {
           position: absolute; inset: 0;
@@ -345,6 +345,7 @@ LOGIN_TEMPLATE = Template(
         .card {
           position: relative;
           width: min(560px, 100%);
+          max-width: 560px;
           border-radius: 22px;
           padding: 30px;
           background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
@@ -352,6 +353,7 @@ LOGIN_TEMPLATE = Template(
           backdrop-filter: blur(18px) saturate(140%);
           box-shadow: 0 24px 80px rgba(0,0,0,0.45);
           overflow: hidden;
+          max-height: calc(100vh - 32px);
         }
         .card::before {
           content: '';
@@ -410,6 +412,12 @@ LOGIN_TEMPLATE = Template(
         }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1;} 50% { transform: scale(1.08); opacity: .75;} 100% { transform: scale(1); opacity:1;} }
         @keyframes spin { to { transform: rotate(360deg);} }
+        @media (max-width: 640px) {
+          body { padding: 16px; }
+          .card { padding: 20px; border-radius: 16px; max-width: 360px; max-height: calc(100vh - 20px); }
+          .title { font-size: 18px; }
+          .logo { width: 42px; height: 42px; }
+        }
       </style>
       <script src="/assets/login.js" defer></script>
     </head>
@@ -426,7 +434,7 @@ LOGIN_TEMPLATE = Template(
           <input type="hidden" name="next" value="$next_url" />
           <div class="field">
             <label>Логин</label>
-            <input name="username" placeholder="username" autocomplete="username" required />
+            <input name="username" placeholder="username" autocomplete="username" required autofocus />
           </div>
           <div class="field">
             <label>Пароль</label>
@@ -508,7 +516,6 @@ LOGOUT_TEMPLATE = Template(
           <p>Сессия завершена. Чтобы вернуться к работе, снова авторизуйтесь на сайте и введите свои данные.</p>
           <div class=\"actions\">
             <a class=\"btn primary\" href=\"/\">Вернуться к авторизации</a>
-            <a class=\"btn secondary\" href=\"/login\">Открыть форму входа</a>
           </div>
         </div>
       </div>
