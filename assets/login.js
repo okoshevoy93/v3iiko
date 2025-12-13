@@ -1,9 +1,19 @@
 (function() {
   const form = document.getElementById('loginForm');
+  const usernameInput = form ? form.elements['username'] : null;
   const btn = document.getElementById('loginBtn');
   const icon = document.getElementById('loginStatus');
   const label = document.getElementById('loginLabel');
   const hasError = document.body.dataset.error === '1';
+
+  if (usernameInput) {
+    requestAnimationFrame(() => {
+      usernameInput.focus({ preventScroll: true });
+      if (usernameInput.select) {
+        usernameInput.select();
+      }
+    });
+  }
 
   if (hasError && icon) {
     icon.style.display = 'inline-block';
