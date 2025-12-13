@@ -405,10 +405,7 @@ LOGIN_TEMPLATE = Template(
         .status-icon::after { content:''; display:block; width:6px; height:10px; border:2px solid currentColor; border-left:0; border-top:0; transform: translate(3px,-2px) rotate(45deg); }
         .status-icon.fail::after { width:10px;height:10px;border:0;border-top:2px solid currentColor;border-right:2px solid currentColor;transform: translate(3px,3px) rotate(45deg); box-sizing:border-box; }
         .divider { height:1px; background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(99,102,241,.45), rgba(255,255,255,.05)); margin: 18px 0 12px; position: relative; z-index:2; }
-        .badge { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; background: rgba(255,255,255,0.08); border-radius: 999px; border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:12px; }
-        .loader {
-          width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45); border-top-color: rgba(255,255,255,0.9); animation: spin 0.8s linear infinite;
-        }
+        .badge { display:none; }
         @media (max-width: 540px) {
           body { padding-top: 26px; align-items: flex-start; }
           .card { width: 100%; max-width: 420px; border-radius: 18px; }
@@ -429,9 +426,8 @@ LOGIN_TEMPLATE = Template(
       <div class="grid-bg"></div>
       <div class="card">
         <div class="title">
-          <div class="logo">⦿</div>
+          <div class="logo">✦</div>
           <div>Вход в панель iiko</div>
-          <span class="badge"><span class="loader"></span> защищённый доступ</span>
         </div>
         <p class="message $error_class">$message</p>
         <form method="POST" action="/login" class="space-y-4" id="loginForm">
