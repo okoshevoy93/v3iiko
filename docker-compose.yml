@@ -11,6 +11,7 @@ services:
       - /volume1/apps/iiko_menu_v2/app:/app
     environment:
       - PORT=9000                      # ← гарантирует, что Flask возьмёт именно 9000
+      - REQUESTS_TIMEOUT=60            # ← увеличить таймаут сетевых запросов
     dns:
       - 1.1.1.1
       - 8.8.8.8
